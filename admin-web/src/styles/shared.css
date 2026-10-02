@@ -1,0 +1,93 @@
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background-color: #F8EFE6;
+  color: #804022;
+  font-family: 'Inter', sans-serif;
+}
+h1, h2, h3, .card-title, .modal-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.page-wrapper {
+  min-height: 100vh;
+  padding: 24px 32px;
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+.header-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.back-btn {
+  background: #FFFFFF;
+  border: 1px solid #D6BB83;
+  color: #804022;
+  padding: 10px 18px;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(128, 64, 34, 0.05);
+  transition: all 0.2s ease;
+}
+.back-btn:hover { background: #FCECD6; border-color: #C37800; color: #C37800; }
+.signout-btn {
+  background: rgba(223, 27, 57, 0.1);
+  color: #DF1B39;
+  border: 1px solid rgba(223, 27, 57, 0.2);
+  padding: 10px 18px;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.signout-btn:hover { background: rgba(223, 27, 57, 0.2); }
+
+.page-title-area { text-align: center; margin-bottom: 24px; }
+.page-title-area h1 { font-size: 32px; font-weight: 800; color: #5C2C16; margin: 0 0 8px 0; }
+.page-title-area p { margin: 0; color: #804022; font-size: 15px; font-weight: 500; }
+
+.action-btn-primary {
+  background: #5C2C16;
+  color: #FFFFFF;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+.action-btn-primary:hover { background: #804022; }
+.action-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.action-btn-secondary {
+  background: #FFFFFF;
+  border: 1px solid #D6BB83;
+  color: #804022;
+  padding: 10px 18px;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.action-btn-secondary:hover { background: #FCECD6; }
+
+@media (max-width: 768px) {
+  .page-wrapper { padding: 16px; }
+}
