@@ -14,7 +14,7 @@ class StepCompletionInline(admin.TabularInline):
 @admin.register(QuestAssignment)
 class QuestAssignmentAdmin(admin.ModelAdmin):
     list_display = ("quest", "group", "quest_mode", "leader_at_assignment", "due_date", "created_at")
-    list_filter = ("quest_mode", "quest__class_obj", "due_date")
+    list_filter = ("quest_mode", "due_date")
     search_fields = ("quest__title", "group__group_name", "leader_at_assignment__username")
     autocomplete_fields = ["quest", "group", "leader_at_assignment"]
     readonly_fields = ("created_at", "updated_at")

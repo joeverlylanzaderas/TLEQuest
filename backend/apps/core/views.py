@@ -40,7 +40,7 @@ class TeacherDashboardSummaryView(APIView):
         classes = Class.objects.all() if user.role == "admin" else Class.objects.filter(teacher=user)
         class_ids = list(classes.values_list("id", flat=True))
 
-        quest_qs = Quest.objects.filter(class_obj_id__in=class_ids)
+        quest_qs = Quest.objects.filter(classes__id__in=class_ids).distinct()
         group_qs = Group.objects.filter(class_obj_id__in=class_ids)
 
         class_breakdown = [
@@ -48,7 +48,7 @@ class TeacherDashboardSummaryView(APIView):
                 "id": c.id,
                 "class_name": c.class_name,
                 "section": c.section,
-                "active_quests": quest_qs.filter(class_obj=c, is_published=True).count(),
+                "active_quests": quest_qs.filter(classes=c, is_published=True).count(),
                 "total_groups": group_qs.filter(class_obj=c).count(),
                 "total_students": c.enrollments.count(),
             }
@@ -58,8 +58,8 @@ class TeacherDashboardSummaryView(APIView):
         events = []
 
         started = QuestProgress.objects.filter(
-            quest_assignment__quest__class_obj_id__in=class_ids, started_at__isnull=False
-        ).select_related("student", "student__profile", "quest_assignment__quest").order_by("-started_at")[:10]
+            quest_assignment__quest__classes__id__in=class_ids, started_at__isnull=False
+        ).distinct().select_related("student", "student__profile", "quest_assignment__quest").order_by("-started_at")[:10]
         for p in started:
             name = f"{p.student.profile.first_name} {p.student.profile.last_name}".strip() or p.student.username
             events.append({
@@ -70,8 +70,8 @@ class TeacherDashboardSummaryView(APIView):
             })
 
         finished = QuestProgress.objects.filter(
-            quest_assignment__quest__class_obj_id__in=class_ids, completed_at__isnull=False
-        ).select_related("student", "student__profile", "quest_assignment__quest").order_by("-completed_at")[:10]
+            quest_assignment__quest__classes__id__in=class_ids, completed_at__isnull=False
+        ).distinct().select_related("student", "student__profile", "quest_assignment__quest").order_by("-completed_at")[:10]
         for p in finished:
             name = f"{p.student.profile.first_name} {p.student.profile.last_name}".strip() or p.student.username
             events.append({
@@ -82,8 +82,8 @@ class TeacherDashboardSummaryView(APIView):
             })
 
         submitted = Submission.objects.filter(
-            quest_assignment__quest__class_obj_id__in=class_ids
-        ).select_related("student", "student__profile", "quest_assignment__quest").order_by("-submitted_at")[:10]
+            quest_assignment__quest__classes__id__in=class_ids
+        ).distinct().select_related("student", "student__profile", "quest_assignment__quest").order_by("-submitted_at")[:10]
         for s in submitted:
             name = f"{s.student.profile.first_name} {s.student.profile.last_name}".strip() or s.student.username
             events.append({
@@ -144,19 +144,20 @@ class AdminReportsView(APIView):
         except (TypeError, ValueError):
             return default
 
-    # ---- Section 1: Quest/assignment completion rates ----
+        # ---- Section 1: Quest/assignment completion rates ----
     def _completion_rates(self):
-        quests = Quest.objects.filter(is_published=True).select_related("class_obj")
+        quests = Quest.objects.filter(is_published=True).prefetch_related("classes")
         results = []
         for q in quests:
             progress_qs = QuestProgress.objects.filter(quest_assignment__quest=q)
             total = progress_qs.count()
             completed = progress_qs.filter(completed_at__isnull=False).count()
+            class_list = list(q.classes.all())
             results.append({
                 "quest_id": q.id,
                 "quest_title": q.title,
-                "class_name": q.class_obj.class_name,
-                "section": q.class_obj.section,
+                "class_name": ", ".join(c.class_name for c in class_list),
+                "section": ", ".join(c.section for c in class_list if c.section),
                 "total_assigned": total,
                 "total_completed": completed,
                 "completion_rate": round((completed / total) * 100, 1) if total else 0.0,
@@ -206,7 +207,7 @@ class AdminReportsView(APIView):
             ).aggregate(avg=Avg("teacher_rating"))["avg"]
 
             points_total = StudentReward.objects.filter(
-                quest_assignment__quest__class_obj=c, reward__reward_type="points"
+                 quest_assignment__group__class_obj=c, reward__reward_type="points"
             ).aggregate(total=Sum("reward__points_value"))["total"]
 
             results.append({

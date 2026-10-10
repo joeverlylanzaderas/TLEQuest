@@ -1,9 +1,6 @@
 // mobile/src/utils/media.ts
 import { BASE_URL } from '../api/client';
 
-// BASE_URL is like "http://192.168.1.37:8000/api" — media files are served
-// from the server root (e.g. "http://192.168.1.37:8000/media/..."), not
-// under /api, so we strip the "/api" suffix to get the plain origin.
 const SERVER_ORIGIN = BASE_URL.replace(/\/api\/?$/, '');
 
 /**

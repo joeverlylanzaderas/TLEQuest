@@ -22,14 +22,24 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.tlequest.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
-    ]
+      "expo-secure-store",
+      "react-native-fast-tflite",
+         ["expo-camera", { "cameraPermission": "TLEQuest needs your camera to take photos of your finished output." }]
+
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b3b97739-863e-48a3-997e-bf824aca2fd1"
+      }
+    }
   }
 }

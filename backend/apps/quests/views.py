@@ -1,12 +1,11 @@
 # backend/apps/quests/views.py
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from apps.core.permissions import IsTeacherOrAdmin
-from apps.classrooms.models import ClassEnrollment
 from apps.core.mixins import ReadAfterWriteMixin
-
+from apps.classrooms.models import ClassEnrollment
 from .models import Quest, QuestStep, StepChecklist
 from .serializers import (
     QuestSerializer, QuestCreateUpdateSerializer,
@@ -16,23 +15,21 @@ from .serializers import (
 
 
 def _assert_owns_quest(user, quest):
-    """Admin always passes; teacher only passes if they own the quest's class."""
     if user.role == "admin":
         return
-    if user.role == "teacher" and quest.class_obj.teacher_id == user.id:
+    if user.role == "teacher" and quest.teacher_id == user.id:
         return
     raise PermissionDenied("You do not have permission to modify this quest.")
 
 
 def _visible_quests_for(user):
-    """Shared visibility rule, reused by the quest list and both nested views below."""
-    qs = Quest.objects.select_related("class_obj", "teacher", "teacher__profile")
+    qs = Quest.objects.select_related("teacher", "teacher__profile").prefetch_related("classes")
     if user.role == "admin":
-        return qs
+        return qs.distinct()
     if user.role == "teacher":
-        return qs.filter(class_obj__teacher=user)
+        return qs.filter(teacher=user).distinct()
     enrolled_class_ids = ClassEnrollment.objects.filter(student=user).values_list("class_obj_id", flat=True)
-    return qs.filter(class_obj_id__in=enrolled_class_ids, is_published=True)
+    return qs.filter(classes__id__in=enrolled_class_ids, is_published=True).distinct()
 
 
 class QuestListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIView):
@@ -52,12 +49,21 @@ class QuestListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         user = self.request.user
-        class_obj = serializer.validated_data["class_obj"]
-        if user.role == "teacher" and class_obj.teacher_id != user.id:
-            raise PermissionDenied("You can only create quests for your own classes.")
-        # teacher field always mirrors the class's actual teacher — never the
-        # admin themself, so ownership stays consistent regardless of who created it
-        serializer.save(teacher=class_obj.teacher)
+        classes = serializer.validated_data.get("classes", [])
+        if not classes:
+            raise ValidationError({"classes": "Select at least one class."})
+
+        teacher_ids = {c.teacher_id for c in classes}
+        if len(teacher_ids) > 1:
+            raise ValidationError({"classes": "All selected classes must belong to the same teacher."})
+        class_teacher_id = teacher_ids.pop()
+
+        if user.role == "teacher":
+            if class_teacher_id != user.id:
+                raise PermissionDenied("You can only create quests for your own classes.")
+            serializer.save(teacher=user)
+        else:
+            serializer.save(teacher=classes[0].teacher)
 
 
 class QuestDetailView(ReadAfterWriteMixin, generics.RetrieveUpdateDestroyAPIView):
@@ -71,7 +77,13 @@ class QuestDetailView(ReadAfterWriteMixin, generics.RetrieveUpdateDestroyAPIView
         return _visible_quests_for(self.request.user).prefetch_related("steps__checklist_items")
 
     def perform_update(self, serializer):
-        _assert_owns_quest(self.request.user, self.get_object())
+        quest = self.get_object()
+        _assert_owns_quest(self.request.user, quest)
+        new_classes = serializer.validated_data.get("classes")
+        if new_classes and self.request.user.role == "teacher":
+            for c in new_classes:
+                if c.teacher_id != self.request.user.id:
+                    raise PermissionDenied("You can only assign quests to your own classes.")
         serializer.save()
 
     def perform_destroy(self, instance):
@@ -92,10 +104,7 @@ class QuestStepListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIView):
         return QuestStepCreateUpdateSerializer if self.request.method == "POST" else QuestStepSerializer
 
     def get_quest(self):
-        quest = generics.get_object_or_404(
-            _visible_quests_for(self.request.user), pk=self.kwargs["quest_id"]
-        )
-        return quest
+        return generics.get_object_or_404(_visible_quests_for(self.request.user), pk=self.kwargs["quest_id"])
 
     def get_queryset(self):
         return QuestStep.objects.filter(quest=self.get_quest()).prefetch_related("checklist_items")
@@ -115,7 +124,7 @@ class QuestStepDetailView(ReadAfterWriteMixin, generics.RetrieveUpdateDestroyAPI
 
     def get_queryset(self):
         visible_quest_ids = _visible_quests_for(self.request.user).values_list("id", flat=True)
-        return QuestStep.objects.filter(quest_id__in=visible_quest_ids).select_related("quest", "quest__class_obj")
+        return QuestStep.objects.filter(quest_id__in=visible_quest_ids).select_related("quest")
 
     def perform_update(self, serializer):
         _assert_owns_quest(self.request.user, self.get_object().quest)
@@ -139,9 +148,7 @@ class StepChecklistListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIVie
         return StepChecklistCreateUpdateSerializer if self.request.method == "POST" else StepChecklistSerializer
 
     def get_step(self):
-        return generics.get_object_or_404(
-            QuestStep.objects.select_related("quest", "quest__class_obj"), pk=self.kwargs["step_id"]
-        )
+        return generics.get_object_or_404(QuestStep.objects.select_related("quest"), pk=self.kwargs["step_id"])
 
     def get_queryset(self):
         return StepChecklist.objects.filter(quest_step=self.get_step())
@@ -155,13 +162,12 @@ class StepChecklistListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIVie
 class StepChecklistDetailView(ReadAfterWriteMixin, generics.RetrieveUpdateDestroyAPIView):
     read_serializer_class = StepChecklistSerializer
     permission_classes = [IsAuthenticated]
-    serializer_class = StepChecklistCreateUpdateSerializer
 
     def get_queryset(self):
         visible_quest_ids = _visible_quests_for(self.request.user).values_list("id", flat=True)
         return StepChecklist.objects.filter(
             quest_step__quest_id__in=visible_quest_ids
-        ).select_related("quest_step", "quest_step__quest", "quest_step__quest__class_obj")
+        ).select_related("quest_step", "quest_step__quest")
 
     def perform_update(self, serializer):
         _assert_owns_quest(self.request.user, self.get_object().quest_step.quest)

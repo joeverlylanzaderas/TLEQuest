@@ -13,20 +13,20 @@ class QuestStepInline(admin.TabularInline):
     model = QuestStep
     extra = 1
     fields = ("step_order", "title", "instruction", "is_final_step", "is_required")
-    show_change_link = True  # lets you click through to manage that step's checklist items
+    show_change_link = True
 
 
 @admin.register(Quest)
 class QuestAdmin(admin.ModelAdmin):
-    list_display = ("title", "class_obj", "teacher", "table_setting_type", "is_published", "total_steps_display", "created_at")
-    list_filter = ("is_published", "table_setting_type", "class_obj")
-    search_fields = ("title", "class_obj__class_name", "teacher__username")
-    autocomplete_fields = ["class_obj", "teacher"]
+    list_display = ("title", "teacher", "table_setting_type", "is_published", "total_steps_display", "created_at")
+    list_filter = ("is_published", "table_setting_type", "classes")
+    search_fields = ("title", "classes__class_name", "teacher__username")
+    autocomplete_fields = ["classes", "teacher"]
     readonly_fields = ("created_at", "updated_at")
     inlines = [QuestStepInline]
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related("class_obj", "teacher", "teacher__profile")
+        return super().get_queryset(request).select_related("teacher", "teacher__profile").prefetch_related("classes")
 
     def total_steps_display(self, obj):
         return obj.total_steps

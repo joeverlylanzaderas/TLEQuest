@@ -1,17 +1,6 @@
 // mobile/app/(teacher)/submissions-list.tsx
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { Redirect } from 'expo-router';
 
-export default function SubmissionsListStub() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Submissions List (stub)</Text>
-      <Text style={styles.note}>Real submissions list not built yet — navigation confirmed working.</Text>
-    </View>
-  );
+export default function SubmissionsListRedirect() {
+  return <Redirect href={'/(teacher)/(tabs)/submissions' as any} />;
 }
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, paddingTop: 60 },
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 8 },
-  note: { color: '#666' },
-});

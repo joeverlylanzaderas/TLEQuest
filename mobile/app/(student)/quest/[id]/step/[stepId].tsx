@@ -1,54 +1,17 @@
 // mobile/app/(student)/quest/[id]/step/[stepId].tsx
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet, Alert,
+} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-
-// ⚠️ MOCK DATA — for demo purposes only, no backend connection.
-// Replace with real step-completion API calls once wired live.
-interface MockStep {
-  id: number;
-  title: string;
-  description: string;
-  checklist: string[];
-  rewardPoints: number;
-  rewardBadge: boolean;
-}
-
-const MOCK_STEPS: MockStep[] = [
-  {
-    id: 1,
-    title: 'Prepare the Table Surface',
-    description: 'Start with a clean, level table. Place a tablecloth or placemat as the foundation.',
-    checklist: ['Table is clean and dry', 'Tablecloth or placemat is laid flat'],
-    rewardPoints: 30,
-    rewardBadge: false,
-  },
-  {
-    id: 2,
-    title: 'Position the Dinner Plate',
-    description: 'Place the dinner plate in the center, about 1 inch from the table edge.',
-    checklist: ['Center the plate on placemat', 'Measure 1 inch from edge', 'Ensure plate is level'],
-    rewardPoints: 50,
-    rewardBadge: true,
-  },
-  {
-    id: 3,
-    title: 'Arrange the Utensils',
-    description: 'Place fork on left, knife and spoon on right. Knife blade faces the plate.',
-    checklist: ['Fork on the left side', 'Knife on right (blade facing plate)', 'Spoon outside of knife'],
-    rewardPoints: 50,
-    rewardBadge: true,
-  },
-  {
-    id: 4,
-    title: 'Position the Napkin',
-    description: 'Place the napkin to the left of the fork, or fold decoratively on the plate.',
-    checklist: ['Napkin placed neatly', 'Folded or styled decoratively'],
-    rewardPoints: 40,
-    rewardBadge: false,
-  },
-];
+import { getMyProfile } from '../../../../../src/api/accounts';
+import { getMyClasses } from '../../../../../src/api/classrooms';
+import { getProgressDetail, toggleChecklistItem } from '../../../../../src/api/assignments';
+import { QuestProgressDetail } from '../../../../../src/types/assignments';
+import { FullUser } from '../../../../../src/types/accounts';
+import SubmitOutputCard from '../../../../../src/components/SubmitOutputCard';
 
 const GOLD = '#F5B921';
 const CREAM = '#F5EDD8';
@@ -57,65 +20,135 @@ const CARD_BROWN = '#4A2E1D';
 const GREEN = '#22C55E';
 const ORANGE = '#EA580C';
 
+const TABS = [
+  { icon: 'restaurant-outline', label: 'Quests', route: '/(student)/(tabs)/quests', active: true },
+  { icon: 'ribbon-outline', label: 'Submissions', route: '/(student)/(tabs)/submissions', active: false },
+  { icon: 'home-outline', label: 'Home', route: '/(student)/(tabs)/home', active: false },
+  { icon: 'bar-chart-outline', label: 'Progress', route: '/(student)/(tabs)/progress', active: false },
+  { icon: 'person-outline', label: 'Profile', route: '/(student)/(tabs)/profile', active: false },
+];
+
 export default function QuestStepScreen() {
   const router = useRouter();
   const { id, stepId } = useLocalSearchParams<{ id: string; stepId: string }>();
+  const progressId = Number(id);
 
-  // Find the starting step index from the route param, default to 0 if not found.
-  const initialIndex = Math.max(
-    0,
-    MOCK_STEPS.findIndex((s) => String(s.id) === String(stepId))
+  const [progress, setProgress] = useState<QuestProgressDetail | null>(null);
+  const [profile, setProfile] = useState<FullUser | null>(null);
+  const [className, setClassName] = useState('');
+  const [currentStepId, setCurrentStepId] = useState(Number(stepId));
+  const [showComplete, setShowComplete] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [togglingId, setTogglingId] = useState<number | null>(null);
+
+  useEffect(() => {
+    getMyProfile().then(setProfile).catch(() => {});
+    getMyClasses().then((c) => setClassName(c[0]?.class_name ?? '')).catch(() => {});
+  }, []);
+
+  const load = useCallback(async () => {
+    setError('');
+    try {
+      setProgress(await getProgressDetail(progressId));
+    } catch (e: any) {
+      setError(e?.response?.data?.detail || 'Could not load this step.');
+    }
+  }, [progressId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load().finally(() => setIsLoading(false));
+    }, [load])
   );
 
-  const [currentIndex, setCurrentIndex] = useState(initialIndex === -1 ? 0 : initialIndex);
-  const [isQuestComplete, setIsQuestComplete] = useState(false);
-  // Per-step checklist state, keyed by step index so progress isn't lost
-  // when navigating back to a previous step.
-  const [checkedMap, setCheckedMap] = useState<Record<number, boolean[]>>({});
+  const steps = progress?.steps ?? [];
+  const stepIndex = steps.findIndex((s) => s.id === currentStepId);
+  const step = stepIndex >= 0 ? steps[stepIndex] : null;
+  const prevStep = stepIndex > 0 ? steps[stepIndex - 1] : null;
+  const nextStep = stepIndex >= 0 && stepIndex < steps.length - 1 ? steps[stepIndex + 1] : null;
 
-  const currentStep = MOCK_STEPS[currentIndex];
-  const checkedItems = checkedMap[currentIndex] || currentStep.checklist.map(() => false);
-  const allChecked = checkedItems.every(Boolean);
-  const isLastStep = currentIndex === MOCK_STEPS.length - 1;
-
-  // Progress = how many steps are fully behind us, plus partial credit
-  // for the current step's checklist completion — mirrors the mockup's
-  // percentages (32%, 58%, 98%) climbing smoothly rather than jumping
-  // in big chunks only at step boundaries.
-  const completedStepsWeight = currentIndex + (allChecked ? 1 : 0);
-  const percent = isQuestComplete
-    ? 100
-    : Math.min(98, Math.round((completedStepsWeight / MOCK_STEPS.length) * 100));
-
-  function toggleCheck(itemIndex: number) {
-    setCheckedMap((prev) => {
-      const current = prev[currentIndex] || currentStep.checklist.map(() => false);
-      const updated = [...current];
-      updated[itemIndex] = !updated[itemIndex];
-      return { ...prev, [currentIndex]: updated };
-    });
+  function goToOverview() {
+    if (router.canGoBack()) router.back();
+    else router.replace(`/(student)/quest/${progressId}/overview` as any);
   }
 
   function handleBack() {
-    if (currentIndex === 0) {
-      router.back();
-      return;
-    }
-    setCurrentIndex((prev) => prev - 1);
+    if (prevStep) setCurrentStepId(prevStep.id);
+    else goToOverview();
   }
 
   function handleProceed() {
-    if (!allChecked) return;
-    if (isLastStep) {
-      setIsQuestComplete(true);
-      return;
-    }
-    setCurrentIndex((prev) => prev + 1);
+    if (!step || step.status !== 'completed') return;
+    if (nextStep) setCurrentStepId(nextStep.id);
+    else setShowComplete(true);
   }
+
+  async function handleToggle(itemId: number, isChecked: boolean) {
+    if (!step || step.status !== 'available' || togglingId !== null) return;
+
+    const next = !isChecked;
+    setTogglingId(itemId);
+
+    // Optimistic update so the checkbox responds instantly
+    setProgress((prev) =>
+      prev
+        ? {
+            ...prev,
+            steps: prev.steps.map((s) =>
+              s.id !== step.id
+                ? s
+                : {
+                    ...s,
+                    checklist_items: s.checklist_items.map((i) =>
+                      i.id === itemId ? { ...i, is_checked: next } : i
+                    ),
+                  }
+            ),
+          }
+        : prev
+    );
+
+    try {
+      setProgress(await toggleChecklistItem(progressId, step.id, itemId, next));
+    } catch (e: any) {
+      Alert.alert('Error', e?.response?.data?.detail || 'Could not save that. Please try again.');
+      await load();
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+
+  if (isLoading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={BROWN} />
+      </View>
+    );
+  }
+
+  if (!progress || !step) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>{error || 'Step not found.'}</Text>
+        <TouchableOpacity style={styles.backPill} onPress={goToOverview}>
+          <Text style={styles.backPillText}>Back to Overview</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const isLocked = step.status === 'locked';
+  const isCompleted = step.status === 'completed';
+  const total = step.checklist_items.length;
+  const checkedCount = step.checklist_items.filter((i) => i.is_checked).length;
+  const showRewards = isCompleted && (progress.points_earned > 0 || progress.badge_earned);
 
   return (
     <View style={styles.screen}>
-      {/* ---------------- Header: same pattern as Home/Quests screens ---------------- */}
+      {/* ---------------- Header ---------------- */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <View style={styles.avatarCircle}>
@@ -123,13 +156,12 @@ export default function QuestStepScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.welcomeSmall}>Welcome back,</Text>
-            <Text style={styles.welcomeName}>Hannah!</Text>
+            <Text style={styles.welcomeName}>{profile?.profile.first_name || profile?.username || ''}!</Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.dateText}>Monday, 23 July</Text>
-            <Text style={styles.classText}>TLE1 - B</Text>
+            <Text style={styles.dateText}>{today}</Text>
+            <Text style={styles.classText}>{className}</Text>
           </View>
-          <Ionicons name="notifications" size={20} color={BROWN} style={{ marginLeft: 8 }} />
         </View>
 
         <View style={styles.currentQuestCard}>
@@ -137,36 +169,32 @@ export default function QuestStepScreen() {
             <Ionicons name="restaurant" size={26} color="#fff" />
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.questTitle}>One Course Meal Prep</Text>
-            <Text style={styles.questMode}>Group Quest</Text>
+            <Text style={styles.questTitle} numberOfLines={1}>{progress.quest_title}</Text>
+            <Text style={styles.questMode}>
+              {progress.quest_mode === 'group' ? 'Group Quest' : 'Individual Quest'}
+            </Text>
             <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${percent}%` }]} />
+              <View style={[styles.progressFill, { width: `${progress.percent_complete}%` }]} />
             </View>
-            <Text style={styles.percentText}>{percent}%</Text>
+            <Text style={styles.percentText}>{progress.percent_complete}%</Text>
           </View>
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {isQuestComplete ? (
-          // ---------------- All Steps Completed ----------------
-          <View style={styles.completeCard}>
-            <Text style={styles.completeLabel}>Congratulations!</Text>
-            <Text style={styles.completeTitle}>All Steps{'\n'}Completed!</Text>
-            <Text style={styles.completeBody}>
-              You have completed all steps for this quest! You're all set for the practical activity.
-            </Text>
-            <Text style={styles.completeBody}>
-              Your group leader will submit your group's final output on the day of the activity. Keep it up and
-              good luck!
-            </Text>
+        {showComplete ? (
+          // All steps done: submission card (leader) or waiting message (others)
+          <View>
+            <SubmitOutputCard progress={progress} />
+            <TouchableOpacity style={styles.overviewButton} onPress={goToOverview}>
+              <Text style={styles.overviewButtonText}>Back to Overview</Text>
+            </TouchableOpacity>
           </View>
         ) : (
-          // ---------------- Current step card ----------------
           <View style={styles.stepCard}>
             <View style={styles.stepHeaderRow}>
-              <Text style={styles.stepLabel}>Step {currentIndex + 1}</Text>
-              {allChecked && <Ionicons name="checkmark-circle" size={18} color={GREEN} />}
+              <Text style={styles.stepLabel}>Step {step.step_order}</Text>
+              {isCompleted && <Ionicons name="checkmark-circle" size={18} color={GREEN} />}
             </View>
 
             <View style={styles.stepBodyRow}>
@@ -174,62 +202,72 @@ export default function QuestStepScreen() {
                 <Ionicons name="image-outline" size={22} color="#B08968" />
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.stepTitle}>{currentStep.title}</Text>
-                <Text style={styles.stepDescription}>{currentStep.description}</Text>
+                <Text style={styles.stepTitle}>{step.title}</Text>
+                <Text style={styles.stepDescription}>{step.instruction}</Text>
               </View>
             </View>
 
-            {currentStep.checklist.length > 0 && (
-              <>
-                <Text style={styles.checklistLabel}>Checklist:</Text>
-                {currentStep.checklist.map((item, idx) => {
-                  const checked = checkedItems[idx];
-                  return (
+            {isLocked ? (
+              <View style={styles.lockedBox}>
+                <Ionicons name="lock-closed" size={16} color="#9CA3AF" />
+                <Text style={styles.lockedText}>
+                  {prevStep ? `Complete Step ${prevStep.step_order} to unlock this step.` : 'This step is locked.'}
+                </Text>
+              </View>
+            ) : (
+              total > 0 && (
+                <>
+                  <Text style={styles.checklistLabel}>Checklist: ({checkedCount}/{total})</Text>
+                  {step.checklist_items.map((item) => (
                     <TouchableOpacity
-                      key={idx}
+                      key={item.id}
                       style={styles.checklistRow}
-                      onPress={() => toggleCheck(idx)}
-                      activeOpacity={0.7}
+                      onPress={() => handleToggle(item.id, item.is_checked)}
+                      activeOpacity={isCompleted ? 1 : 0.7}
+                      disabled={isCompleted}
                     >
-                      <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
-                        {checked && <Ionicons name="checkmark" size={14} color="#fff" />}
+                      <View style={[styles.checkbox, item.is_checked && styles.checkboxChecked]}>
+                        {item.is_checked && <Ionicons name="checkmark" size={14} color="#fff" />}
                       </View>
-                      <Text style={[styles.checklistText, checked && styles.checklistTextChecked]}>{item}</Text>
+                      <Text style={[styles.checklistText, item.is_checked && styles.checklistTextChecked]}>
+                        {item.checklist_text}
+                      </Text>
+                      {togglingId === item.id && <ActivityIndicator size="small" color={ORANGE} />}
                     </TouchableOpacity>
-                  );
-                })}
-              </>
+                  ))}
+                </>
+              )
             )}
 
             <View style={styles.actionsRow}>
               <TouchableOpacity onPress={handleBack}>
                 <Text style={styles.backToStepText}>
-                  {currentIndex === 0 ? 'Back to Overview' : `Back to Step ${currentIndex}`}
+                  {prevStep ? `Back to Step ${prevStep.step_order}` : 'Back to Overview'}
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.proceedButton, !allChecked && styles.proceedButtonDisabled]}
+                style={[styles.proceedButton, !isCompleted && styles.proceedButtonDisabled]}
                 onPress={handleProceed}
-                disabled={!allChecked}
+                disabled={!isCompleted}
               >
                 <Text style={styles.proceedButtonText}>
-                  {isLastStep ? 'Complete Quest' : 'Proceed to Next Step'}
+                  {nextStep ? 'Proceed to Next Step' : 'Complete Quest'}
                 </Text>
               </TouchableOpacity>
             </View>
 
-            {allChecked && (
+            {showRewards && (
               <View style={styles.rewardsRow}>
                 <Text style={styles.rewardsLabel}>Rewards Earned:</Text>
                 <View style={styles.rewardsIcons}>
-                  {currentStep.rewardBadge && (
+                  {progress.badge_earned && (
                     <View style={styles.badgePill}>
                       <Ionicons name="ribbon" size={16} color="#fff" />
                     </View>
                   )}
                   <View style={styles.pointsPill}>
-                    <Text style={styles.pointsPillText}>+{currentStep.rewardPoints}</Text>
+                    <Text style={styles.pointsPillText}>+{progress.points_earned}</Text>
                   </View>
                 </View>
               </View>
@@ -238,31 +276,30 @@ export default function QuestStepScreen() {
         )}
       </ScrollView>
 
-      {/* ---------------- Visual-only bottom tab bar, matches app-wide style ---------------- */}
-      {/* Static for demo purposes — this screen sits outside the real tab
-          navigator, so this bar is presentational only, not functional routing. */}
+      {/* ---------------- Bottom tab bar ---------------- */}
       <View style={styles.tabBar}>
-        <TabIcon icon="restaurant-outline" label="Quests" />
-        <TabIcon icon="ribbon-outline" label="Submissions" />
-        <TabIcon icon="home-outline" label="Home" />
-        <TabIcon icon="bar-chart" label="Progress" active />
-        <TabIcon icon="person-outline" label="Profile" />
+        {TABS.map((t) => (
+          <TouchableOpacity
+            key={t.label}
+            style={styles.tabIconWrapper}
+            onPress={() => router.navigate(t.route as any)}
+          >
+            <Ionicons name={t.icon as any} size={20} color={t.active ? ORANGE : '#B8A671'} />
+            <Text style={[styles.tabLabel, t.active && styles.tabLabelActive]}>{t.label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
-    </View>
-  );
-}
-
-function TabIcon({ icon, label, active }: { icon: any; label: string; active?: boolean }) {
-  return (
-    <View style={styles.tabIconWrapper}>
-      <Ionicons name={icon} size={20} color={active ? ORANGE : '#B8A671'} />
-      <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: CREAM },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: CREAM, padding: 24 },
+  errorText: { color: '#B3261E', marginBottom: 16, textAlign: 'center' },
+  backPill: { backgroundColor: BROWN, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10 },
+  backPillText: { color: '#fff', fontWeight: '700' },
+
   header: {
     backgroundColor: GOLD, paddingTop: 50, paddingBottom: 16, paddingHorizontal: 20,
     borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
@@ -306,6 +343,9 @@ const styles = StyleSheet.create({
   checklistText: { fontSize: 13, color: BROWN, fontWeight: '600', flex: 1 },
   checklistTextChecked: { color: ORANGE },
 
+  lockedBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#EDEDED', borderRadius: 12, padding: 12 },
+  lockedText: { flex: 1, fontSize: 12, color: '#6B7280' },
+
   actionsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 },
   backToStepText: { fontSize: 13, fontWeight: '700', color: BROWN },
   proceedButton: { backgroundColor: GREEN, borderRadius: 20, paddingHorizontal: 18, paddingVertical: 10 },
@@ -315,23 +355,18 @@ const styles = StyleSheet.create({
   rewardsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20 },
   rewardsLabel: { fontSize: 13, fontWeight: '800', color: BROWN },
   rewardsIcons: { flexDirection: 'row', gap: 8 },
-  badgePill: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#F5B921', alignItems: 'center', justifyContent: 'center' },
+  badgePill: { width: 30, height: 30, borderRadius: 15, backgroundColor: GOLD, alignItems: 'center', justifyContent: 'center' },
   pointsPill: { minWidth: 30, height: 30, borderRadius: 15, backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
   pointsPillText: { color: '#fff', fontSize: 12, fontWeight: '800' },
 
-  completeCard: {
-    backgroundColor: '#fff', borderRadius: 20, borderWidth: 2, borderColor: ORANGE,
-    padding: 28, alignItems: 'center',
-  },
-  completeLabel: { fontSize: 14, fontWeight: '700', color: GREEN, marginBottom: 6 },
-  completeTitle: { fontSize: 24, fontWeight: '900', color: ORANGE, textAlign: 'center', marginBottom: 16, lineHeight: 30 },
-  completeBody: { fontSize: 13, color: '#666', textAlign: 'center', lineHeight: 19, marginBottom: 10 },
+  overviewButton: { alignSelf: 'center', marginTop: 14, backgroundColor: BROWN, borderRadius: 20, paddingHorizontal: 22, paddingVertical: 10 },
+  overviewButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
   tabBar: {
     flexDirection: 'row', backgroundColor: '#F5EAD1', paddingVertical: 10,
     borderTopLeftRadius: 24, borderTopRightRadius: 24, justifyContent: 'space-around',
   },
-  tabIconWrapper: { alignItems: 'center', gap: 2 },
+  tabIconWrapper: { alignItems: 'center', gap: 2, paddingHorizontal: 6 },
   tabLabel: { fontSize: 10, color: '#B8A671', fontWeight: '600' },
   tabLabelActive: { color: ORANGE, fontWeight: '800' },
 });

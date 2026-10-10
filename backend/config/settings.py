@@ -18,11 +18,11 @@ SECRET_KEY = 'django-insecure-=aqu^(p^c4g!ytqho0h!gxfa@f-u*ue-ftii&1^s)i1044gcqt
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['192.168.11.113', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['192.168.68.57', 'localhost', '127.0.0.1']
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8081",       # Expo web dev server
-    "http://192.168.11.113",    # your LAN IP, same one client.ts uses
+    "http://192.168.68.57",    # your LAN IP, same one client.ts uses
     "http://localhost:5173"        # Vite dev server for web
 ]
 

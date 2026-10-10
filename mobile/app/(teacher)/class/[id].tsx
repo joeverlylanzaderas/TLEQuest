@@ -12,12 +12,12 @@ import {
   getClassDetail, getClassEnrollments, getClassGroups,
   createGroup, updateGroup, deleteGroup, addGroupMember, removeGroupMember,
 } from '../../../src/api/classrooms';
-import { getMyQuests, createQuest, updateQuest } from '../../../src/api/quests';
+import { getMyQuests, updateQuest } from '../../../src/api/quests';
 import { getMediaUrl } from '../../../src/utils/media';
 import {
   ClassSummary, ClassEnrollment, Group, GroupCreatePayload,
 } from '../../../src/types/classrooms';
-import { Quest, QuestCreatePayload } from '../../../src/types/quests';
+import { Quest } from '../../../src/types/quests';
 
 const CREAM = '#F2E4C4';
 const CARD_BG = '#F9C544';
@@ -46,13 +46,6 @@ export default function ClassOverview() {
   const [newGroupName, setNewGroupName] = useState('');
   const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
   const [addMemberTargetGroup, setAddMemberTargetGroup] = useState<Group | null>(null);
-
-  // ---- Quest create modal ----
-  const [showCreateQuestModal, setShowCreateQuestModal] = useState(false);
-  const [newQuestTitle, setNewQuestTitle] = useState('');
-  const [newQuestDescription, setNewQuestDescription] = useState('');
-  const [newQuestType, setNewQuestType] = useState('');
-  const [isSubmittingQuest, setIsSubmittingQuest] = useState(false);
 
   async function loadAll() {
     setError('');
@@ -165,35 +158,6 @@ export default function ClassOverview() {
   }
 
   // ---------------- Quests ----------------
-  async function handleCreateQuest() {
-    if (!newQuestTitle.trim()) {
-      Alert.alert('Missing info', 'Please enter a quest title.');
-      return;
-    }
-    setIsSubmittingQuest(true);
-    try {
-      const nextOrder = quests.length > 0 ? Math.max(...quests.map((q) => q.order_index)) + 1 : 1;
-      const payload: QuestCreatePayload = {
-        class_obj: classId,
-        title: newQuestTitle.trim(),
-        description: newQuestDescription.trim(),
-        table_setting_type: newQuestType.trim() || 'general',
-        order_index: nextOrder,
-        is_published: false,
-      };
-      const created = await createQuest(payload);
-      setQuests((prev) => [...prev, created]);
-      setNewQuestTitle('');
-      setNewQuestDescription('');
-      setNewQuestType('');
-      setShowCreateQuestModal(false);
-    } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.detail || 'Could not create quest.');
-    } finally {
-      setIsSubmittingQuest(false);
-    }
-  }
-
   async function handleTogglePublish(quest: Quest) {
     try {
       const updated = await updateQuest(quest.id, { is_published: !quest.is_published });
@@ -337,7 +301,10 @@ export default function ClassOverview() {
         {/* ================= QUESTS ================= */}
         {activeTab === 'quests' && (
           <>
-            <TouchableOpacity style={styles.addButton} onPress={() => setShowCreateQuestModal(true)}>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => router.push(`/(teacher)/create-quest?classId=${classId}` as any)}
+            >
               <Ionicons name="add" size={18} color="#fff" />
               <Text style={styles.addButtonText}>Create Quest</Text>
             </TouchableOpacity>
@@ -412,33 +379,6 @@ export default function ClassOverview() {
             <TouchableOpacity style={styles.modalCancelButton} onPress={() => setAddMemberTargetGroup(null)}>
               <Text style={styles.modalCancelText}>Close</Text>
             </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ---------------- Create Quest modal ---------------- */}
-      <Modal visible={showCreateQuestModal} transparent animationType="fade" onRequestClose={() => setShowCreateQuestModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Create Quest</Text>
-
-            <Text style={styles.modalLabel}>TITLE</Text>
-            <TextInput style={styles.modalInput} placeholder="e.g. Setup Table Setting" value={newQuestTitle} onChangeText={setNewQuestTitle} />
-
-            <Text style={styles.modalLabel}>DESCRIPTION</Text>
-            <TextInput style={styles.modalInput} placeholder="Short description" value={newQuestDescription} onChangeText={setNewQuestDescription} multiline />
-
-            <Text style={styles.modalLabel}>TYPE (E.G. "INDIVIDUAL", "GROUP")</Text>
-            <TextInput style={styles.modalInput} placeholder="general" value={newQuestType} onChangeText={setNewQuestType} />
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancelButton} onPress={() => setShowCreateQuestModal(false)} disabled={isSubmittingQuest}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalConfirmButton} onPress={handleCreateQuest} disabled={isSubmittingQuest}>
-                {isSubmittingQuest ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.modalConfirmText}>Create</Text>}
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
       </Modal>

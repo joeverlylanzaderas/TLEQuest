@@ -6,6 +6,7 @@ import { ToastProvider } from './context/ToastContext';
 
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import Classes from './pages/Classes';
 import UserManagement from './pages/UserManagement';
 import Profile from './pages/Profile';
 import ChangePassword from './pages/ChangePassword';
@@ -49,7 +50,18 @@ function AppRoutes() {
             <UserManagement />
           </ProtectedRoute>
         }
+
+        
       />
+      <Route
+        path="/classes"
+        element={
+          <ProtectedRoute>
+            <Classes />
+          </ProtectedRoute>
+        }
+      />
+
       <Route
         path="/profile"
         element={

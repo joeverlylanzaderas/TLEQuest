@@ -1,5 +1,6 @@
 import csv
 import io
+from django.db import IntegrityError, transaction
 from django.http import HttpResponse
 
 from rest_framework import generics, status
@@ -102,28 +103,43 @@ class AdminBulkUserUploadView(APIView):
             data = serializer.validated_data
             password = generate_simple_password()
 
-            user = User(username=data["username"], role=data["role"])
-            user.set_password(password)
-            user.save()
+            try:
+                # All-or-nothing per row: never leave a User without a UserProfile.
+                with transaction.atomic():
+                    user = User(username=data["username"], role=data["role"])
+                    user.set_password(password)
+                    user.save()
 
-            UserProfile.objects.create(
-                user=user,
-                first_name=data["first_name"],
-                last_name=data["last_name"],
-                middle_name=data.get("middle_name", ""),
-                email=data.get("email") or None,  # avoid "" colliding on the unique constraint
-                school=data.get("school", ""),
-                grade_level=data.get("grade_level", ""),
-                section=data.get("section", ""),
-                occupation=data.get("occupation", ""),
-            )
+                    UserProfile.objects.create(
+                        user=user,
+                        first_name=data["first_name"],
+                        last_name=data["last_name"],
+                        middle_name=data.get("middle_name", ""),
+                        email=data.get("email") or None,  # avoid "" colliding on the unique constraint
+                        school=data.get("school", ""),
+                        grade_level=data.get("grade_level", ""),
+                        section=data.get("section", ""),
+                        occupation=data.get("occupation", ""),
+                    )
+            except IntegrityError:
+                errors.append({
+                    "row": row_number,
+                    "username": data["username"],
+                    "errors": {"detail": ["Username or email already exists."]},
+                })
+                continue
 
-            created.append({"username": user.username, "password": password, "role": user.role})
+            created.append({
+                "username": user.username,
+                "password": password,
+                "role": user.role,
+                "name": f'{data["first_name"]} {data["last_name"]}'.strip(),
+            })
 
         if request.query_params.get("download") == "csv" and created:
             return self._as_csv_download(created)
 
-        return Response(
+        resp = Response(
             {
                 "created_count": len(created),
                 "error_count": len(errors),
@@ -132,14 +148,28 @@ class AdminBulkUserUploadView(APIView):
             },
             status=status.HTTP_201_CREATED if created else status.HTTP_400_BAD_REQUEST,
         )
+        resp["Cache-Control"] = "no-store"  # response contains plaintext passwords
+        return resp
+
+    @staticmethod
+    def _safe_cell(value):
+        """Stop Excel from running a value like '=cmd...' as a formula."""
+        s = str(value)
+        return "'" + s if s[:1] in ("=", "+", "-", "@", "\t", "\r") else s
 
     def _as_csv_download(self, created):
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="new_accounts.csv"'
+        response["Cache-Control"] = "no-store"
         writer = csv.writer(response)
-        writer.writerow(["username", "password", "role"])
+        writer.writerow(["name", "username", "password", "role"])
         for row in created:
-            writer.writerow([row["username"], row["password"], row["role"]])
+            writer.writerow([
+                self._safe_cell(row["name"]),
+                self._safe_cell(row["username"]),
+                row["password"],
+                row["role"],
+            ])
         return response
 
 
@@ -162,7 +192,7 @@ class ChangePasswordView(APIView):
         user.save()
         blacklist_all_tokens_for_user(user)
 
-        # NEW — only fires the first time, since validate() only requires
+        # Only fires the first time, since validate() only requires
         # security_answers when fewer than 3 already exist.
         answers = serializer.validated_data.get("security_answers")
         if answers and user.security_answers.count() < 3:
@@ -187,11 +217,13 @@ class AdminResetPasswordView(APIView):
         user.save()
         blacklist_all_tokens_for_user(user)
 
-        return Response({
+        resp = Response({
             "username": user.username,
             "new_password": new_password,
             "detail": "Password reset. Give this password to the user — it won't be shown again.",
         })
+        resp["Cache-Control"] = "no-store"  # response contains a plaintext password
+        return resp
 
 
 class SecurityQuestionListView(generics.ListAPIView):

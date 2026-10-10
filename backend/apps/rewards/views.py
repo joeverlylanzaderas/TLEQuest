@@ -66,7 +66,7 @@ class QuestStepRewardListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIV
     def perform_create(self, serializer):
         step = self.get_step()
         user = self.request.user
-        if user.role == "teacher" and step.quest.class_obj.teacher_id != user.id:
+        if user.role == "teacher" and step.quest.teacher_id != user.id:
             raise PermissionDenied("You can only attach rewards to your own quests.")
         serializer.save(quest_step=step)
 
@@ -84,7 +84,7 @@ class StudentRewardListView(generics.ListAPIView):
         if user.role == "student":
             qs = qs.filter(student=user)
         elif user.role == "teacher":
-            qs = qs.filter(quest_assignment__quest__class_obj__teacher=user)
+            qs = qs.filter(quest_assignment__quest__teacher=user)
         # admin sees all
 
         student_id = self.request.query_params.get("student_id")

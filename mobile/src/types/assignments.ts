@@ -1,4 +1,4 @@
-//mobile/src/types/assignments.ts
+// mobile/src/types/assignments.ts
 export interface QuestProgress {
   id: number;
   quest_assignment: number;
@@ -16,4 +16,44 @@ export interface QuestProgress {
   started_at: string | null;
   completed_at: string | null;
   step_completions: unknown[];
+}
+
+export interface QuestAssignment {
+  id: number;
+  quest: number;
+  quest_title: string;
+  group: number;
+  group_name: string;
+  quest_mode: string;
+  leader_at_assignment: string | null;
+  due_date: string | null;
+  created_at: string;
+}
+
+export type StepStatus = 'completed' | 'available' | 'locked';
+
+export interface ProgressChecklistItem {
+  id: number;
+  checklist_text: string;
+  order_index: number;
+  is_checked: boolean;
+}
+
+export interface ProgressStep {
+  id: number;
+  step_order: number;
+  title: string;
+  instruction: string;
+  is_final_step: boolean;
+  status: StepStatus;
+  checklist_items: ProgressChecklistItem[];
+}
+
+export interface QuestProgressDetail extends QuestProgress {
+  quest_id: number;
+  quest_description: string;
+  due_date: string | null;
+  group_name: string | null;
+  is_group_leader: boolean;
+  steps: ProgressStep[];
 }

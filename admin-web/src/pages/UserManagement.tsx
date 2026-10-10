@@ -13,6 +13,7 @@ import {
   FileSpreadsheet,
   LogOut,
   Upload,
+  Download,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -49,6 +50,37 @@ function formatApiError(data: any): string {
   return messages.join('\n') || 'Something went wrong.';
 }
 
+/**
+ * Builds a CSV of the newly generated credentials in the browser and downloads it.
+ * Passwords are hashed on the server, so this is the ONLY chance to get them.
+ */
+function downloadCredentialsCsv(
+  created: { name?: string; username: string; password: string; role: string }[]
+) {
+  // Stop Excel from running a value like "=cmd..." as a formula.
+  const safe = (v: string) => (/^[=+\-@\t\r]/.test(v) ? `'${v}` : v);
+  const quote = (v: string) => `"${v.replace(/"/g, '""')}"`;
+
+  const lines = [['name', 'username', 'password', 'role'].map(quote).join(',')];
+  created.forEach((r) => {
+    lines.push(
+      [safe(r.name ?? ''), safe(r.username), r.password, r.role].map(quote).join(',')
+    );
+  });
+
+  // ﻿ (BOM) makes Excel open the file as UTF-8.
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `new_accounts_${stamp}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export default function UserManagement() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
@@ -77,6 +109,7 @@ export default function UserManagement() {
   const [bulkResult, setBulkResult] = useState<BulkUploadResult | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [credsDownloaded, setCredsDownloaded] = useState(false);
 
   const load = useCallback(async () => {
     setError('');
@@ -174,21 +207,47 @@ export default function UserManagement() {
     if (!csvFile) return;
     setIsUploading(true);
     setBulkResult(null);
+    setCredsDownloaded(false);
     try {
       const result = await bulkUploadUsers(csvFile);
       setBulkResult(result);
       showToast(`Bulk upload complete: ${result.created_count} created, ${result.error_count} errors.`, 'success');
       await load();
     } catch (e: any) {
-      showToast(formatApiError(e?.response?.data), 'error');
+      const data = e?.response?.data;
+      // When every row fails, the server answers 400 but still sends the per-row errors.
+      if (data && Array.isArray(data.errors)) {
+        setBulkResult(data as BulkUploadResult);
+        showToast('No users were created. See the errors below.', 'error');
+      } else {
+        showToast(formatApiError(data), 'error');
+      }
     } finally {
       setIsUploading(false);
     }
   }
 
+  function handleDownloadCredentials() {
+    if (!bulkResult || !bulkResult.created || bulkResult.created.length === 0) return;
+    downloadCredentialsCsv(bulkResult.created);
+    setCredsDownloaded(true);
+    showToast('Credentials downloaded. Keep the file safe.', 'success');
+  }
+
   const handleCancelUpload = () => {
+    const hasUndownloaded =
+      !!bulkResult && (bulkResult.created?.length ?? 0) > 0 && !credsDownloaded;
+    if (
+      hasUndownloaded &&
+      !confirm(
+        'You have not downloaded the new accounts\' passwords yet. They will NOT be shown again. Close anyway?'
+      )
+    ) {
+      return;
+    }
     setCsvFile(null);
     setBulkResult(null);
+    setCredsDownloaded(false);
     setShowBulkUpload(false);
   };
 
@@ -493,6 +552,31 @@ export default function UserManagement() {
           {bulkResult && (
             <div style={{ marginTop: 12, fontSize: 13, borderTop: '1px solid #FCC896', paddingTop: 8 }}>
               <div>✅ {bulkResult.created_count} created | ❌ {bulkResult.error_count} errors</div>
+
+              {(bulkResult.created?.length ?? 0) > 0 && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <button
+                    className="action-btn-primary"
+                    style={{ padding: '8px 16px', fontSize: 13 }}
+                    onClick={handleDownloadCredentials}
+                  >
+                    <Download size={14} />
+                    {credsDownloaded ? 'Download Again' : 'Download Credentials (CSV)'}
+                  </button>
+                  <span style={{ color: '#DF1B39', fontSize: 12, fontWeight: 600 }}>
+                    ⚠️ Passwords are shown only once. Download them now and hand them out personally.
+                  </span>
+                </div>
+              )}
+
               {bulkResult.errors.length > 0 && (
                 <details style={{ marginTop: 6 }}>
                   <summary style={{ cursor: 'pointer', color: '#DF1B39' }}>View errors</summary>

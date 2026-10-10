@@ -18,11 +18,11 @@ export interface QuestStep {
 
 export interface Quest {
   id: number;
-  class_obj: number;
-  teacher: string; // StringRelatedField — the teacher's __str__ output
+  classes: number[]; // was class_obj: number — now a list of class IDs
+  teacher: string;
   title: string;
   description: string;
-  table_setting_type: string; // ⚠️ free text for now — real choices unknown, see model
+  table_setting_type: string;
   order_index: number;
   is_published: boolean;
   total_steps: number;
@@ -32,7 +32,7 @@ export interface Quest {
 }
 
 export interface QuestCreatePayload {
-  class_obj: number;
+  classes: number[]; // was class_obj: number
   title: string;
   description: string;
   table_setting_type: string;
@@ -41,3 +41,20 @@ export interface QuestCreatePayload {
 }
 
 export type QuestUpdatePayload = Partial<QuestCreatePayload>;
+
+export type TableSettingType = 'table_setting' | 'napkin_folding';
+
+export interface QuestStepCreatePayload {
+  step_order: number;
+  title: string;
+  instruction: string;
+  is_final_step: boolean;
+  is_required: boolean;
+}
+
+export type QuestStepUpdatePayload = Partial<QuestStepCreatePayload>;
+
+export interface ChecklistItemCreatePayload {
+  checklist_text: string;
+  order_index: number;
+}

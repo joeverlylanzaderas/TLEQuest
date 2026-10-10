@@ -28,7 +28,7 @@ class SubmissionListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIView):
         if user.role == "admin":
             return qs
         if user.role == "teacher":
-            return qs.filter(quest_assignment__quest__class_obj__teacher=user)
+            return qs.filter(quest_assignment__quest__teacher=user)
         # student sees only their own group's submissions
         return qs.filter(group__members__student=user).distinct()
 
@@ -52,7 +52,7 @@ class SubmissionListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIView):
         submission = serializer.save(quest_assignment=quest_assignment, group=group, student=self.request.user)
 
         notify(
-            recipient=quest_assignment.quest.class_obj.teacher,
+            recipient=quest_assignment.quest.teacher,
             notification_type=Notification.NotificationType.NEW_SUBMISSION,
             title="New submission received",
             message=f"{group} submitted an output for \"{quest_assignment.quest.title}\".",
@@ -71,7 +71,7 @@ class SubmissionDetailView(generics.RetrieveAPIView):
         if user.role == "admin":
             return qs
         if user.role == "teacher":
-            return qs.filter(quest_assignment__quest__class_obj__teacher=user)
+            return qs.filter(quest_assignment__quest__teacher=user)
         return qs.filter(group__members__student=user).distinct()
 
 
@@ -84,10 +84,10 @@ class TeacherReviewView(ReadAfterWriteMixin, generics.UpdateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        qs = Submission.objects.select_related("quest_assignment__quest__class_obj")
+        qs = Submission.objects.select_related("quest_assignment__quest")
         if user.role == "admin":
             return qs
-        return qs.filter(quest_assignment__quest__class_obj__teacher=user)
+        return qs.filter(quest_assignment__quest__teacher=user)
 
     def perform_update(self, serializer):
         # reviewed_by set here — never from client data — same treatment as

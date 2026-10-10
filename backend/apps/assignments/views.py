@@ -12,29 +12,14 @@ from apps.quests.models import QuestStep, StepChecklist
 from apps.rewards.models import QuestStepReward, StudentReward, Reward
 from apps.notifications.utils import notify
 from apps.notifications.models import Notification
-
 from .models import QuestAssignment, QuestProgress, StepCompletion, ChecklistItemCompletion
-from .permissions import IsOwnProgress
 from .serializers import (
-    QuestAssignmentSerializer, AssignQuestSerializer,
-    QuestProgressSerializer, ChecklistItemToggleSerializer,
+    QuestAssignmentSerializer, AssignQuestSerializer, QuestAssignmentDueDateSerializer,
+    QuestProgressSerializer, QuestProgressDetailSerializer, ChecklistItemToggleSerializer,
 )
 
 
-def _assert_can_view_progress(user, progress):
-    """Admin always; teacher only if they own the quest's class; student only their own."""
-    if user.role == "admin":
-        return
-    if user.role == "teacher" and progress.quest_assignment.quest.class_obj.teacher_id == user.id:
-        return
-    if user.role == "student" and progress.student_id == user.id:
-        return
-    raise PermissionDenied("You do not have access to this progress record.")
-
-
 class AssignQuestView(APIView):
-    """Bulk fan-out: one quest -> one QuestAssignment + one QuestProgress
-    per student, per every existing group in that quest's class."""
     permission_classes = [IsAuthenticated, IsTeacherOrAdmin]
 
     def post(self, request):
@@ -43,14 +28,20 @@ class AssignQuestView(APIView):
         quest = serializer.validated_data["quest"]
         quest_mode = serializer.validated_data["quest_mode"]
         due_date = serializer.validated_data.get("due_date")
+        group_ids = serializer.validated_data.get("group_ids")
 
-        if request.user.role == "teacher" and quest.class_obj.teacher_id != request.user.id:
-            raise PermissionDenied("You can only assign quests for your own classes.")
+        if request.user.role == "teacher" and quest.teacher_id != request.user.id:
+            raise PermissionDenied("You can only assign your own quests.")
 
         created_assignments = []
         first_step = quest.steps.order_by("step_order").first()
 
-        for group in Group.objects.filter(class_obj=quest.class_obj):
+        groups = Group.objects.filter(class_obj__in=quest.classes.all()).distinct()
+        # Optional: only the groups the teacher picked
+        if group_ids:
+            groups = groups.filter(id__in=group_ids)
+
+        for group in groups:
             assignment, _ = QuestAssignment.objects.get_or_create(
                 quest=quest, group=group,
                 defaults={
@@ -66,7 +57,11 @@ class AssignQuestView(APIView):
                 QuestProgress.objects.get_or_create(
                     quest_assignment=assignment,
                     student_id=student_id,
-                    defaults={"group": group, "current_step": first_step, "started_at": timezone.now()},
+                    defaults={
+                        "group": group,
+                        "current_step": first_step,
+                        "started_at": timezone.now(),
+                    },
                 )
                 notify(
                     recipient_id=student_id,
@@ -83,9 +78,47 @@ class AssignQuestView(APIView):
         )
 
 
+class QuestAssignmentListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = QuestAssignmentSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = QuestAssignment.objects.select_related("quest", "group")
+
+        if user.role == "teacher":
+            qs = qs.filter(quest__teacher=user)
+        elif user.role != "admin":
+            raise PermissionDenied("You do not have access to this data.")
+
+        quest_id = self.request.query_params.get("quest")
+        if quest_id:
+            qs = qs.filter(quest_id=quest_id)
+        return qs
+
+
+class QuestAssignmentUpdateView(generics.UpdateAPIView):
+    """PATCH a single assignment's due_date."""
+    permission_classes = [IsAuthenticated, IsTeacherOrAdmin]
+    serializer_class = QuestAssignmentDueDateSerializer
+    http_method_names = ["patch", "options"]
+
+    def get_queryset(self):
+        qs = QuestAssignment.objects.select_related("quest", "group")
+        if self.request.user.role == "teacher":
+            qs = qs.filter(quest__teacher=self.request.user)
+        return qs
+
+    def patch(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = QuestAssignmentDueDateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance.due_date = serializer.validated_data["due_date"]
+        instance.save()
+        return Response(QuestAssignmentSerializer(instance).data)
+
+
 class QuestProgressListView(generics.ListAPIView):
-    """Student sees only their own progress; teacher/admin see everyone's,
-    filterable by ?group_id= or ?quest_assignment_id=."""
     permission_classes = [IsAuthenticated]
     serializer_class = QuestProgressSerializer
 
@@ -98,8 +131,7 @@ class QuestProgressListView(generics.ListAPIView):
         if user.role == "student":
             qs = qs.filter(student=user)
         elif user.role == "teacher":
-            qs = qs.filter(quest_assignment__quest__class_obj__teacher=user)
-        # admin sees all, no filter
+            qs = qs.filter(quest_assignment__quest__teacher=user)
 
         group_id = self.request.query_params.get("group_id")
         if group_id:
@@ -111,21 +143,29 @@ class QuestProgressListView(generics.ListAPIView):
 
 
 class QuestProgressDetailView(generics.RetrieveAPIView):
-    """Matches the Quest Overview screen: quest info + all steps + lock state + checklists."""
     permission_classes = [IsAuthenticated]
-    serializer_class = QuestProgressSerializer
+    serializer_class = QuestProgressDetailSerializer
     queryset = QuestProgress.objects.select_related(
-        "student", "quest_assignment__quest", "group", "current_step"
-    ).prefetch_related("step_completions__checklist_completions")
+        "student", "group", "quest_assignment__quest", "current_step"
+    ).prefetch_related(
+        "step_completions__checklist_completions",
+        "quest_assignment__quest__steps__checklist_items",
+    )
 
     def get_object(self):
         obj = super().get_object()
-        _assert_can_view_progress(self.request.user, obj)
+        user = self.request.user
+        has_access = (
+            user.role == "admin"
+            or (user.role == "teacher" and obj.quest_assignment.quest.teacher_id == user.id)
+            or (user.role == "student" and obj.student_id == user.id)
+        )
+        if not has_access:
+            raise PermissionDenied("You do not have access to this progress record.")
         return obj
 
 
 class ChecklistItemToggleView(APIView):
-    """The actual checkbox tap. Students only, and only their own progress."""
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, progress_id, step_id, checklist_id):
@@ -145,11 +185,9 @@ class ChecklistItemToggleView(APIView):
             defaults={"completed_by": request.user},
         )
 
-        # If the step was already completed, it stays completed —
-        # unchecking an item after the fact has no effect (per decision above).
         already_completed = step_completion.completed_at is not None
 
-        item, _ = ChecklistItemCompletion.objects.update_or_create(
+        ChecklistItemCompletion.objects.update_or_create(
             step_completion=step_completion, step_checklist=step_checklist,
             defaults={
                 "is_checked": is_checked,
@@ -158,13 +196,14 @@ class ChecklistItemToggleView(APIView):
         )
 
         if not already_completed:
-            all_checked = not step_completion.checklist_completions.filter(is_checked=False).exists() \
-                          and step_completion.checklist_completions.count() == step_checklist.quest_step.checklist_items.count()
+            all_checked = (
+                not step_completion.checklist_completions.filter(is_checked=False).exists()
+                and step_completion.checklist_completions.count() == quest_step.checklist_items.count()
+            )
             if all_checked:
                 step_completion.completed_at = timezone.now()
                 step_completion.save()
 
-                # --- Reward auto-grant, added for the rewards app ---
                 for step_reward in QuestStepReward.objects.filter(quest_step=quest_step).select_related("reward"):
                     _, created = StudentReward.objects.get_or_create(
                         student=request.user,
@@ -178,17 +217,20 @@ class ChecklistItemToggleView(APIView):
                         progress.points_earned += step_reward.effective_points
                         if step_reward.reward.reward_type == Reward.RewardType.BADGE:
                             progress.badge_earned = True
-                # --- end reward auto-grant ---
 
                 if quest_step.is_final_step:
                     progress.completed_at = timezone.now()
-                    progress.save()
                 else:
                     next_step = QuestStep.objects.filter(
                         quest=progress.quest_assignment.quest, step_order__gt=quest_step.step_order
                     ).order_by("step_order").first()
                     if next_step:
                         progress.current_step = next_step
-                    progress.save()
+                progress.save()
 
-        return Response(QuestProgressSerializer(progress).data, status=status.HTTP_200_OK)
+        # Re-fetch so the detail serializer sees the fresh step completions
+        progress.refresh_from_db()
+        return Response(
+            QuestProgressDetailSerializer(progress, context={"request": request}).data,
+            status=status.HTTP_201_CREATED if False else status.HTTP_200_OK,
+        )
