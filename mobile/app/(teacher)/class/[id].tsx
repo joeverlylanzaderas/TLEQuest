@@ -18,6 +18,8 @@ import {
   ClassSummary, ClassEnrollment, Group, GroupCreatePayload,
 } from '../../../src/types/classrooms';
 import { Quest } from '../../../src/types/quests';
+import KeyboardSafe from '../../../src/components/KeyboardSafe';
+import { useToast } from '../../../src/components/Toast';
 
 const CREAM = '#F2E4C4';
 const CARD_BG = '#F9C544';
@@ -29,6 +31,7 @@ type Tab = 'roster' | 'groups' | 'quests';
 
 export default function ClassOverview() {
   const router = useRouter();
+  const toast = useToast();
   const { id } = useLocalSearchParams<{ id: string }>();
   const classId = Number(id);
 
@@ -60,7 +63,7 @@ export default function ClassOverview() {
       setRoster(enrollments);
       setGroups(groupsData);
       // No class-filtered quest endpoint exists — filter client-side.
-      setQuests(allQuests.filter((q) => q.class_obj === classId));
+      setQuests(allQuests.filter((q) => q.classes.includes(classId)));
     } catch (e) {
       setError('Could not load class data. Pull down to try again.');
     }
@@ -104,8 +107,9 @@ export default function ClassOverview() {
       setGroups((prev) => [...prev, created]);
       setNewGroupName('');
       setShowCreateGroupModal(false);
+      toast.success(`Group ${created.group_number} created`);
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.detail || 'Could not create group.');
+      toast.error(e?.response?.data?.detail || 'Could not create group.');
     } finally {
       setIsSubmittingGroup(false);
     }
@@ -119,8 +123,9 @@ export default function ClassOverview() {
           try {
             await deleteGroup(group.id);
             setGroups((prev) => prev.filter((g) => g.id !== group.id));
+            toast.success(`Group ${group.group_number} deleted`);
           } catch {
-            Alert.alert('Error', 'Could not delete group.');
+            toast.error('Could not delete group.');
           }
         },
       },
@@ -131,8 +136,9 @@ export default function ClassOverview() {
     try {
       const updated = await updateGroup(group.id, { leader: studentId });
       setGroups((prev) => prev.map((g) => (g.id === group.id ? updated : g)));
+      toast.success('Group leader updated');
     } catch {
-      Alert.alert('Error', 'Could not set leader — they must be enrolled in this class.');
+      toast.error('Could not set leader — they must be enrolled in this class.');
     }
   }
 
@@ -141,8 +147,9 @@ export default function ClassOverview() {
       const member = await addGroupMember(group.id, { student: studentId });
       setGroups((prev) => prev.map((g) => (g.id === group.id ? { ...g, members: [...g.members, member] } : g)));
       setAddMemberTargetGroup(null);
+      toast.success('Member added');
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.detail || 'Could not add member.');
+      toast.error(e?.response?.data?.detail || 'Could not add member.');
     }
   }
 
@@ -152,8 +159,9 @@ export default function ClassOverview() {
       setGroups((prev) =>
         prev.map((g) => (g.id === group.id ? { ...g, members: g.members.filter((m) => m.id !== memberId) } : g))
       );
+      toast.success('Member removed');
     } catch {
-      Alert.alert('Error', 'Could not remove member.');
+      toast.error('Could not remove member.');
     }
   }
 
@@ -162,8 +170,9 @@ export default function ClassOverview() {
     try {
       const updated = await updateQuest(quest.id, { is_published: !quest.is_published });
       setQuests((prev) => prev.map((q) => (q.id === quest.id ? updated : q)));
+      toast.success(updated.is_published ? 'Quest published' : 'Quest moved to draft');
     } catch {
-      Alert.alert('Error', 'Could not update quest.');
+      toast.error('Could not update quest.');
     }
   }
 
@@ -336,7 +345,7 @@ export default function ClassOverview() {
 
       {/* ---------------- Create Group modal ---------------- */}
       <Modal visible={showCreateGroupModal} transparent animationType="fade" onRequestClose={() => setShowCreateGroupModal(false)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardSafe style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Create Group</Text>
             <Text style={styles.modalLabel}>GROUP NAME (OPTIONAL)</Text>
@@ -355,12 +364,12 @@ export default function ClassOverview() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardSafe>
       </Modal>
 
       {/* ---------------- Add Member modal ---------------- */}
       <Modal visible={addMemberTargetGroup !== null} transparent animationType="fade" onRequestClose={() => setAddMemberTargetGroup(null)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardSafe style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Add Member</Text>
             <ScrollView style={{ maxHeight: 300 }}>
@@ -380,7 +389,7 @@ export default function ClassOverview() {
               <Text style={styles.modalCancelText}>Close</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardSafe>
       </Modal>
     </SafeAreaView>
   );

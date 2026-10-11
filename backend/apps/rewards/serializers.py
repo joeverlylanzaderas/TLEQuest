@@ -40,5 +40,5 @@ class StudentRewardSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StudentReward
-        fields = ["id", "student", "student_username", "reward", "reward_detail", "quest_assignment", "earned_at"]
+        fields = ["id", "student", "student_username", "reward", "reward_detail", "quest_assignment", "points_awarded", "earned_at"]
         read_only_fields = fields

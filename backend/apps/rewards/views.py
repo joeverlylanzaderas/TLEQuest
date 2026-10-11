@@ -1,5 +1,8 @@
 # backend/apps/rewards/views.py
+from django.db.models import Sum, Count, Q
 from rest_framework import generics
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 
@@ -69,6 +72,54 @@ class QuestStepRewardListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIV
         if user.role == "teacher" and step.quest.teacher_id != user.id:
             raise PermissionDenied("You can only attach rewards to your own quests.")
         serializer.save(quest_step=step)
+
+
+def _visible_student_rewards(request):
+    """StudentReward rows the requesting user may see (same rules as the list view)."""
+    user = request.user
+    qs = StudentReward.objects.select_related("student", "reward", "quest_assignment__quest")
+    if user.role == "student":
+        qs = qs.filter(student=user)
+    elif user.role == "teacher":
+        qs = qs.filter(quest_assignment__quest__teacher=user)
+    student_id = request.query_params.get("student_id")
+    if student_id:
+        qs = qs.filter(student_id=student_id)
+    return qs
+
+
+class StudentRewardSummaryView(APIView):
+    """One place that answers "how many points / badges do I have?".
+
+    total_points / total_badges are the sums over EVERY quest the student has
+    earned rewards in, so finishing another quest simply adds to them.
+    per_quest is the same numbers split by quest, for breakdown displays."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = _visible_student_rewards(request)
+        total = qs.aggregate(
+            points=Sum("points_awarded"),
+            badges=Count("id", filter=Q(reward__reward_type="badge")),
+        )
+        rows = (
+            qs.values("quest_assignment_id", "quest_assignment__quest__title")
+            .annotate(points=Sum("points_awarded"), badges=Count("id", filter=Q(reward__reward_type="badge")))
+            .order_by("quest_assignment__quest__title")
+        )
+        return Response({
+            "total_points": total["points"] or 0,
+            "total_badges": total["badges"] or 0,
+            "per_quest": [
+                {
+                    "quest_assignment": r["quest_assignment_id"],
+                    "quest_title": r["quest_assignment__quest__title"],
+                    "points": r["points"] or 0,
+                    "badges": r["badges"] or 0,
+                }
+                for r in rows
+            ],
+        })
 
 
 class StudentRewardListView(generics.ListAPIView):

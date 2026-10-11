@@ -12,6 +12,8 @@ import { getProgressDetail, toggleChecklistItem } from '../../../../../src/api/a
 import { QuestProgressDetail } from '../../../../../src/types/assignments';
 import { FullUser } from '../../../../../src/types/accounts';
 import SubmitOutputCard from '../../../../../src/components/SubmitOutputCard';
+import ReviewStatusNote from '../../../../../src/components/ReviewStatusNote';
+import QuestCover from '../../../../../src/components/QuestCover';
 
 const GOLD = '#F5B921';
 const CREAM = '#F5EDD8';
@@ -165,9 +167,7 @@ export default function QuestStepScreen() {
         </View>
 
         <View style={styles.currentQuestCard}>
-          <View style={styles.imagePlaceholder}>
-            <Ionicons name="restaurant" size={26} color="#fff" />
-          </View>
+          <QuestCover url={progress.quest_cover_image_url} style={styles.imagePlaceholder} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={styles.questTitle} numberOfLines={1}>{progress.quest_title}</Text>
             <Text style={styles.questMode}>
@@ -257,6 +257,7 @@ export default function QuestStepScreen() {
               </TouchableOpacity>
             </View>
 
+            {step.is_final_step && isCompleted && <ReviewStatusNote status={progress.review_status} />}
             {showRewards && (
               <View style={styles.rewardsRow}>
                 <Text style={styles.rewardsLabel}>Rewards Earned:</Text>

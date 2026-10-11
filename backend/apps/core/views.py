@@ -1,11 +1,12 @@
-from datetime import timedelta
+from datetime import date as date_cls, datetime, time as time_cls, timedelta
+from zoneinfo import ZoneInfo
 
 from django.db.models import Avg, Count, Q, Sum
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 
 from rest_framework import generics
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -105,6 +106,179 @@ class TeacherDashboardSummaryView(APIView):
         })
 
 
+class DailyActivityView(APIView):
+    """
+    Calendar-driven activity for the dashboard.
+
+    ?month=YYYY-MM   -> {"days": {"2026-10-11": {"started": 2, ..., "total": 6}, ...}}
+                        (used to colour the calendar cells)
+    ?date=YYYY-MM-DD -> counts, a 24-bucket hourly breakdown, per-quest totals and the
+                        full event list for that single day.
+    ?tz=Asia/Manila  -> the viewer's timezone. Days are cut at the viewer's midnight, not
+                        the server's (the server runs on UTC), so a 7am submission in Manila
+                        lands on the right day.
+    ?class_id=3      -> optional, limit everything to one class.
+
+    Five kinds of event: started, finished, submitted, reviewed (teacher left feedback) and
+    rewarded (points or a badge granted). Same scope rules as TeacherDashboardSummaryView:
+    admins see everything, teachers only their own classes.
+    """
+    permission_classes = [IsAuthenticated]
+
+    # event type -> key used in the counts / hourly buckets
+    KEYS = {
+        "quest_started": "started",
+        "quest_finished": "finished",
+        "submission_made": "submitted",
+        "feedback_given": "reviewed",
+        "reward_earned": "rewarded",
+    }
+
+    def get(self, request):
+        user = request.user
+        if user.role not in ("teacher", "admin"):
+            raise PermissionDenied("Only teachers/admins can view this dashboard.")
+
+        tz = self._parse_tz(request.query_params.get("tz"))
+        classes = Class.objects.all() if user.role == "admin" else Class.objects.filter(teacher=user)
+        class_ids = list(classes.values_list("id", flat=True))
+
+        raw_class = request.query_params.get("class_id")
+        if raw_class:
+            try:
+                wanted = int(raw_class)
+            except ValueError:
+                raise ValidationError({"class_id": "Must be a number."})
+            # a teacher asking for someone else's class simply gets nothing
+            class_ids = [wanted] if wanted in class_ids else []
+
+        month = request.query_params.get("month")
+        day = request.query_params.get("date")
+        if day:
+            return Response(self._day_detail(class_ids, self._parse_date(day), tz))
+        if month:
+            return Response(self._month_summary(class_ids, month, tz))
+        raise ValidationError("Provide either ?month=YYYY-MM or ?date=YYYY-MM-DD.")
+
+    # ---- parsing -----------------------------------------------------------
+    @staticmethod
+    def _parse_tz(raw):
+        try:
+            return ZoneInfo(raw) if raw else timezone.get_current_timezone()
+        except Exception:
+            return timezone.get_current_timezone()
+
+    @staticmethod
+    def _parse_date(raw):
+        try:
+            return date_cls.fromisoformat(raw)
+        except (TypeError, ValueError):
+            raise ValidationError({"date": "Use the format YYYY-MM-DD."})
+
+    # ---- querysets ---------------------------------------------------------
+    @staticmethod
+    def _sources(class_ids):
+        """(type, queryset, timestamp field) for every kind of event."""
+        base = {"quest_assignment__quest__classes__id__in": class_ids}
+        return [
+            ("quest_started", QuestProgress.objects.filter(started_at__isnull=False, **base), "started_at"),
+            ("quest_finished", QuestProgress.objects.filter(completed_at__isnull=False, **base), "completed_at"),
+            ("submission_made", Submission.objects.filter(**base), "submitted_at"),
+            ("feedback_given", Submission.objects.filter(reviewed_at__isnull=False, **base), "reviewed_at"),
+            ("reward_earned", StudentReward.objects.filter(**base), "earned_at"),
+        ]
+
+    @staticmethod
+    def _bounds(first_day, last_day_exclusive, tz):
+        start = datetime.combine(first_day, time_cls.min, tzinfo=tz)
+        end = datetime.combine(last_day_exclusive, time_cls.min, tzinfo=tz)
+        return start, end
+
+    @classmethod
+    def _empty_counts(cls):
+        return {**{k: 0 for k in cls.KEYS.values()}, "points": 0, "total": 0}
+
+    # ---- month -------------------------------------------------------------
+    def _month_summary(self, class_ids, month, tz):
+        try:
+            year, mon = (int(x) for x in month.split("-"))
+            first = date_cls(year, mon, 1)
+        except (ValueError, TypeError):
+            raise ValidationError({"month": "Use the format YYYY-MM."})
+        nxt = date_cls(year + (mon == 12), 1 if mon == 12 else mon + 1, 1)
+        start, end = self._bounds(first, nxt, tz)
+
+        days = {}
+        for etype, qs, field in self._sources(class_ids):
+            stamps = qs.filter(**{f"{field}__gte": start, f"{field}__lt": end}).distinct().values_list("id", field)
+            for _id, stamp in stamps:
+                d = stamp.astimezone(tz).date().isoformat()
+                row = days.setdefault(d, self._empty_counts())
+                row[self.KEYS[etype]] += 1
+                row["total"] += 1
+        return {"month": month, "days": days}
+
+    # ---- single day --------------------------------------------------------
+    def _day_detail(self, class_ids, day, tz):
+        start, end = self._bounds(day, day + timedelta(days=1), tz)
+        counts = self._empty_counts()
+        hourly = [{"hour": h, **{k: 0 for k in self.KEYS.values()}} for h in range(24)]
+        per_quest = {}
+        events = []
+
+        for etype, qs, field in self._sources(class_ids):
+            key = self.KEYS[etype]
+            rows = (
+                qs.filter(**{f"{field}__gte": start, f"{field}__lt": end})
+                .distinct()
+                .select_related("student", "student__profile", "quest_assignment__quest")
+                .order_by(field)
+            )
+            if etype == "reward_earned":
+                rows = rows.select_related("reward")
+            for r in rows:
+                stamp = getattr(r, field)
+                local = stamp.astimezone(tz)
+                quest_title = r.quest_assignment.quest.title
+                prof = getattr(r.student, "profile", None)
+                name = (f"{prof.first_name} {prof.last_name}".strip() if prof else "") or r.student.username
+
+                counts[key] += 1
+                counts["total"] += 1
+                hourly[local.hour][key] += 1
+                q = per_quest.setdefault(
+                    quest_title, {"quest_title": quest_title, "events": 0, **{k: 0 for k in self.KEYS.values()}}
+                )
+                q[key] += 1
+                q["events"] += 1
+
+                if etype == "quest_started":
+                    text = f'Started "{quest_title}"'
+                elif etype == "quest_finished":
+                    text = f'Finished all "{quest_title}" steps'
+                elif etype == "submission_made":
+                    text = f'Submitted "{quest_title}" group output'
+                elif etype == "feedback_given":
+                    stars = f" ({r.teacher_rating}/5)" if r.teacher_rating else ""
+                    text = f'Teacher feedback on "{quest_title}"{stars}'
+                else:
+                    counts["points"] += r.points_awarded
+                    text = (
+                        f'+{r.points_awarded} pts · "{quest_title}"' if r.points_awarded
+                        else f'Badge "{r.reward.reward_name}" · "{quest_title}"'
+                    )
+                events.append({"type": etype, "student_full_name": name, "description": text, "timestamp": stamp})
+
+        events.sort(key=lambda e: e["timestamp"], reverse=True)
+        return {
+            "date": day.isoformat(),
+            "counts": counts,
+            "hourly": hourly,
+            "per_quest": sorted(per_quest.values(), key=lambda q: -q["events"]),
+            "events": events,
+        }
+
+
 class AdminReportsView(APIView):
     """
     Admin-only aggregate reports. Returns all 5 sections in one payload
@@ -176,7 +350,7 @@ class AdminReportsView(APIView):
                 "student__profile__last_name",
             )
             .annotate(
-                total_points=Sum("reward__points_value", filter=Q(reward__reward_type="points")),
+                total_points=Sum("points_awarded"),
                 unique_badges=Count("reward", filter=Q(reward__reward_type="badge"), distinct=True),
             )
             .order_by("-total_points")[:limit]
@@ -207,8 +381,8 @@ class AdminReportsView(APIView):
             ).aggregate(avg=Avg("teacher_rating"))["avg"]
 
             points_total = StudentReward.objects.filter(
-                 quest_assignment__group__class_obj=c, reward__reward_type="points"
-            ).aggregate(total=Sum("reward__points_value"))["total"]
+                quest_assignment__group__class_obj=c
+            ).aggregate(total=Sum("points_awarded"))["total"]
 
             results.append({
                 "class_id": c.id,

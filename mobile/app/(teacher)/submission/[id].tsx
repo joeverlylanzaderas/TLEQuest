@@ -1,5 +1,5 @@
 // mobile/app/(teacher)/submission/[id].tsx
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator,
   StyleSheet, Image, Alert, Modal, KeyboardAvoidingView, Platform,
@@ -9,6 +9,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getSubmission, reviewSubmission } from '../../../src/api/submissions';
 import { Submission } from '../../../src/types/submissions';
+import { useToast } from '../../../src/components/Toast';
 
 const GOLD = '#F5B921';
 const CREAM = '#F5EDD8';
@@ -34,6 +35,8 @@ function errorText(e: any, fallback: string): string {
 
 export default function SubmissionReview() {
   const router = useRouter();
+  const toast = useToast();
+  const scrollRef = useRef<ScrollView>(null);
   const { id } = useLocalSearchParams<{ id: string }>();
   const submissionId = Number(id);
 
@@ -76,11 +79,10 @@ export default function SubmissionReview() {
         teacher_rating: rating > 0 ? rating : null,
       });
       setSubmission(updated);
-      Alert.alert('Saved', 'Your review was sent to the students.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      toast.success('Review sent. Final points and badge released to the group.');
+      router.back();
     } catch (e: any) {
-      Alert.alert('Error', errorText(e, 'Could not save your review.'));
+      toast.error(errorText(e, 'Could not save your review.'));
     } finally {
       setIsSaving(false);
     }
@@ -108,7 +110,7 @@ export default function SubmissionReview() {
   const accepted = submission.classifier_result === 'ACCEPTED';
 
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={styles.screen} behavior="padding">
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backRow}>
           <Ionicons name="arrow-back" size={20} color={BROWN} />
@@ -116,7 +118,7 @@ export default function SubmissionReview() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <TouchableOpacity onPress={() => setZoom(true)} activeOpacity={0.9}>
           <Image source={{ uri: submission.image_url }} style={styles.photo} />
           <View style={styles.zoomHint}>
@@ -165,6 +167,7 @@ export default function SubmissionReview() {
             onChangeText={setFeedback}
             placeholder="What did the group do well? What should they fix?"
             multiline
+            onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 250)}
           />
 
           {submission.is_reviewed && (

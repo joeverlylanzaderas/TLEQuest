@@ -23,9 +23,11 @@ class Submission(TimestampedModel):
     confidence_score = models.FloatField()                  # on-device TFLite confidence
     generated_feedback = models.TextField(blank=True)        # auto-generated based on classifier_result
 
-    # Teacher review — text + optional star rating, no approve/reject status
-    # per adviser's guidance. Students may resubmit (new row) after reading
-    # feedback; history of all attempts is preserved, nothing gets overwritten.
+    # Teacher review — feedback text + optional star rating, no approve/reject
+    # status per adviser's guidance. Leaving feedback is what releases the
+    # quest's final points + badge to the whole group (see
+    # apps/rewards/services.release_quest_rewards). No resubmission: the
+    # group's table setup is gone by the time the teacher reviews it.
     teacher_feedback = models.TextField(blank=True)
     teacher_rating = models.PositiveSmallIntegerField(
         null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)]

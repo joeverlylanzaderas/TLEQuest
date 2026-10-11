@@ -14,6 +14,8 @@ export interface QuestStep {
   is_final_step: boolean;
   is_required: boolean;
   checklist_items: QuestStepChecklistItem[];
+  points: number;      // points this step awards (0 = none)
+  badge_name: string;  // badge this step awards ('' = none)
 }
 
 export interface Quest {
@@ -25,6 +27,7 @@ export interface Quest {
   table_setting_type: string;
   order_index: number;
   is_published: boolean;
+  cover_image_url: string;
   total_steps: number;
   steps: QuestStep[];
   created_at: string;
@@ -38,6 +41,7 @@ export interface QuestCreatePayload {
   table_setting_type: string;
   order_index: number;
   is_published: boolean;
+  cover_image_url?: string;
 }
 
 export type QuestUpdatePayload = Partial<QuestCreatePayload>;
@@ -48,8 +52,10 @@ export interface QuestStepCreatePayload {
   step_order: number;
   title: string;
   instruction: string;
-  is_final_step: boolean;
+  is_final_step: boolean; // the server always makes the LAST step the final one
   is_required: boolean;
+  points?: number;        // omit = unchanged, 0 = remove
+  badge_name?: string;    // omit = unchanged, '' = remove
 }
 
 export type QuestStepUpdatePayload = Partial<QuestStepCreatePayload>;

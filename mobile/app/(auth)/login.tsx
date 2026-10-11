@@ -14,13 +14,14 @@ import {
   Animated,
   Easing,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
 import { router } from 'expo-router/build/exports';
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
+  const insets = useSafeAreaInsets(); // phone's bottom navigation bar / gesture area
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -269,7 +270,7 @@ export default function LoginScreen() {
           </Animated.View>
 
           {/* Card — sized to its content, not stretched to fill the screen */}
-          <Animated.View style={[styles.card, cardStyle]}>
+          <Animated.View style={[styles.card, cardStyle, { height: 260 + insets.bottom, paddingBottom: 64 + insets.bottom }]}>
             <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
               <TouchableOpacity
                 style={styles.button}
@@ -286,12 +287,16 @@ export default function LoginScreen() {
                 )}
               </TouchableOpacity>
             </Animated.View>
-
-            <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')} style={styles.forgotWrapper}>
-              <Text style={styles.forgotText}>
-                Forgot Password? <Text style={styles.forgotLink}>Click Here</Text>
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => router.push('/(auth)/forgot-password')}
+                style={styles.forgotWrapper}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.forgotText}>
+                  Forgot Password?{' '}
+                  <Text style={styles.forgotLink}>Click Here</Text>
+                </Text>
+              </TouchableOpacity>
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -437,22 +442,27 @@ const styles = StyleSheet.create({
   },
 
   // Wrapper around "Forgot Password? Click Here" — controls its position
+  // NOTE: no alignItems/alignSelf: 'center' here. A shrink-to-fit Text that mixes
+  // regular + bold words gets measured too narrow on Android, which cut off the last
+  // word ("Here"). The text now takes the full width and is centered with textAlign.
   forgotWrapper: {
-    alignItems: 'center',             // center the text horizontally
-    marginTop: 16,                    // space between button and this text
+    alignSelf: 'stretch',
+    marginTop: 16,
   },
 
   // "Forgot Password? " part of the text
   forgotText: {
-    fontSize: 13,                     // ⬅ increase for bigger text
+    fontSize: 13,
     color: '#5C3A2E',
+    textAlign: 'center',
   },
 
   // "Click Here" part — bold to stand out as the tappable link
   forgotLink: {
     fontWeight: '700',
+    color: '#3A2B1A',
   },
-
+  
   // Error message shown above the card when login fails / fields are empty
   error: {
     color: '#B3261E',                

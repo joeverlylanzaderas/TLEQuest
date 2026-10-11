@@ -21,6 +21,8 @@ class QuestAssignment(TimestampedModel):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
         related_name="quest_assignments_led",
     )
+    # Students see the quest from start_date on (empty = right away).
+    start_date = models.DateTimeField(null=True, blank=True)
     due_date = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -28,6 +30,11 @@ class QuestAssignment(TimestampedModel):
             models.UniqueConstraint(fields=["quest", "group"], name="unique_assignment_per_quest_per_group")
         ]
         ordering = ["-created_at"]
+
+    @property
+    def has_started(self):
+        from django.utils import timezone
+        return self.start_date is None or self.start_date <= timezone.now()
 
     def __str__(self):
         return f"{self.quest.title} → {self.group}"

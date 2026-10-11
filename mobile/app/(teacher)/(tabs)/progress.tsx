@@ -7,11 +7,11 @@ import {
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getMyProfile } from '../../../src/api/accounts';
 import { getAllAssignments, getMyProgress } from '../../../src/api/assignments';
 import { getSubmissions } from '../../../src/api/submissions';
 import { QuestAssignment, QuestProgress } from '../../../src/types/assignments';
 import { Submission } from '../../../src/types/submissions';
+import AppHeader from '../../../src/components/AppHeader';
 
 const GOLD = '#F5B921';
 const CREAM = '#F5EDD8';
@@ -35,7 +35,6 @@ function formatDate(iso: string | null): string {
 
 export default function TeacherProgress() {
   const router = useRouter();
-  const [teacherName, setTeacherName] = useState('');
   const [assignments, setAssignments] = useState<QuestAssignment[]>([]);
   const [progress, setProgress] = useState<QuestProgress[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
@@ -48,13 +47,11 @@ export default function TeacherProgress() {
   const load = useCallback(async () => {
     setError('');
     try {
-      const [p, a, pr, s] = await Promise.all([
-        getMyProfile(),
+      const [a, pr, s] = await Promise.all([
         getAllAssignments(),
         getMyProgress(),
         getSubmissions(),
       ]);
-      setTeacherName(p.profile.first_name || p.username);
       setAssignments(a);
       setProgress(pr);
       setSubmissions(s);
@@ -95,25 +92,10 @@ export default function TeacherProgress() {
   const doneCount = allMembers.filter(isDone).length;
   const overallAvg = average(allMembers.map((m) => m.percent_complete));
 
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={20} color={BROWN} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.welcomeSmall}>Welcome back,</Text>
-            <Text style={styles.welcomeName}>{teacherName || '...'}!</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.dateText}>{today}</Text>
-            <Text style={styles.classText}>Teacher's Portal</Text>
-          </View>
-        </View>
-      </View>
+      <AppHeader role="teacher" />
 
       {isLoading ? (
         <View style={styles.centered}>

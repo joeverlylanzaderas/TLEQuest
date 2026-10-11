@@ -3,6 +3,8 @@ import React, { useEffect } from 'react';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { View, ActivityIndicator, Alert } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ToastProvider } from '../src/components/Toast';
 
 function RootLayoutNav() {
   const { user, isLoading, signOut } = useAuth();
@@ -48,8 +50,12 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <RootLayoutNav />
+        </ToastProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }

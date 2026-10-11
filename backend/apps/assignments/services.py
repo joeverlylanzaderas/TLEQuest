@@ -5,6 +5,14 @@ from apps.notifications.models import Notification
 from .models import QuestAssignment, QuestProgress
 
 
+def assigned_message(quest_title, start_date=None):
+    """Notification text; says when the quest opens if the teacher scheduled it for later."""
+    if start_date and start_date > timezone.now():
+        opens = timezone.localtime(start_date).strftime("%b %d, %Y")
+        return f"\"{quest_title}\" has been assigned to your group. It opens on {opens}."
+    return f"\"{quest_title}\" has been assigned to your group."
+
+
 def sync_progress_for_new_group_member(group, student):
     """Catches up a newly added group member on any quests already
     assigned to that group — mirrors AssignQuestView's per-member logic,
@@ -27,7 +35,7 @@ def sync_progress_for_new_group_member(group, student):
                 recipient=student,
                 notification_type=Notification.NotificationType.QUEST_ASSIGNED,
                 title="New quest assigned",
-                message=f"\"{assignment.quest.title}\" has been assigned to your group.",
+                message=assigned_message(assignment.quest.title, assignment.start_date),
                 related_type="quest_assignment",
                 related_id=assignment.id,
             )

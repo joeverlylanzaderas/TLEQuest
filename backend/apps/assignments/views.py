@@ -1,4 +1,5 @@
 # backend/apps/assignments/views.py
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.views import APIView
@@ -9,10 +10,11 @@ from rest_framework.exceptions import PermissionDenied
 from apps.core.permissions import IsTeacherOrAdmin
 from apps.classrooms.models import Group, GroupMember
 from apps.quests.models import QuestStep, StepChecklist
-from apps.rewards.models import QuestStepReward, StudentReward, Reward
+from apps.rewards.services import grant_step_points
 from apps.notifications.utils import notify
 from apps.notifications.models import Notification
 from .models import QuestAssignment, QuestProgress, StepCompletion, ChecklistItemCompletion
+from .services import assigned_message
 from .serializers import (
     QuestAssignmentSerializer, AssignQuestSerializer, QuestAssignmentDueDateSerializer,
     QuestProgressSerializer, QuestProgressDetailSerializer, ChecklistItemToggleSerializer,
@@ -28,6 +30,7 @@ class AssignQuestView(APIView):
         quest = serializer.validated_data["quest"]
         quest_mode = serializer.validated_data["quest_mode"]
         due_date = serializer.validated_data.get("due_date")
+        start_date = serializer.validated_data.get("start_date")
         group_ids = serializer.validated_data.get("group_ids")
 
         if request.user.role == "teacher" and quest.teacher_id != request.user.id:
@@ -47,6 +50,7 @@ class AssignQuestView(APIView):
                 defaults={
                     "quest_mode": quest_mode,
                     "leader_at_assignment": group.leader,
+                    "start_date": start_date,
                     "due_date": due_date,
                 },
             )
@@ -67,7 +71,7 @@ class AssignQuestView(APIView):
                     recipient_id=student_id,
                     notification_type=Notification.NotificationType.QUEST_ASSIGNED,
                     title="New quest assigned",
-                    message=f"\"{quest.title}\" has been assigned to your group.",
+                    message=assigned_message(quest.title, assignment.start_date),
                     related_type="quest_assignment",
                     related_id=assignment.id,
                 )
@@ -111,9 +115,11 @@ class QuestAssignmentUpdateView(generics.UpdateAPIView):
 
     def patch(self, request, *args, **kwargs):
         instance = self.get_object()
-        serializer = QuestAssignmentDueDateSerializer(data=request.data)
+        serializer = QuestAssignmentDueDateSerializer(data=request.data, context={"instance": instance})
         serializer.is_valid(raise_exception=True)
-        instance.due_date = serializer.validated_data["due_date"]
+        for field in ("start_date", "due_date"):
+            if field in serializer.validated_data:
+                setattr(instance, field, serializer.validated_data[field])
         instance.save()
         return Response(QuestAssignmentSerializer(instance).data)
 
@@ -129,7 +135,10 @@ class QuestProgressListView(generics.ListAPIView):
         ).prefetch_related("step_completions__checklist_completions")
 
         if user.role == "student":
-            qs = qs.filter(student=user)
+            # A quest with a future start date stays hidden until that day
+            qs = qs.filter(student=user).filter(
+                Q(quest_assignment__start_date__isnull=True) | Q(quest_assignment__start_date__lte=timezone.now())
+            )
         elif user.role == "teacher":
             qs = qs.filter(quest_assignment__quest__teacher=user)
 
@@ -158,7 +167,7 @@ class QuestProgressDetailView(generics.RetrieveAPIView):
         has_access = (
             user.role == "admin"
             or (user.role == "teacher" and obj.quest_assignment.quest.teacher_id == user.id)
-            or (user.role == "student" and obj.student_id == user.id)
+            or (user.role == "student" and obj.student_id == user.id and obj.quest_assignment.has_started)
         )
         if not has_access:
             raise PermissionDenied("You do not have access to this progress record.")
@@ -172,6 +181,8 @@ class ChecklistItemToggleView(APIView):
         progress = generics.get_object_or_404(QuestProgress, pk=progress_id)
         if request.user.role != "student" or progress.student_id != request.user.id:
             raise PermissionDenied("You can only update your own checklist.")
+        if not progress.quest_assignment.has_started:
+            raise PermissionDenied("This quest has not started yet.")
 
         quest_step = generics.get_object_or_404(QuestStep, pk=step_id, quest=progress.quest_assignment.quest)
         step_checklist = generics.get_object_or_404(StepChecklist, pk=checklist_id, quest_step=quest_step)
@@ -204,19 +215,10 @@ class ChecklistItemToggleView(APIView):
                 step_completion.completed_at = timezone.now()
                 step_completion.save()
 
-                for step_reward in QuestStepReward.objects.filter(quest_step=quest_step).select_related("reward"):
-                    _, created = StudentReward.objects.get_or_create(
-                        student=request.user,
-                        quest_step_reward=step_reward,
-                        defaults={
-                            "reward": step_reward.reward,
-                            "quest_assignment": progress.quest_assignment,
-                        },
-                    )
-                    if created:
-                        progress.points_earned += step_reward.effective_points
-                        if step_reward.reward.reward_type == Reward.RewardType.BADGE:
-                            progress.badge_earned = True
+                # Step points are given right away (no badge). The final points
+                # + badge are released after the teacher's review
+                # (see apps/rewards/services.release_quest_rewards).
+                grant_step_points(progress, quest_step)
 
                 if quest_step.is_final_step:
                     progress.completed_at = timezone.now()
@@ -232,5 +234,5 @@ class ChecklistItemToggleView(APIView):
         progress.refresh_from_db()
         return Response(
             QuestProgressDetailSerializer(progress, context={"request": request}).data,
-            status=status.HTTP_201_CREATED if False else status.HTTP_200_OK,
+            status=status.HTTP_200_OK,
         )

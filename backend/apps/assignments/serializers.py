@@ -14,7 +14,7 @@ class QuestAssignmentSerializer(serializers.ModelSerializer):
         model = QuestAssignment
         fields = [
             "id", "quest", "quest_title", "group", "group_name",
-            "quest_mode", "leader_at_assignment", "due_date", "created_at",
+            "quest_mode", "leader_at_assignment", "start_date", "due_date", "created_at",
         ]
         read_only_fields = fields
 
@@ -22,6 +22,7 @@ class QuestAssignmentSerializer(serializers.ModelSerializer):
 class AssignQuestSerializer(serializers.Serializer):
     quest = serializers.PrimaryKeyRelatedField(queryset=Quest.objects.all())
     quest_mode = serializers.ChoiceField(choices=QuestAssignment.QuestMode.choices)
+    start_date = serializers.DateTimeField(required=False, allow_null=True)
     due_date = serializers.DateTimeField(required=False, allow_null=True)
     # Optional: assign only to these groups. Omitted = every group in the quest's classes.
     group_ids = serializers.ListField(
@@ -38,6 +39,9 @@ class AssignQuestSerializer(serializers.Serializer):
         return value
 
     def validate(self, attrs):
+        start, due = attrs.get("start_date"), attrs.get("due_date")
+        if start and due and due < start:
+            raise serializers.ValidationError({"due_date": "The due date cannot be before the start date."})
         group_ids = attrs.get("group_ids")
         if group_ids:
             valid = set(
@@ -53,7 +57,19 @@ class AssignQuestSerializer(serializers.Serializer):
 
 
 class QuestAssignmentDueDateSerializer(serializers.Serializer):
-    due_date = serializers.DateTimeField(allow_null=True)
+    """PATCH body: any of start_date / due_date (send null to clear one)."""
+    start_date = serializers.DateTimeField(required=False, allow_null=True)
+    due_date = serializers.DateTimeField(required=False, allow_null=True)
+
+    def validate(self, attrs):
+        if not attrs:
+            raise serializers.ValidationError("Send start_date and/or due_date.")
+        instance = self.context.get("instance")
+        start = attrs["start_date"] if "start_date" in attrs else getattr(instance, "start_date", None)
+        due = attrs["due_date"] if "due_date" in attrs else getattr(instance, "due_date", None)
+        if start and due and due < start:
+            raise serializers.ValidationError({"due_date": "The due date cannot be before the start date."})
+        return attrs
 
 
 class ChecklistItemCompletionSerializer(serializers.ModelSerializer):
@@ -101,22 +117,57 @@ class QuestProgressSerializer(serializers.ModelSerializer):
     student_username = serializers.CharField(source="student.username", read_only=True)
     quest_title = serializers.CharField(source="quest_assignment.quest.title", read_only=True)
     quest_mode = serializers.CharField(source="quest_assignment.quest_mode", read_only=True)
+    quest_cover_image_url = serializers.CharField(source="quest_assignment.quest.cover_image_url", read_only=True)
     table_setting_type = serializers.CharField(source="quest_assignment.quest.table_setting_type", read_only=True)
     total_steps = serializers.IntegerField(source="quest_assignment.quest.total_steps", read_only=True)
     percent_complete = serializers.SerializerMethodField()
+    review_status = serializers.SerializerMethodField()
+    teacher_feedback = serializers.SerializerMethodField()
+    teacher_rating = serializers.SerializerMethodField()
+    reviewed_at = serializers.SerializerMethodField()
 
     class Meta:
         model = QuestProgress
         fields = [
-            "id", "quest_assignment", "quest_title", "quest_mode", "table_setting_type",
+            "id", "quest_assignment", "quest_title", "quest_mode", "quest_cover_image_url", "table_setting_type",
             "group", "student", "student_username", "current_step", "total_steps",
             "percent_complete", "points_earned", "badge_earned", "started_at",
             "completed_at", "step_completions",
+            "review_status", "teacher_feedback", "teacher_rating", "reviewed_at",
         ]
         read_only_fields = [
             "id", "quest_assignment", "group", "student", "student_username",
             "total_steps", "percent_complete", "step_completions",
         ]
+
+    def _reviewed_submission(self, obj):
+        from apps.submissions.models import Submission
+        return (
+            Submission.objects.filter(quest_assignment_id=obj.quest_assignment_id, reviewed_at__isnull=False)
+            .order_by("-reviewed_at").first()
+        )
+
+    def get_review_status(self, obj):
+        """'none' = nothing submitted yet, 'waiting' = submitted, waiting for
+        the teacher's review, 'reviewed' = teacher left feedback (final
+        points + badge released)."""
+        from apps.submissions.models import Submission
+        subs = Submission.objects.filter(quest_assignment_id=obj.quest_assignment_id)
+        if subs.filter(reviewed_at__isnull=False).exists():
+            return "reviewed"
+        return "waiting" if subs.exists() else "none"
+
+    def get_teacher_feedback(self, obj):
+        sub = self._reviewed_submission(obj)
+        return sub.teacher_feedback if sub else ""
+
+    def get_teacher_rating(self, obj):
+        sub = self._reviewed_submission(obj)
+        return sub.teacher_rating if sub else None
+
+    def get_reviewed_at(self, obj):
+        sub = self._reviewed_submission(obj)
+        return sub.reviewed_at if sub else None
 
     def get_percent_complete(self, obj):
         total = obj.quest_assignment.quest.total_steps
@@ -136,12 +187,35 @@ class QuestProgressDetailSerializer(QuestProgressSerializer):
     group_name = serializers.CharField(source="group.group_name", read_only=True)
     is_group_leader = serializers.SerializerMethodField()
     steps = serializers.SerializerMethodField()
+    group_progress = serializers.SerializerMethodField()
 
     class Meta(QuestProgressSerializer.Meta):
         fields = QuestProgressSerializer.Meta.fields + [
             "quest_id", "quest_description", "due_date", "group_name",
-            "is_group_leader", "steps",
+            "is_group_leader", "steps", "group_progress",
         ]
+
+    def get_group_progress(self, obj):
+        """How many group members finished all their steps. The leader can only
+        submit when everyone has (the server enforces it too)."""
+        from apps.classrooms.models import GroupMember
+        members = list(
+            GroupMember.objects.filter(group_id=obj.group_id).select_related("student__profile")
+        )
+        finished = set(
+            QuestProgress.objects.filter(
+                quest_assignment_id=obj.quest_assignment_id,
+                student_id__in=[m.student_id for m in members], completed_at__isnull=False,
+            ).values_list("student_id", flat=True)
+        )
+        pending = []
+        for m in members:
+            if m.student_id in finished:
+                continue
+            prof = getattr(m.student, "profile", None)
+            name = f"{prof.first_name} {prof.last_name}".strip() if prof else ""
+            pending.append(name or m.student.username)
+        return {"total": len(members), "finished": len(finished), "pending_names": pending}
 
     def get_is_group_leader(self, obj):
         request = self.context.get("request")

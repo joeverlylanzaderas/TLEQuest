@@ -7,13 +7,9 @@ import {
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getMyProfile } from '../../../src/api/accounts';
-import { getMyClasses } from '../../../src/api/classrooms';
 import { getSubmissions } from '../../../src/api/submissions';
-import { getUnreadNotifications } from '../../../src/api/notifications';
-import { FullUser } from '../../../src/types/accounts';
-import { ClassSummary } from '../../../src/types/classrooms';
 import { Submission } from '../../../src/types/submissions';
+import AppHeader from '../../../src/components/AppHeader';
 
 const GOLD = '#F5B921';
 const CREAM = '#F5EDD8';
@@ -38,10 +34,7 @@ function Stars({ rating }: { rating: number }) {
 
 export default function StudentSubmissions() {
   const router = useRouter();
-  const [profile, setProfile] = useState<FullUser | null>(null);
-  const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [zoomUri, setZoomUri] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -50,16 +43,7 @@ export default function StudentSubmissions() {
   const load = useCallback(async () => {
     setError('');
     try {
-      const [p, c, s, u] = await Promise.all([
-        getMyProfile(),
-        getMyClasses(),
-        getSubmissions(),
-        getUnreadNotifications(),
-      ]);
-      setProfile(p);
-      setClasses(c);
-      setSubmissions(s);
-      setUnreadCount(u.length);
+      setSubmissions(await getSubmissions());
     } catch (e: any) {
       setError(e?.response?.data?.detail || 'Could not load your submissions.');
     }
@@ -77,30 +61,10 @@ export default function StudentSubmissions() {
     setIsRefreshing(false);
   }
 
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  const displayName = profile?.profile.first_name || profile?.username || '';
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={20} color={BROWN} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.welcomeSmall}>Welcome back,</Text>
-            <Text style={styles.welcomeName}>{displayName}!</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.dateText}>{today}</Text>
-            <Text style={styles.classText}>{classes.length > 0 ? classes[0].class_name : 'No class joined'}</Text>
-          </View>
-          <TouchableOpacity onPress={() => router.push('/(student)/notifications' as any)} style={{ marginLeft: 8 }}>
-            <Ionicons name="notifications" size={20} color={BROWN} />
-            {unreadCount > 0 && <View style={styles.bellDot} />}
-          </TouchableOpacity>
-        </View>
-      </View>
+      <AppHeader role="student" />
 
       {isLoading ? (
         <View style={styles.centered}>

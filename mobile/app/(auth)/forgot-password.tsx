@@ -1,21 +1,26 @@
-// mobile/app/%28auth%29/forgot-password.tsx
+// mobile/app/(auth)/forgot-password.tsx
+// Step 1 of 3: enter the username.
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getForgotPasswordQuestions } from '../../src/api/accounts';
+import {
+  AuthScreen, AuthCard, AuthInput, PrimaryButton, TextLink, Banner, StepIndicator,
+} from '../../src/components/AuthUI';
+
+export const RESET_STEPS = ['Username', 'Verify', 'New password'];
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const [username, setUsername] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState<{ kind: 'error' | 'info'; text: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleContinue() {
     if (!username.trim()) {
-      setError('Please enter your username.');
+      setError({ kind: 'error', text: 'Please enter your username.' });
       return;
     }
-    setError('');
+    setError(null);
     setIsLoading(true);
     try {
       const result = await getForgotPasswordQuestions(username.trim());
@@ -27,45 +32,52 @@ export default function ForgotPasswordScreen() {
         },
       });
     } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Could not find that account.');
+      const status = e?.response?.status;
+      const detail = e?.response?.data?.detail;
+      if (!e?.response) {
+        setError({ kind: 'error', text: "Can't reach the server. Check your internet connection and try again." });
+      } else if (status === 404) {
+        setError({ kind: 'error', text: "We couldn't find that username. Check the spelling and try again." });
+      } else if (status === 403 || status === 400) {
+        // password reset switched off, or this account has no security questions yet
+        setError({ kind: 'info', text: detail || 'Password reset is not available for this account. Please contact your teacher or admin.' });
+      } else {
+        setError({ kind: 'error', text: detail || 'Something went wrong. Please try again.' });
+      }
     } finally {
       setIsLoading(false);
     }
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Forgot Password</Text>
-      <Text style={styles.subtitle}>Enter your username to continue.</Text>
+    <AuthScreen
+      onBack={() => router.back()}
+      icon="help-buoy"
+      title="Forgot your password?"
+      subtitle="No worries. Enter your username and we'll ask the 3 security questions you set up."
+    >
+      <StepIndicator steps={RESET_STEPS} current={0} />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Username"
-        autoCapitalize="none"
-        value={username}
-        onChangeText={setUsername}
-      />
+      <AuthCard>
+        <AuthInput
+          label="USERNAME"
+          icon="person"
+          placeholder="Your username"
+          autoCapitalize="none"
+          autoCorrect={false}
+          value={username}
+          onChangeText={(v) => { setUsername(v); if (error) setError(null); }}
+          invalid={error?.kind === 'error'}
+          returnKeyType="go"
+          onSubmitEditing={handleContinue}
+        />
+        {error ? <Banner kind={error.kind} text={error.text} /> : null}
+        <PrimaryButton label="Continue" icon="arrow-forward" onPress={handleContinue} loading={isLoading} />
+      </AuthCard>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <Banner kind="info" text="Can't remember your answers? Ask your teacher or admin to reset your password for you." />
 
-      <TouchableOpacity style={styles.button} onPress={handleContinue} disabled={isLoading}>
-        {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Continue</Text>}
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }}>
-        <Text style={styles.backLink}>← Back to login</Text>
-      </TouchableOpacity>
-    </View>
+      <TextLink label="Back to login" onPress={() => router.back()} />
+    </AuthScreen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 24 },
-  title: { fontSize: 26, fontWeight: 'bold', textAlign: 'center' },
-  subtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 24 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, marginBottom: 12, fontSize: 16 },
-  error: { color: '#dc2626', marginBottom: 12, textAlign: 'center' },
-  button: { backgroundColor: '#2563eb', padding: 14, borderRadius: 8, alignItems: 'center' },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  backLink: { color: '#2563eb', textAlign: 'center' },
-});

@@ -22,6 +22,8 @@ class Quest(TimestampedModel):
     table_setting_type = models.CharField(max_length=30, choices=TableSettingType.choices)
     order_index = models.PositiveIntegerField(default=0)
     is_published = models.BooleanField(default=False)
+    # Optional cover photo, uploaded to Cloudinary by the teacher's app.
+    cover_image_url = models.URLField(max_length=500, blank=True, default="")
 
     class Meta:
         ordering = ["order_index"]

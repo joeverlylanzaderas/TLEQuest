@@ -7,13 +7,11 @@ import {
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getMyProfile } from '../../../src/api/accounts';
-import { getMyClasses } from '../../../src/api/classrooms';
 import { getMyProgress } from '../../../src/api/assignments';
-import { getUnreadNotifications } from '../../../src/api/notifications';
-import { FullUser } from '../../../src/types/accounts';
-import { ClassSummary } from '../../../src/types/classrooms';
 import { QuestProgress } from '../../../src/types/assignments';
+import ReviewStatusNote from '../../../src/components/ReviewStatusNote';
+import AppHeader from '../../../src/components/AppHeader';
+import QuestCover from '../../../src/components/QuestCover';
 
 const GOLD = '#F5B921';
 const CREAM = '#F5EDD8';
@@ -31,12 +29,23 @@ function statusOf(p: QuestProgress): StatusKey {
   return 'not_started';
 }
 
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function Stars({ rating }: { rating: number }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: 2 }}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Ionicons key={n} name={n <= rating ? 'star' : 'star-outline'} size={14} color={GOLD} />
+      ))}
+    </View>
+  );
+}
+
 export default function StudentQuests() {
   const router = useRouter();
-  const [profile, setProfile] = useState<FullUser | null>(null);
-  const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [progress, setProgress] = useState<QuestProgress[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [filter, setFilter] = useState<FilterKey>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -45,16 +54,7 @@ export default function StudentQuests() {
   const load = useCallback(async () => {
     setError('');
     try {
-      const [profileData, classesData, progressData, unread] = await Promise.all([
-        getMyProfile(),
-        getMyClasses(),
-        getMyProgress(),
-        getUnreadNotifications(),
-      ]);
-      setProfile(profileData);
-      setClasses(classesData);
-      setProgress(progressData);
-      setUnreadCount(unread.length);
+      setProgress(await getMyProgress());
     } catch (e: any) {
       setError(e?.response?.data?.detail || 'Could not load your quests.');
     }
@@ -88,34 +88,11 @@ export default function StudentQuests() {
     return { label: 'Start Quest', bg: 'transparent', textColor: GREEN, border: GREEN };
   }
 
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  const displayName = profile?.profile.first_name || profile?.username || '';
 
   return (
     <View style={styles.screen}>
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={20} color={BROWN} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.welcomeSmall}>Welcome back,</Text>
-            <Text style={styles.welcomeName}>{displayName}!</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.dateText}>{today}</Text>
-            <Text style={styles.classText}>{classes.length > 0 ? classes[0].class_name : 'No class joined'}</Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => router.push('/(student)/notifications' as any)}
-            style={{ marginLeft: 8 }}
-          >
-            <Ionicons name="notifications" size={20} color={BROWN} />
-            {unreadCount > 0 && <View style={styles.bellDot} />}
-          </TouchableOpacity>
-        </View>
-      </View>
+      <AppHeader role="student" />
 
       {isLoading ? (
         <View style={styles.centered}>
@@ -150,18 +127,60 @@ export default function StudentQuests() {
           ) : (
             <View style={styles.grid}>
               {filtered.map((item) => {
-                const btn = statusButton(statusOf(item));
+                const status = statusOf(item);
+                const btn = statusButton(status);
+                const isDone = status === 'completed';
                 return (
                   <TouchableOpacity
                     key={item.id}
-                    style={styles.card}
+                    style={[styles.card, isDone && styles.cardWide]}
                     // item.id is the QuestProgress id, which the Overview screen expects
                     onPress={() => router.push(`/(student)/quest/${item.id}/overview` as any)}
                   >
-                    <View style={styles.imagePlaceholder}>
-                      <Ionicons name="restaurant" size={28} color="#fff" />
+                    <View style={isDone ? styles.wideTop : undefined}>
+                      <QuestCover
+                        url={item.quest_cover_image_url}
+                        style={[styles.imagePlaceholder, isDone && styles.imageSmall]}
+                        iconSize={isDone ? 22 : 28}
+                      />
+                      <View style={isDone ? { flex: 1 } : undefined}>
+                        <Text style={styles.cardTitle} numberOfLines={2}>{item.quest_title}</Text>
+                        {isDone && item.reviewed_at ? (
+                          <Text style={styles.reviewedDate}>Reviewed {formatDate(item.reviewed_at)}</Text>
+                        ) : null}
+                      </View>
                     </View>
-                    <Text style={styles.cardTitle} numberOfLines={2}>{item.quest_title}</Text>
+
+                    {isDone && (
+                      <>
+                        <View style={styles.awardsRow}>
+                          <View style={styles.pointsPill}>
+                            <Text style={styles.pointsPillText}>+{item.points_earned} pts</Text>
+                          </View>
+                          {item.badge_earned && (
+                            <View style={styles.badgePill}>
+                              <Ionicons name="ribbon" size={14} color="#fff" />
+                              <Text style={styles.badgePillText}>Badge</Text>
+                            </View>
+                          )}
+                        </View>
+
+                        {item.review_status === 'reviewed' ? (
+                          <View style={styles.feedbackBox}>
+                            <View style={styles.feedbackHeader}>
+                              <Text style={styles.feedbackLabel}>TEACHER FEEDBACK</Text>
+                              {item.teacher_rating ? <Stars rating={item.teacher_rating} /> : null}
+                            </View>
+                            <Text style={styles.feedbackText}>
+                              {item.teacher_feedback?.trim() || 'No written feedback.'}
+                            </Text>
+                          </View>
+                        ) : (
+                          <ReviewStatusNote status={item.review_status === 'waiting' ? 'waiting' : undefined} />
+                        )}
+                      </>
+                    )}
+
                     <View style={styles.cardDivider} />
                     <View
                       style={[
@@ -209,6 +228,19 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   card: { width: '48%', backgroundColor: '#fff', borderRadius: 16, padding: 10, marginBottom: 14 },
   imagePlaceholder: { height: 90, borderRadius: 12, backgroundColor: '#B8895C', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  cardWide: { width: '100%' },
+  wideTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  imageSmall: { width: 52, height: 52, marginBottom: 0 },
+  reviewedDate: { fontSize: 11, color: '#8A6A2A', marginTop: 2 },
+  awardsRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  pointsPill: { backgroundColor: GOLD, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 5 },
+  pointsPillText: { color: BROWN, fontWeight: '800', fontSize: 12 },
+  badgePill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: ORANGE, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 5 },
+  badgePillText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+  feedbackBox: { backgroundColor: '#FFF7D6', borderRadius: 12, padding: 12, marginTop: 10 },
+  feedbackHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  feedbackLabel: { fontSize: 10, fontWeight: '800', color: '#8A6A2A', letterSpacing: 0.5 },
+  feedbackText: { fontSize: 13, color: BROWN, lineHeight: 18 },
   cardTitle: { fontSize: 12, fontWeight: '700', color: '#7c2d12', minHeight: 30 },
   cardDivider: { height: 1, backgroundColor: '#eee', marginVertical: 8 },
   statusButton: { borderRadius: 20, paddingVertical: 8, alignItems: 'center' },

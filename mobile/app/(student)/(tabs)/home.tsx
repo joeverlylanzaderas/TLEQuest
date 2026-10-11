@@ -11,34 +11,43 @@ import {
   Image,
   TextInput,
   StyleSheet,
+  useWindowDimensions,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import { useAuth } from '../../../src/context/AuthContext';
-import { getMyProfile } from '../../../src/api/accounts';
 import { getMyClasses, getClassEnrollments, getClassGroups, joinClass } from '../../../src/api/classrooms';
 import { getMyProgress } from '../../../src/api/assignments';
-import { getUnreadNotifications } from '../../../src/api/notifications';
-import { FullUser } from '../../../src/types/accounts';
+import { getMyRewardSummary } from '../../../src/api/rewards';
 import { ClassSummary, ClassEnrollment, Group } from '../../../src/types/classrooms';
 import { QuestProgress } from '../../../src/types/assignments';
-import { Notification } from '../../../src/types/notifications';
-import DashboardHeader from '../../../src/components/DashboardHeader';
+import { Ionicons } from '@expo/vector-icons';
+import KeyboardSafe from '../../../src/components/KeyboardSafe';
+import AppHeader from '../../../src/components/AppHeader';
+import QuestCover from '../../../src/components/QuestCover';
+
+const GOLD = '#F5B921';
+const CREAM = '#F5EDD8';
+const BROWN = '#5C2C16';
+const GREEN = '#22C55E';
+const ORANGE = '#EA580C';
 
 const AVATAR_COLORS = ['#f87171', '#4ade80', '#fbbf24', '#60a5fa', '#f472b6', '#fb923c', '#34d399', '#38bdf8'];
 
 export default function StudentHome() {
   const router = useRouter();
-  const { signOut } = useAuth();
-  const [profile, setProfile] = useState<FullUser | null>(null);
+  const { width: screenWidth } = useWindowDimensions();
+  const [questIndex, setQuestIndex] = useState(0);
   const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [classmates, setClassmates] = useState<ClassEnrollment[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [progress, setProgress] = useState<QuestProgress[]>([]);
+  // Totals across ALL quests, from the same endpoint the Profile tab uses
+  const [totals, setTotals] = useState<{ points: number; badges: number } | null>(null);
   const [selectedClassmate, setSelectedClassmate] = useState<ClassEnrollment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [unreadNotifications, setUnreadNotifications] = useState<Notification[]>([]);
 
   // ---- Join class modal ----
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -49,16 +58,14 @@ export default function StudentHome() {
   const loadEverything = useCallback(async () => {
     setError('');
     try {
-      const [profileData, classesData, progressData, unreadNotificationsData] = await Promise.all([
-        getMyProfile(),
+      const [classesData, progressData, summary] = await Promise.all([
         getMyClasses(),
         getMyProgress(),
-        getUnreadNotifications(),
+        getMyRewardSummary().catch(() => null),
       ]);
-      setProfile(profileData);
       setClasses(classesData);
       setProgress(progressData);
-      setUnreadNotifications(unreadNotificationsData);
+      setTotals(summary ? { points: summary.total_points, badges: summary.total_badges } : null);
 
       if (classesData.length > 0) {
         const [enrollments, groupsData] = await Promise.all([
@@ -122,22 +129,53 @@ export default function StudentHome() {
     );
   }
 
-  const currentQuest = progress.find((p) => !p.completed_at) ?? progress[0];
+  // Swipeable "current quest" cards: every unfinished quest, first one is the current quest.
+  // If everything is finished, show the most recent one so it is still reachable from Home.
+  const unfinished = progress.filter((p) => !p.completed_at);
+  const carouselQuests: QuestProgress[] =
+    unfinished.length > 0 ? unfinished : progress.length > 0 ? [progress[progress.length - 1]] : [];
+  const CARD_GAP = 12;
+  const cardWidth = carouselQuests.length > 1 ? screenWidth - 56 : screenWidth - 40;
+  const snapInterval = cardWidth + CARD_GAP;
+
+  function handleQuestScrollEnd(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / snapInterval);
+    setQuestIndex(Math.max(0, Math.min(idx, carouselQuests.length - 1)));
+  }
+
+  // Same numbers as the Profile tab. Falls back to the per-quest sums only if the summary call failed.
+  const totalPoints = totals ? totals.points : progress.reduce((sum, p) => sum + (p.points_earned || 0), 0);
+  const totalBadges = totals ? totals.badges : progress.filter((p) => p.badge_earned).length;
+  const doneCount = progress.filter((p) => p.completed_at).length;
 
   return (
+    <View style={styles.screen}>
+      {/* Header: same look as the Quests / Submissions / Progress tabs */}
+      <AppHeader role="student" />
+
     <ScrollView
       style={styles.container}
       contentContainerStyle={{ paddingBottom: 80 }}
-      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={loadEverything} />}
+      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={loadEverything} tintColor={BROWN} />}
     >
-      <DashboardHeader
-        firstName={profile?.profile.first_name}
-        username={profile?.username || ''}
-        profilePicture={profile?.profile.profile_picture}
-        subtitle={classes.length > 0 ? classes[0].class_name : 'No class joined'}
-        unreadCount={unreadNotifications.length}
-        onBellPress={() => router.push('/(student)/notifications' as any)}
-      />
+      {/* Quick stats */}
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          <Ionicons name="star" size={18} color={GOLD} />
+          <Text style={styles.statValue}>{totalPoints}</Text>
+          <Text style={styles.statLabel}>Points</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Ionicons name="ribbon" size={18} color={ORANGE} />
+          <Text style={styles.statValue}>{totalBadges}</Text>
+          <Text style={styles.statLabel}>Badges</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Ionicons name="checkmark-circle" size={18} color={GREEN} />
+          <Text style={styles.statValue}>{doneCount}</Text>
+          <Text style={styles.statLabel}>Completed</Text>
+        </View>
+      </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -156,18 +194,53 @@ export default function StudentHome() {
         </TouchableOpacity>
       )}
 
-      {currentQuest ? (
-        <TouchableOpacity style={styles.currentQuestCard} onPress={() => openQuest(currentQuest)}>
-          <Text style={styles.currentQuestLabel}>Your current quest:</Text>
-          <Text style={styles.currentQuestTitle}>{currentQuest.quest_title}</Text>
-          <Text style={styles.currentQuestMode}>
-            {currentQuest.quest_mode === 'group' ? 'Group Quest' : 'Individual Quest'}
-          </Text>
-          <View style={styles.progressBarTrack}>
-            <View style={[styles.progressBarFill, { width: `${currentQuest.percent_complete}%` }]} />
-          </View>
-          <Text style={styles.percentText}>{currentQuest.percent_complete}%</Text>
-        </TouchableOpacity>
+      {carouselQuests.length > 0 ? (
+        <View style={styles.questCarouselWrap}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={snapInterval}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            onMomentumScrollEnd={handleQuestScrollEnd}
+            contentContainerStyle={styles.questCarouselRow}
+          >
+            {carouselQuests.map((quest, index) => (
+              <TouchableOpacity
+                key={quest.id}
+                style={[styles.currentQuestCard, { width: cardWidth }]}
+                onPress={() => openQuest(quest)}
+                activeOpacity={0.9}
+              >
+                <View style={styles.currentQuestTop}>
+                  <QuestCover url={quest.quest_cover_image_url} style={styles.questIcon} iconSize={24} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.currentQuestLabel}>
+                      {index === 0 ? 'YOUR CURRENT QUEST' : 'ALSO IN PROGRESS'}
+                    </Text>
+                    <Text style={styles.currentQuestTitle} numberOfLines={2}>{quest.quest_title}</Text>
+                    <Text style={styles.currentQuestMode}>
+                      {quest.quest_mode === 'group' ? 'Group Quest' : 'Individual Quest'}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#fff" />
+                </View>
+                <View style={styles.progressBarTrack}>
+                  <View style={[styles.progressBarFill, { width: `${quest.percent_complete}%` }]} />
+                </View>
+                <Text style={styles.percentText}>{quest.percent_complete}% complete</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {carouselQuests.length > 1 && (
+            <View style={styles.dotsRow}>
+              {carouselQuests.map((q, i) => (
+                <View key={q.id} style={[styles.dot, i === questIndex && styles.dotActive]} />
+              ))}
+            </View>
+          )}
+        </View>
       ) : (
         <Text style={styles.emptyText}>No quests assigned yet.</Text>
       )}
@@ -181,6 +254,7 @@ export default function StudentHome() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={styles.classmateCard}
           contentContainerStyle={styles.classmateStrip}
         >
           {classmates.map((c, index) => (
@@ -222,14 +296,19 @@ export default function StudentHome() {
       ) : (
         progress.map((item) => (
           <TouchableOpacity key={item.id} style={styles.questCard} onPress={() => openQuest(item)}>
-            <Text style={styles.questTitle}>{item.quest_title}</Text>
+            <View style={styles.questCardTop}>
+              <Text style={styles.questTitle} numberOfLines={2}>{item.quest_title}</Text>
+              {item.completed_at ? (
+                <View style={styles.doneChip}><Text style={styles.doneChipText}>Completed</Text></View>
+              ) : null}
+            </View>
             <Text style={styles.questMode}>
               {item.quest_mode === 'group' ? 'Group Quest' : 'Individual Quest'}
             </Text>
-            <View style={styles.progressBarTrack}>
-              <View style={[styles.progressBarFill, { width: `${item.percent_complete}%` }]} />
+            <View style={styles.questTrack}>
+              <View style={[styles.questFill, { width: `${item.percent_complete}%` }]} />
             </View>
-            <Text style={styles.percentText}>{item.percent_complete}%</Text>
+            <Text style={styles.questPercent}>{item.percent_complete}%</Text>
           </TouchableOpacity>
         ))
       )}
@@ -290,7 +369,7 @@ export default function StudentHome() {
         animationType="fade"
         onRequestClose={() => setShowJoinModal(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardSafe style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalName}>Join a Class</Text>
             <Text style={styles.modalSection}>Enter the invite code your teacher shared</Text>
@@ -316,43 +395,68 @@ export default function StudentHome() {
               <Text style={styles.joinCancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardSafe>
       </Modal>
     </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, paddingTop: 60 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  error: { color: '#dc2626', marginBottom: 12 },
-  emptyText: { color: '#999', fontStyle: 'italic', marginBottom: 12 },
+  screen: { flex: 1, backgroundColor: CREAM },
+  container: { flex: 1, paddingHorizontal: 20, paddingTop: 16 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: CREAM },
+  error: { color: '#B3261E', marginBottom: 12, fontSize: 13 },
+  emptyText: { color: '#8A6A2A', fontStyle: 'italic', marginBottom: 12 },
+
+  header: { backgroundColor: GOLD, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
+  headerRow: { flexDirection: 'row', alignItems: 'center' },
+  avatarCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  headerAvatarImg: { width: 40, height: 40, borderRadius: 20, marginRight: 10, backgroundColor: '#fff' },
+  welcomeSmall: { fontSize: 12, color: BROWN, opacity: 0.8 },
+  welcomeName: { fontSize: 16, fontWeight: '800', color: BROWN },
+  dateText: { fontSize: 11, color: BROWN, fontWeight: '600' },
+  classText: { fontSize: 11, color: BROWN, fontWeight: '700', marginTop: 2 },
+  bellDot: { position: 'absolute', top: -1, right: -1, width: 8, height: 8, borderRadius: 4, backgroundColor: '#DC2626' },
+
+  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  statCard: { flex: 1, backgroundColor: '#fff', borderRadius: 16, paddingVertical: 12, alignItems: 'center' },
+  statValue: { fontSize: 20, fontWeight: '900', color: BROWN, marginTop: 4 },
+  statLabel: { fontSize: 11, color: '#8A6A2A', fontWeight: '600' },
 
   joinLinkRow: { marginBottom: 4 },
-  joinLinkText: { color: '#ea580c', fontSize: 13, fontWeight: '600' },
+  joinLinkText: { color: ORANGE, fontSize: 13, fontWeight: '700' },
 
   joinClassCard: {
-    backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#fed7aa',
+    backgroundColor: '#fff', borderRadius: 16, borderWidth: 1.5, borderColor: '#F3D98B',
     borderStyle: 'dashed', padding: 20, alignItems: 'center', marginTop: 12, marginBottom: 8,
   },
-  joinClassCardTitle: { fontSize: 15, fontWeight: 'bold', color: '#7c2d12' },
+  joinClassCardTitle: { fontSize: 15, fontWeight: '800', color: BROWN },
   joinClassCardSubtitle: { fontSize: 12, color: '#8A6A2A', textAlign: 'center', marginTop: 4, marginBottom: 12 },
-  joinClassCardButton: { backgroundColor: '#ea580c', borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10 },
+  joinClassCardButton: { backgroundColor: ORANGE, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10 },
   joinClassCardButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
-  currentQuestCard: { backgroundColor: '#5b3a29', borderRadius: 16, padding: 16, marginBottom: 20, marginTop: 16 },
-  currentQuestLabel: { color: '#fff', opacity: 0.8, fontSize: 12 },
-  currentQuestTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginTop: 4 },
-  currentQuestMode: { color: '#fbbf24', fontStyle: 'italic', marginBottom: 8 },
+  questCarouselWrap: { marginTop: 16, marginBottom: 20, marginHorizontal: -20 },
+  questCarouselRow: { paddingHorizontal: 20, gap: 12 },
+  currentQuestCard: { backgroundColor: BROWN, borderRadius: 20, padding: 16 },
+  dotsRow: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 10 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#D8C9A3' },
+  dotActive: { width: 18, backgroundColor: ORANGE },
+  currentQuestTop: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+  questIcon: { width: 56, height: 56, borderRadius: 14 },
+  currentQuestLabel: { color: GOLD, fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
+  currentQuestTitle: { color: '#fff', fontSize: 18, fontWeight: '800', marginTop: 2 },
+  currentQuestMode: { color: '#F3D98B', fontSize: 12, marginTop: 2 },
 
-  progressBarTrack: { height: 8, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 4, overflow: 'hidden' },
-  progressBarFill: { height: 8, backgroundColor: '#22c55e' },
-  percentText: { color: '#fff', marginTop: 4, fontSize: 12 },
+  progressBarTrack: { height: 8, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 4, overflow: 'hidden' },
+  progressBarFill: { height: 8, backgroundColor: GREEN, borderRadius: 4 },
+  percentText: { color: '#fff', marginTop: 6, fontSize: 12, fontWeight: '600' },
 
-  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 8 },
-  sectionHeader: { fontSize: 16, fontWeight: 'bold' },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 10 },
+  sectionHeader: { fontSize: 13, fontWeight: '800', color: BROWN, letterSpacing: 0.8, textTransform: 'uppercase' },
 
-  classmateStrip: { paddingBottom: 8, paddingRight: 16 },
+  classmateCard: { backgroundColor: '#fff', borderRadius: 16, marginBottom: 12, flexGrow: 0 },
+  classmateStrip: { paddingVertical: 14, paddingHorizontal: 14 },
   classmateItem: { alignItems: 'center', marginRight: 16, width: 60 },
   classmateAvatar: { width: 48, height: 48, borderRadius: 24, marginBottom: 4 },
   classmateAvatarPlaceholder: {
@@ -360,11 +464,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', marginBottom: 4,
   },
   classmateAvatarInitial: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-  classmateName: { fontSize: 11, color: '#444', textAlign: 'center' },
+  classmateName: { fontSize: 11, color: BROWN, textAlign: 'center', fontWeight: '600' },
 
-  questCard: { backgroundColor: '#fef3e2', borderRadius: 12, padding: 14, marginBottom: 12 },
-  questTitle: { fontSize: 16, fontWeight: 'bold', color: '#7c2d12' },
-  questMode: { fontSize: 12, color: '#ea580c', fontStyle: 'italic', marginBottom: 6 },
+  questCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 12 },
+  questCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  questTitle: { fontSize: 15, fontWeight: '800', color: '#7c2d12', flex: 1 },
+  questMode: { fontSize: 12, color: '#8A6A2A', marginTop: 2, marginBottom: 10 },
+  questTrack: { height: 8, backgroundColor: '#F1E6CC', borderRadius: 4, overflow: 'hidden' },
+  questFill: { height: 8, backgroundColor: GREEN, borderRadius: 4 },
+  questPercent: { color: '#8A6A2A', marginTop: 4, fontSize: 12, fontWeight: '600' },
+  doneChip: { backgroundColor: GREEN, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3 },
+  doneChipText: { color: '#fff', fontSize: 10, fontWeight: '800' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
   modalCard: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', width: 280 },
@@ -385,7 +495,7 @@ const styles = StyleSheet.create({
   },
   joinErrorText: { color: '#dc2626', fontSize: 12, marginTop: 10, textAlign: 'center' },
   joinSubmitButton: {
-    width: '100%', backgroundColor: '#ea580c', borderRadius: 12,
+    width: '100%', backgroundColor: ORANGE, borderRadius: 12,
     paddingVertical: 12, alignItems: 'center', marginTop: 16,
   },
   joinSubmitButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },

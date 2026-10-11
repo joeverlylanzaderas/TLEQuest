@@ -9,6 +9,7 @@ import { classifyImage, ClassificationResult } from '../ml/classifier';
 import { uploadSubmissionPhoto } from '../api/cloudinary';
 import { createSubmission } from '../api/submissions';
 import { QuestProgressDetail } from '../types/assignments';
+import ReviewStatusNote from './ReviewStatusNote';
 
 const BROWN = '#5C2C16';
 const GREEN = '#22C55E';
@@ -124,6 +125,16 @@ export default function SubmitOutputCard({ progress }: Props) {
     }
   }
 
+  // Once the output is submitted there is no resubmit: the group waits for the
+  // teacher's feedback, which releases the final points + badge.
+  const reviewStatus = progress.review_status === 'reviewed' ? 'reviewed' : submitted ? 'waiting' : progress.review_status;
+  const alreadySubmitted = reviewStatus === 'waiting' || reviewStatus === 'reviewed';
+
+  // The leader can only submit when every group member finished their steps.
+  const gp = progress.group_progress;
+  const groupReady = !gp || gp.finished >= gp.total;
+  const pendingNames = gp?.pending_names ?? [];
+
   // ---- Not the leader: no buttons, just the explanation ----
   if (!progress.is_group_leader) {
     return (
@@ -134,6 +145,7 @@ export default function SubmitOutputCard({ progress }: Props) {
           You have completed all steps for this quest! Your group leader will submit your group's final output.
           Keep it up and good luck!
         </Text>
+        <ReviewStatusNote status={reviewStatus} />
       </View>
     );
   }
@@ -147,8 +159,20 @@ export default function SubmitOutputCard({ progress }: Props) {
         work automatically.
       </Text>
 
-      {submitted ? (
+      {!alreadySubmitted && gp && !groupReady ? (
         <View style={styles.resultBox}>
+          <Ionicons name="people" size={34} color={ORANGE} />
+          <Text style={[styles.resultLabel, { color: ORANGE, fontSize: 18 }]}>
+            Waiting for your group ({gp.finished}/{gp.total} done)
+          </Text>
+          <Text style={styles.resultNote}>
+            You can submit once every member has finished all steps.
+            {pendingNames.length ? `\nStill working: ${pendingNames.join(', ')}` : ''}
+          </Text>
+        </View>
+      ) : submitted || alreadySubmitted ? (
+        <View style={styles.resultBox}>
+          {submitted ? (<>
           <Ionicons
             name={submitted.result.label === 'ACCEPTED' ? 'checkmark-circle' : 'time'}
             size={34}
@@ -165,9 +189,10 @@ export default function SubmitOutputCard({ progress }: Props) {
               ? 'AI check is not available on this device, so your teacher will review your output directly.'
               : feedbackFor(submitted.result.label)}
           </Text>
-          <TouchableOpacity style={styles.secondaryButton} onPress={openCamera}>
-            <Text style={styles.secondaryButtonText}>Submit another photo</Text>
-          </TouchableOpacity>
+          </>) : (
+            <Text style={styles.resultNote}>Your final output was submitted.</Text>
+          )}
+          <ReviewStatusNote status={reviewStatus} />
         </View>
       ) : (
         <>
@@ -242,8 +267,6 @@ const styles = StyleSheet.create({
   orangeButton: { backgroundColor: ORANGE, borderRadius: 10, paddingHorizontal: 22, paddingVertical: 10, minWidth: 120, alignItems: 'center' },
   orangeButtonText: { color: '#fff', fontWeight: '800', fontSize: 13 },
   disabledButton: { backgroundColor: '#E5B999' },
-  secondaryButton: { marginTop: 14, borderWidth: 1.5, borderColor: ORANGE, borderRadius: 20, paddingHorizontal: 18, paddingVertical: 8 },
-  secondaryButtonText: { color: ORANGE, fontWeight: '700', fontSize: 12 },
 
   resultBox: { width: '100%', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 18 },
   resultLabel: { fontSize: 22, fontWeight: '900', marginTop: 6 },

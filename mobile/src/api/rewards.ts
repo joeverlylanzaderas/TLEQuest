@@ -1,7 +1,7 @@
 // mobile/src/api/rewards.ts
 import { apiClient } from './client';
 import {
-  StudentReward, RewardDetail, RewardCreatePayload,
+  StudentReward, RewardSummary, RewardDetail, RewardCreatePayload,
   QuestStepReward, QuestStepRewardCreatePayload,
 } from '../types/rewards';
 
@@ -14,6 +14,11 @@ function normalizeList<T>(data: T[] | { results: T[] }): T[] {
 export async function getMyRewards(): Promise<StudentReward[]> {
   const { data } = await apiClient.get('/rewards/student-rewards/');
   return normalizeList<StudentReward>(data);
+}
+
+export async function getMyRewardSummary(): Promise<RewardSummary> {
+  const { data } = await apiClient.get<RewardSummary>('/rewards/student-rewards/summary/');
+  return data;
 }
 
 export async function createReward(payload: RewardCreatePayload): Promise<RewardDetail> {

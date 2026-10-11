@@ -1,7 +1,7 @@
 //admin-web/src/api/client.ts
 import axios from 'axios';
 
-const BASE_URL = 'http://192.168.68.57:8000/api'; // same LAN IP as mobile
+const BASE_URL = 'http://10.205.14.184:8000/api'; // same LAN IP as mobile
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,

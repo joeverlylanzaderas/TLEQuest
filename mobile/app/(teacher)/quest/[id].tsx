@@ -10,11 +10,16 @@ import {
   getQuestDetail, updateQuest, deleteQuest, createQuestStep, updateQuestStep, deleteQuestStep,
   createChecklistItem, updateChecklistItem, deleteChecklistItem,
 } from '../../../src/api/quests';
-import { getAssignmentsForQuest, updateAssignmentDueDate, assignQuest } from '../../../src/api/assignments';
+import { getAssignmentsForQuest, updateAssignmentDates, assignQuest } from '../../../src/api/assignments';
 import { getMyClasses, getClassGroups } from '../../../src/api/classrooms';
 import { Quest, QuestStep } from '../../../src/types/quests';
 import { QuestAssignment } from '../../../src/types/assignments';
 import { ClassSummary } from '../../../src/types/classrooms';
+import KeyboardSafe from '../../../src/components/KeyboardSafe';
+import { useToast } from '../../../src/components/Toast';
+import CoverPhotoPicker from '../../../src/components/CoverPhotoPicker';
+import DatePickerField from '../../../src/components/DatePickerField';
+import { parseISODate, startOfDay, startOfDayISO, endOfDayISO } from '../../../src/utils/dates';
 
 const CREAM = '#F2E4C4';
 const BROWN = '#3A2B1A';
@@ -30,6 +35,7 @@ interface GroupOption {
 
 export default function QuestDetailScreen() {
   const router = useRouter();
+  const toast = useToast();
   const { id } = useLocalSearchParams<{ id: string }>();
   const questId = Number(id);
 
@@ -39,6 +45,7 @@ export default function QuestDetailScreen() {
 
   const [titleDraft, setTitleDraft] = useState('');
   const [descriptionDraft, setDescriptionDraft] = useState('');
+  const [coverDraft, setCoverDraft] = useState('');
   const [isSavingHeader, setIsSavingHeader] = useState(false);
 
   // ---- Classes multi-select ----
@@ -49,7 +56,8 @@ export default function QuestDetailScreen() {
 
   // ---- Due dates (one per group assignment) ----
   const [assignments, setAssignments] = useState<QuestAssignment[]>([]);
-  const [editingDueDates, setEditingDueDates] = useState<Record<number, string>>({});
+  // Start / due date being edited for each group's assignment
+  const [editingDates, setEditingDates] = useState<Record<number, { start: Date | null; due: Date | null }>>({});
   const [savingAssignmentId, setSavingAssignmentId] = useState<number | null>(null);
   const [savedAssignmentId, setSavedAssignmentId] = useState<number | null>(null);
 
@@ -66,6 +74,9 @@ export default function QuestDetailScreen() {
   const [modalInstruction, setModalInstruction] = useState('');
   const [modalChecklist, setModalChecklist] = useState<{ id?: number; text: string }[]>([]);
   const [modalChecklistInput, setModalChecklistInput] = useState('');
+  const [modalPoints, setModalPoints] = useState('');
+  const [modalBadgeOn, setModalBadgeOn] = useState(false);
+  const [modalBadgeName, setModalBadgeName] = useState('');
   const [isSavingStep, setIsSavingStep] = useState(false);
 
   function extractErrorMessage(e: any, fallback: string): string {
@@ -84,6 +95,7 @@ export default function QuestDetailScreen() {
       setQuest(data);
       setTitleDraft(data.title);
       setDescriptionDraft(data.description);
+      setCoverDraft(data.cover_image_url || '');
       setSelectedClassIds(data.classes);
     } catch (e: any) {
       setError(extractErrorMessage(e, 'Could not load this quest.'));
@@ -94,9 +106,9 @@ export default function QuestDetailScreen() {
     try {
       const data = await getAssignmentsForQuest(questId);
       setAssignments(data);
-      const dates: Record<number, string> = {};
-      data.forEach((a) => { dates[a.id] = a.due_date ? a.due_date.slice(0, 10) : ''; });
-      setEditingDueDates(dates);
+      const dates: Record<number, { start: Date | null; due: Date | null }> = {};
+      data.forEach((a) => { dates[a.id] = { start: parseISODate(a.start_date), due: parseISODate(a.due_date) }; });
+      setEditingDates(dates);
     } catch {
       // due dates are supplementary info, fail quietly
     }
@@ -157,8 +169,9 @@ export default function QuestDetailScreen() {
       const updated = await updateQuest(quest.id, { classes: selectedClassIds });
       setQuest(updated);
       setClassPickerVisible(false);
+      toast.success('Classes updated');
     } catch (e: any) {
-      Alert.alert('Error', extractErrorMessage(e, 'Could not update classes.'));
+      toast.error(extractErrorMessage(e, 'Could not update classes.'));
     } finally {
       setIsSavingClasses(false);
     }
@@ -174,10 +187,12 @@ export default function QuestDetailScreen() {
       const updated = await updateQuest(questId, {
         title: titleDraft.trim(),
         description: descriptionDraft.trim(),
+        cover_image_url: coverDraft,
       });
       setQuest(updated);
+      toast.success('Quest details saved');
     } catch (e: any) {
-      Alert.alert('Error', extractErrorMessage(e, 'Could not save changes.'));
+      toast.error(extractErrorMessage(e, 'Could not save changes.'));
     } finally {
       setIsSavingHeader(false);
     }
@@ -188,25 +203,30 @@ export default function QuestDetailScreen() {
     try {
       const updated = await updateQuest(quest.id, { is_published: !quest.is_published });
       setQuest(updated);
+      toast.success(updated.is_published ? 'Quest published' : 'Quest moved to draft');
     } catch (e: any) {
-      Alert.alert('Error', extractErrorMessage(e, 'Could not update publish status.'));
+      toast.error(extractErrorMessage(e, 'Could not update publish status.'));
     }
   }
 
-  async function handleSaveDueDate(assignmentId: number) {
-    const raw = (editingDueDates[assignmentId] || '').trim();
-    if (raw && !/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-      Alert.alert('Invalid date', 'Please use the format YYYY-MM-DD (e.g. 2026-10-15), or leave it empty.');
+  async function handleSaveDates(assignmentId: number) {
+    const { start, due } = editingDates[assignmentId] ?? { start: null, due: null };
+    if (start && due && startOfDay(due) < startOfDay(start)) {
+      Alert.alert('Check the dates', 'The due date cannot be before the start date.');
       return;
     }
     setSavingAssignmentId(assignmentId);
     try {
-      const updated = await updateAssignmentDueDate(assignmentId, raw || null);
+      const updated = await updateAssignmentDates(assignmentId, {
+        start_date: startOfDayISO(start),
+        due_date: endOfDayISO(due),
+      });
       setAssignments((prev) => prev.map((a) => (a.id === assignmentId ? updated : a)));
       setSavedAssignmentId(assignmentId);
       setTimeout(() => setSavedAssignmentId(null), 1500);
+      toast.success('Dates saved');
     } catch (e: any) {
-      Alert.alert('Error', extractErrorMessage(e, 'Could not update the due date.'));
+      toast.error(extractErrorMessage(e, 'Could not update the dates.'));
     } finally {
       setSavingAssignmentId(null);
     }
@@ -235,12 +255,9 @@ export default function QuestDetailScreen() {
       await loadAssignments();
       const added = Math.max(0, assignments.length === before ? result.filter((r) => !assignments.some((a) => a.id === r.id)).length : 0);
       setPickedGroupIds([]);
-      Alert.alert(
-        'Assigned',
-        added > 0 ? `Assigned to ${added} new group(s).` : 'The selected groups now have this quest.'
-      );
+      toast.success(added > 0 ? `Assigned to ${added} new group(s)` : 'The selected groups now have this quest');
     } catch (e: any) {
-      Alert.alert('Error', extractErrorMessage(e, 'Could not assign. Make sure the groups have members.'));
+      toast.error(extractErrorMessage(e, 'Could not assign. Make sure the groups have members.'));
     } finally {
       setIsAssigning(false);
     }
@@ -259,9 +276,10 @@ export default function QuestDetailScreen() {
           onPress: async () => {
             try {
               await deleteQuest(quest.id);
+              toast.success('Quest deleted');
               router.back();
             } catch (e: any) {
-              Alert.alert('Error', extractErrorMessage(e, 'Could not delete this quest.'));
+              toast.error(extractErrorMessage(e, 'Could not delete this quest.'));
             }
           },
         },
@@ -275,6 +293,9 @@ export default function QuestDetailScreen() {
     setModalInstruction('');
     setModalChecklist([]);
     setModalChecklistInput('');
+    setModalPoints('');
+    setModalBadgeOn(false);
+    setModalBadgeName('');
     setStepModalVisible(true);
   }
 
@@ -284,6 +305,9 @@ export default function QuestDetailScreen() {
     setModalInstruction(step.instruction);
     setModalChecklist(step.checklist_items.map((c) => ({ id: c.id, text: c.checklist_text })));
     setModalChecklistInput('');
+    setModalPoints(step.points > 0 ? String(step.points) : '');
+    setModalBadgeOn(!!step.badge_name);
+    setModalBadgeName(step.badge_name || '');
     setStepModalVisible(true);
   }
 
@@ -306,7 +330,17 @@ export default function QuestDetailScreen() {
       Alert.alert('Missing checklist', 'Add at least one checklist item.');
       return;
     }
+    const pointsNumber = modalPoints.trim() === '' ? 0 : Number(modalPoints);
+    if (!Number.isInteger(pointsNumber) || pointsNumber < 0 || pointsNumber > 1000) {
+      Alert.alert('Invalid points', 'Points must be a whole number from 0 to 1000.');
+      return;
+    }
+    if (modalBadgeOn && !modalBadgeName.trim()) {
+      Alert.alert('Badge name needed', 'Enter a name for the badge, or turn the badge off.');
+      return;
+    }
     if (!quest) return;
+    const rewardFields = { points: pointsNumber, badge_name: modalBadgeOn ? modalBadgeName.trim() : '' };
 
     setIsSavingStep(true);
     try {
@@ -314,6 +348,7 @@ export default function QuestDetailScreen() {
         await updateQuestStep(editingStep.id, {
           title: modalTitle.trim(),
           instruction: modalInstruction.trim(),
+          ...rewardFields,
         });
         for (let i = 0; i < modalChecklist.length; i++) {
           const item = modalChecklist[i];
@@ -330,13 +365,14 @@ export default function QuestDetailScreen() {
           }
         }
       } else {
-        const nextOrder = (quest.steps?.length || 0) + 1;
+        const nextOrder = Math.max(0, ...(quest.steps || []).map((s) => s.step_order)) + 1;
         const createdStep = await createQuestStep(quest.id, {
           step_order: nextOrder,
           title: modalTitle.trim(),
           instruction: modalInstruction.trim(),
-          is_final_step: false,
+          is_final_step: false, // the server marks the last step as final
           is_required: true,
+          ...rewardFields,
         });
         for (let i = 0; i < modalChecklist.length; i++) {
           await createChecklistItem(createdStep.id, {
@@ -348,8 +384,9 @@ export default function QuestDetailScreen() {
 
       setStepModalVisible(false);
       await loadQuest();
+      toast.success(editingStep ? 'Step updated' : 'Step added');
     } catch (e: any) {
-      Alert.alert('Error', extractErrorMessage(e, 'Could not save this step.'));
+      toast.error(extractErrorMessage(e, 'Could not save this step.'));
     } finally {
       setIsSavingStep(false);
     }
@@ -363,8 +400,9 @@ export default function QuestDetailScreen() {
           try {
             await deleteQuestStep(step.id);
             await loadQuest();
+            toast.success('Step deleted');
           } catch (e: any) {
-            Alert.alert('Error', extractErrorMessage(e, 'Could not delete this step.'));
+            toast.error(extractErrorMessage(e, 'Could not delete this step.'));
           }
         },
       },
@@ -390,7 +428,8 @@ export default function QuestDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <KeyboardSafe>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <View style={styles.detailsCard}>
@@ -415,7 +454,7 @@ export default function QuestDetailScreen() {
           </TouchableOpacity>
 
           {/* ---- Due dates, one per group assignment ---- */}
-          <Text style={styles.label}>Due Dates:</Text>
+          <Text style={styles.label}>Start & Due Dates:</Text>
           {assignments.length === 0 ? (
             <Text style={styles.emptyText}>Not yet assigned to any group.</Text>
           ) : (
@@ -425,23 +464,34 @@ export default function QuestDetailScreen() {
                   <Text style={styles.dueDateGroupName}>{a.group_name || `Group #${a.group}`}</Text>
                   {savedAssignmentId === a.id && <Text style={styles.savedText}>Saved ✓</Text>}
                 </View>
-                <View style={styles.dueDateInputRow}>
-                  <TextInput
-                    style={[styles.input, { flex: 1 }]}
-                    value={editingDueDates[a.id] || ''}
-                    onChangeText={(text) => setEditingDueDates((prev) => ({ ...prev, [a.id]: text }))}
-                    placeholder="YYYY-MM-DD"
-                  />
-                  <TouchableOpacity
-                    style={styles.dueDateSaveButton}
-                    onPress={() => handleSaveDueDate(a.id)}
-                    disabled={savingAssignmentId === a.id}
-                  >
-                    {savingAssignmentId === a.id
-                      ? <ActivityIndicator color="#fff" size="small" />
-                      : <Ionicons name="checkmark" size={18} color="#fff" />}
-                  </TouchableOpacity>
-                </View>
+                <Text style={styles.dateFieldLabel}>Start date</Text>
+                <DatePickerField
+                  value={editingDates[a.id]?.start ?? null}
+                  onChange={(d) =>
+                    setEditingDates((prev) => {
+                      const cur = prev[a.id] ?? { start: null, due: null };
+                      const due = d && cur.due && startOfDay(cur.due) < startOfDay(d) ? null : cur.due;
+                      return { ...prev, [a.id]: { start: d, due } };
+                    })
+                  }
+                  placeholder="Right away"
+                />
+                <Text style={[styles.dateFieldLabel, { marginTop: 8 }]}>Due date</Text>
+                <DatePickerField
+                  value={editingDates[a.id]?.due ?? null}
+                  onChange={(d) => setEditingDates((prev) => ({ ...prev, [a.id]: { start: prev[a.id]?.start ?? null, due: d } }))}
+                  minDate={editingDates[a.id]?.start ?? null}
+                  placeholder="No due date"
+                />
+                <TouchableOpacity
+                  style={styles.dateSaveButton}
+                  onPress={() => handleSaveDates(a.id)}
+                  disabled={savingAssignmentId === a.id}
+                >
+                  {savingAssignmentId === a.id
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={styles.dateSaveButtonText}>Save dates</Text>}
+                </TouchableOpacity>
               </View>
             ))
           )}
@@ -463,6 +513,9 @@ export default function QuestDetailScreen() {
               ? <ActivityIndicator color="#fff" size="small" />
               : <Text style={styles.assignButtonText}>Assign to selected groups</Text>}
           </TouchableOpacity>
+
+          <Text style={styles.label}>Cover Photo:</Text>
+          <CoverPhotoPicker value={coverDraft} onChange={setCoverDraft} />
 
           <Text style={styles.label}>Quest Title:</Text>
           <TextInput style={styles.input} value={titleDraft} onChangeText={setTitleDraft} />
@@ -494,6 +547,20 @@ export default function QuestDetailScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.stepCardTitle}>{step.title}</Text>
               <Text style={styles.stepCardMeta}>{step.checklist_items.length} checklist items</Text>
+              <View style={styles.rewardChipRow}>
+                {step.is_final_step && (
+                  <View style={[styles.rewardChip, styles.finalChip]}><Text style={styles.finalChipText}>Final step</Text></View>
+                )}
+                {step.points > 0 && (
+                  <View style={[styles.rewardChip, styles.pointsChip]}><Text style={styles.pointsChipText}>+{step.points} pts</Text></View>
+                )}
+                {!!step.badge_name && (
+                  <View style={[styles.rewardChip, styles.badgeChip]}>
+                    <Ionicons name="ribbon" size={11} color="#7C2D12" />
+                    <Text style={styles.badgeChipText} numberOfLines={1}>{step.badge_name}</Text>
+                  </View>
+                )}
+              </View>
             </View>
             <TouchableOpacity onPress={() => openEditStep(step)} style={{ padding: 4 }}>
               <Ionicons name="create-outline" size={20} color={BROWN} />
@@ -508,10 +575,11 @@ export default function QuestDetailScreen() {
           <Text style={styles.addStepButtonText}>+ Add another step</Text>
         </TouchableOpacity>
       </ScrollView>
+      </KeyboardSafe>
 
       {/* ---- Group picker modal ---- */}
       <Modal visible={groupPickerVisible} transparent animationType="slide" onRequestClose={() => setGroupPickerVisible(false)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardSafe style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeaderRow}>
               <Text style={styles.modalTitle}>Select Groups</Text>
@@ -546,12 +614,12 @@ export default function QuestDetailScreen() {
               )}
             </ScrollView>
           </View>
-        </View>
+        </KeyboardSafe>
       </Modal>
 
       {/* ---- Classes picker modal ---- */}
       <Modal visible={classPickerVisible} transparent animationType="slide" onRequestClose={() => setClassPickerVisible(false)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardSafe style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeaderRow}>
               <Text style={styles.modalTitle}>Assigned Classes</Text>
@@ -579,12 +647,12 @@ export default function QuestDetailScreen() {
               })}
             </ScrollView>
           </View>
-        </View>
+        </KeyboardSafe>
       </Modal>
 
       {/* ---- Step edit/add modal ---- */}
       <Modal visible={stepModalVisible} transparent animationType="slide" onRequestClose={() => setStepModalVisible(false)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardSafe style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeaderRow}>
               <Text style={styles.modalTitle}>{editingStep ? 'Edit Step' : 'New Step'}</Text>
@@ -622,9 +690,36 @@ export default function QuestDetailScreen() {
                   <Ionicons name="add" size={20} color="#fff" />
                 </TouchableOpacity>
               </View>
+
+              <Text style={styles.label}>Rewards (optional):</Text>
+              <Text style={styles.rewardHint}>
+                Step points are given when the checklist is complete. The last step's points and any badge are given to every group member after you send feedback on the final submission. Students who already earned a reward keep it.
+              </Text>
+              <View style={styles.rewardsBox}>
+                <Text style={styles.rewardLabel}>Points for completing this step</Text>
+                <TextInput
+                  style={styles.input}
+                  value={modalPoints}
+                  onChangeText={setModalPoints}
+                  placeholder="0"
+                  keyboardType="number-pad"
+                />
+                <View style={styles.badgeToggleRow}>
+                  <Text style={styles.rewardLabel}>Award a badge</Text>
+                  <Switch value={modalBadgeOn} onValueChange={setModalBadgeOn} trackColor={{ false: '#EADEC9', true: GREEN }} />
+                </View>
+                {modalBadgeOn && (
+                  <TextInput
+                    style={styles.input}
+                    value={modalBadgeName}
+                    onChangeText={setModalBadgeName}
+                    placeholder="Badge name, e.g. Table Setting Pro"
+                  />
+                )}
+              </View>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardSafe>
       </Modal>
     </View>
   );
@@ -660,7 +755,9 @@ const styles = StyleSheet.create({
   dueDateHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   dueDateGroupName: { fontSize: 12, fontWeight: '700', color: BROWN },
   savedText: { fontSize: 11, fontWeight: '700', color: GREEN },
-  dueDateInputRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  dateFieldLabel: { fontSize: 11, fontWeight: '700', color: '#8A6A2A', marginBottom: 4 },
+  dateSaveButton: { backgroundColor: GREEN, borderRadius: 10, paddingVertical: 10, alignItems: 'center', marginTop: 10 },
+  dateSaveButtonText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   dueDateSaveButton: { backgroundColor: GREEN, borderRadius: 10, width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
 
   assignButton: { backgroundColor: GREEN, borderRadius: 12, paddingVertical: 11, alignItems: 'center', marginTop: 8, marginBottom: 4 },
@@ -681,6 +778,18 @@ const styles = StyleSheet.create({
   stepNumberText: { color: '#fff', fontWeight: '800' },
   stepCardTitle: { fontSize: 13, fontWeight: '700', color: ORANGE },
   stepCardMeta: { fontSize: 11, color: '#8A6A2A', marginTop: 2 },
+  rewardChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
+  rewardChip: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  finalChip: { backgroundColor: '#E5E7EB' },
+  finalChipText: { fontSize: 10, fontWeight: '800', color: '#374151' },
+  pointsChip: { backgroundColor: '#DCFCE7' },
+  pointsChipText: { fontSize: 10, fontWeight: '800', color: '#166534' },
+  badgeChip: { backgroundColor: '#FDE68A', maxWidth: 160 },
+  badgeChipText: { fontSize: 10, fontWeight: '800', color: '#7C2D12', flexShrink: 1 },
+  rewardHint: { fontSize: 11, color: '#8A6A2A', lineHeight: 16, marginBottom: 8 },
+  rewardsBox: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#EADEC9', padding: 12, gap: 8, marginBottom: 20 },
+  rewardLabel: { fontSize: 12, fontWeight: '700', color: BROWN },
+  badgeToggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
 
   addStepButton: { borderWidth: 1.5, borderColor: '#B8A671', borderStyle: 'dashed', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   addStepButtonText: { color: '#8A6A2A', fontWeight: '700' },

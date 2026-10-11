@@ -1,5 +1,5 @@
 // mobile/app/(student)/(tabs)/progress.tsx
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
   RefreshControl, StyleSheet, Alert,
@@ -7,14 +7,12 @@ import {
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getMyProfile } from '../../../src/api/accounts';
-import { getMyClasses } from '../../../src/api/classrooms';
 import { getMyProgress, getProgressDetail, toggleChecklistItem } from '../../../src/api/assignments';
-import { getUnreadNotifications } from '../../../src/api/notifications';
-import { FullUser } from '../../../src/types/accounts';
-import { ClassSummary } from '../../../src/types/classrooms';
-import { QuestProgressDetail } from '../../../src/types/assignments';
+import { QuestProgress, QuestProgressDetail } from '../../../src/types/assignments';
 import SubmitOutputCard from '../../../src/components/SubmitOutputCard';
+import ReviewStatusNote from '../../../src/components/ReviewStatusNote';
+import AppHeader from '../../../src/components/AppHeader';
+import QuestCover from '../../../src/components/QuestCover';
 
 const GOLD = '#F5B921';
 const CREAM = '#F5EDD8';
@@ -25,11 +23,13 @@ const ORANGE = '#EA580C';
 
 export default function StudentProgress() {
   const router = useRouter();
-  const [profile, setProfile] = useState<FullUser | null>(null);
-  const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [progress, setProgress] = useState<QuestProgressDetail | null>(null);
+  // Every quest assigned to this student, so they can switch between them
+  const [questList, setQuestList] = useState<QuestProgress[]>([]);
+  const [defaultId, setDefaultId] = useState<number | null>(null);
+  const selectedRef = useRef<number | null>(null);
+  const [isSwitching, setIsSwitching] = useState(false);
   const [hasAnyQuest, setHasAnyQuest] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [currentStepId, setCurrentStepId] = useState<number | null>(null);
   const [showComplete, setShowComplete] = useState(false);
   const [togglingId, setTogglingId] = useState<number | null>(null);
@@ -40,26 +40,26 @@ export default function StudentProgress() {
   const load = useCallback(async () => {
     setError('');
     try {
-      const [p, c, list, unread] = await Promise.all([
-        getMyProfile(),
-        getMyClasses(),
-        getMyProgress(),
-        getUnreadNotifications(),
-      ]);
-      setProfile(p);
-      setClasses(c);
-      setUnreadCount(unread.length);
+      const list = await getMyProgress();
       setHasAnyQuest(list.length > 0);
+      setQuestList(list);
 
-      // "Current quest" = the first one not finished yet (same rule as Home).
-      // If everything is finished, fall back to the most recent one so a leader
-      // who still needs to submit the output can do it from here.
-      const current =
+      // Default = the first quest not finished yet (same rule as Home). If everything
+      // is finished, fall back to the most recent one so a leader who still needs to
+      // submit the output can do it from here.
+      const fallback =
         list.find((x) => !x.completed_at && x.percent_complete < 100) ?? list[list.length - 1] ?? null;
+      setDefaultId(fallback ? fallback.id : null);
+
+      // Keep showing the quest the student picked, as long as it still exists
+      const picked = list.find((x) => x.id === selectedRef.current) ?? null;
+      const current = picked ?? fallback;
       if (!current) {
+        selectedRef.current = null;
         setProgress(null);
         return;
       }
+      selectedRef.current = current.id;
 
       const detail = await getProgressDetail(current.id);
       setProgress(detail);
@@ -85,6 +85,15 @@ export default function StudentProgress() {
     setIsRefreshing(true);
     await load();
     setIsRefreshing(false);
+  }
+
+  async function handleSelectQuest(id: number) {
+    if (id === selectedRef.current || isSwitching) return;
+    selectedRef.current = id;
+    setIsSwitching(true);
+    setCurrentStepId(null); // steps belong to the previous quest
+    await load();
+    setIsSwitching(false);
   }
 
   const steps = progress?.steps ?? [];
@@ -137,8 +146,6 @@ export default function StudentProgress() {
     }
   }
 
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-  const displayName = profile?.profile.first_name || profile?.username || '';
 
   const isCompleted = step?.status === 'completed';
   const isLocked = step?.status === 'locked';
@@ -149,32 +156,15 @@ export default function StudentProgress() {
   return (
     <View style={styles.screen}>
       {/* ---------------- Header + current quest card ---------------- */}
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={20} color={BROWN} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.welcomeSmall}>Welcome back,</Text>
-            <Text style={styles.welcomeName}>{displayName}!</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.dateText}>{today}</Text>
-            <Text style={styles.classText}>{classes.length > 0 ? classes[0].class_name : 'No class joined'}</Text>
-          </View>
-          <TouchableOpacity onPress={() => router.push('/(student)/notifications' as any)} style={{ marginLeft: 8 }}>
-            <Ionicons name="notifications" size={20} color={BROWN} />
-            {unreadCount > 0 && <View style={styles.bellDot} />}
-          </TouchableOpacity>
-        </View>
+      <AppHeader role="student">
 
         {progress && (
           <View style={styles.currentQuestCard}>
-            <View style={styles.imagePlaceholder}>
-              <Ionicons name="restaurant" size={26} color="#fff" />
-            </View>
+            <QuestCover url={progress.quest_cover_image_url} style={styles.imagePlaceholder} />
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.currentLabel}>Your current quest:</Text>
+              <Text style={styles.currentLabel}>
+                {progress.id === defaultId ? 'Your current quest:' : 'Viewing quest:'}
+              </Text>
               <Text style={styles.questTitle} numberOfLines={2}>{progress.quest_title}</Text>
               <Text style={styles.questMode}>
                 {progress.quest_mode === 'group' ? 'Group Quest' : 'Individual Quest'}
@@ -186,7 +176,8 @@ export default function StudentProgress() {
             </View>
           </View>
         )}
-      </View>
+      
+      </AppHeader>
 
       {isLoading ? (
         <View style={styles.centered}>
@@ -199,7 +190,47 @@ export default function StudentProgress() {
         >
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          {!progress ? (
+          {/* ---- Quest switcher: only when more than one quest is assigned ---- */}
+          {questList.length > 1 && (
+            <View style={styles.switcherWrap}>
+              <Text style={styles.switcherLabel}>Your quests ({questList.length})</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.switcherRow}>
+                {questList.map((q) => {
+                  const active = q.id === progress?.id;
+                  const done = !!q.completed_at || q.percent_complete >= 100;
+                  return (
+                    <TouchableOpacity
+                      key={q.id}
+                      style={[styles.questPill, active && styles.questPillActive]}
+                      onPress={() => handleSelectQuest(q.id)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={styles.questPillTop}>
+                        {done ? (
+                          <Ionicons name="checkmark-circle" size={14} color={active ? '#fff' : GREEN} />
+                        ) : (
+                          <Ionicons name="play-circle" size={14} color={active ? '#fff' : ORANGE} />
+                        )}
+                        <Text style={[styles.questPillTitle, active && styles.questPillTitleActive]} numberOfLines={1}>
+                          {q.quest_title}
+                        </Text>
+                      </View>
+                      <View style={[styles.pillTrack, active && styles.pillTrackActive]}>
+                        <View style={[styles.pillFill, { width: `${q.percent_complete}%` }, active && { backgroundColor: '#fff' }]} />
+                      </View>
+                      <Text style={[styles.questPillMeta, active && styles.questPillMetaActive]}>
+                        {done ? (q.review_status === 'waiting' ? 'Waiting for review' : q.review_status === 'reviewed' ? 'Reviewed' : 'Completed') : `${q.percent_complete}% done`}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
+          {isSwitching ? (
+            <ActivityIndicator size="large" color={BROWN} style={{ marginTop: 30 }} />
+          ) : !progress ? (
             <View style={styles.emptyCard}>
               <Ionicons name="trophy-outline" size={32} color="#B8A671" />
               <Text style={styles.emptyTitle}>
@@ -283,6 +314,7 @@ export default function StudentProgress() {
                 </TouchableOpacity>
               </View>
 
+              {step?.is_final_step && isCompleted && progress && <ReviewStatusNote status={progress.review_status} />}
               {showRewards && progress && (
                 <View style={styles.rewardsRow}>
                   <Text style={styles.rewardsLabel}>Rewards Earned:</Text>
@@ -329,6 +361,20 @@ const styles = StyleSheet.create({
   percentText: { color: '#fff', fontSize: 10, marginTop: 3, fontStyle: 'italic' },
 
   scrollContent: { padding: 20, paddingBottom: 60 },
+
+  switcherWrap: { marginBottom: 16 },
+  switcherLabel: { fontSize: 13, fontWeight: '800', color: BROWN, marginBottom: 8 },
+  switcherRow: { gap: 10, paddingRight: 8 },
+  questPill: { width: 160, backgroundColor: '#fff', borderRadius: 14, padding: 12, borderWidth: 2, borderColor: '#EADEC9' },
+  questPillActive: { backgroundColor: ORANGE, borderColor: ORANGE },
+  questPillTop: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  questPillTitle: { flex: 1, fontSize: 12, fontWeight: '800', color: BROWN },
+  questPillTitleActive: { color: '#fff' },
+  pillTrack: { height: 5, borderRadius: 3, backgroundColor: '#EADEC9', overflow: 'hidden' },
+  pillTrackActive: { backgroundColor: 'rgba(255,255,255,0.35)' },
+  pillFill: { height: 5, borderRadius: 3, backgroundColor: GREEN },
+  questPillMeta: { fontSize: 10, color: '#8A6A2A', marginTop: 5, fontWeight: '600' },
+  questPillMetaActive: { color: '#fff' },
   errorText: { color: '#B3261E', marginBottom: 12, fontSize: 13 },
 
   emptyCard: { backgroundColor: '#fff', borderRadius: 20, padding: 28, alignItems: 'center', gap: 8 },

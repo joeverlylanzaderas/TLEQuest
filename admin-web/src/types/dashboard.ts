@@ -26,3 +26,55 @@ export interface DashboardSummary {
   classes: ClassBreakdownEntry[];
   recent_activity: RecentActivityEvent[];
 }
+
+// ---- Calendar / daily activity ----
+export type DayEventType = ActivityEventType | 'feedback_given' | 'reward_earned';
+
+export interface DayEvent {
+  type: DayEventType;
+  student_full_name: string;
+  description: string;
+  timestamp: string;
+}
+
+export interface DayCounts {
+  started: number;
+  finished: number;
+  submitted: number;
+  reviewed: number; // teacher feedback given
+  rewarded: number; // points / badges granted
+  points: number;   // total points granted that day
+  total: number;    // number of events of all kinds
+}
+
+export interface MonthActivity {
+  month: string; // YYYY-MM
+  days: Record<string, DayCounts>; // keyed by YYYY-MM-DD, only days with activity
+}
+
+export interface HourBucket {
+  hour: number; // 0-23
+  started: number;
+  finished: number;
+  submitted: number;
+  reviewed: number;
+  rewarded: number;
+}
+
+export interface DayQuestBreakdown {
+  quest_title: string;
+  events: number;
+  started: number;
+  finished: number;
+  submitted: number;
+  reviewed: number;
+  rewarded: number;
+}
+
+export interface DayActivity {
+  date: string; // YYYY-MM-DD
+  counts: DayCounts;
+  hourly: HourBucket[];
+  per_quest: DayQuestBreakdown[];
+  events: DayEvent[];
+}

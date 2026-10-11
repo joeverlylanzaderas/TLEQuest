@@ -14,6 +14,11 @@ import { getMyClasses } from '../../src/api/classrooms';
 import { createReward, attachRewardToStep } from '../../src/api/rewards';
 import { TableSettingType } from '../../src/types/quests';
 import { ClassSummary } from '../../src/types/classrooms';
+import KeyboardSafe from '../../src/components/KeyboardSafe';
+import CoverPhotoPicker from '../../src/components/CoverPhotoPicker';
+import { useToast } from '../../src/components/Toast';
+import DatePickerField from '../../src/components/DatePickerField';
+import { startOfDay, startOfDayISO, endOfDayISO } from '../../src/utils/dates';
 
 const CREAM = '#F2E4C4';
 const BROWN = '#3A2B1A';
@@ -106,6 +111,7 @@ async function createStepRewards(stepId: number, step: DraftStep): Promise<strin
 
 export default function CreateQuestScreen() {
   const router = useRouter();
+  const toast = useToast();
   const { classId: classIdParam } = useLocalSearchParams<{ classId?: string }>();
 
   const [myClasses, setMyClasses] = useState<ClassSummary[]>([]);
@@ -140,8 +146,11 @@ export default function CreateQuestScreen() {
   // ---- Quest basics ----
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [coverUrl, setCoverUrl] = useState('');
   const [tableSettingType, setTableSettingType] = useState<TableSettingType>('table_setting');
-  const [dueDate, setDueDate] = useState('');
+  // Start = students can see the quest from this day (empty = right away). Due = last day to finish it.
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [dueDate, setDueDate] = useState<Date | null>(null);
   const [questMode, setQuestMode] = useState<'individual' | 'group'>('group');
 
   const [steps, setSteps] = useState<DraftStep[]>([]);
@@ -242,6 +251,39 @@ export default function CreateQuestScreen() {
     });
   }
 
+  // Assigns the quest to the groups of the selected classes. On failure the teacher can try
+  // again right away; resolves to true when the quest is assigned, false if they chose "Later".
+  async function assignWithRetry(questId: number): Promise<boolean> {
+    while (true) {
+      try {
+        await assignQuest({
+          quest: questId,
+          quest_mode: questMode,
+          start_date: startOfDayISO(startDate),
+          due_date: endOfDayISO(dueDate),
+        });
+        return true;
+      } catch (assignError: any) {
+        const reason = extractErrorMessage(
+          assignError,
+          'Could not assign it to the groups. Make sure the class has groups with members.'
+        );
+        const retry = await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            'Quest saved, but students cannot see it yet',
+            `${reason}\n\nStudents only see a quest once it is assigned to their group.`,
+            [
+              { text: 'Later', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Try again', onPress: () => resolve(true) },
+            ],
+            { cancelable: false }
+          );
+        });
+        if (!retry) return false;
+      }
+    }
+  }
+
   async function handlePublishQuest() {
     if (selectedClassIds.length === 0) {
       Alert.alert('No classes selected', 'Please select at least one class for this quest.');
@@ -255,6 +297,10 @@ export default function CreateQuestScreen() {
       Alert.alert('No steps yet', 'Add at least one step before publishing.');
       return;
     }
+    if (startDate && dueDate && startOfDay(dueDate) < startOfDay(startDate)) {
+      Alert.alert('Check the dates', 'The due date cannot be before the start date.');
+      return;
+    }
 
     setIsSaving(true);
     setError('');
@@ -266,6 +312,7 @@ export default function CreateQuestScreen() {
         table_setting_type: tableSettingType,
         order_index: 0,
         is_published: false,
+        cover_image_url: coverUrl,
       });
 
       const rewardWarnings: string[] = [];
@@ -293,34 +340,32 @@ export default function CreateQuestScreen() {
       await updateQuest(quest.id, { is_published: true });
 
       // assignQuest loops over ALL of this quest's classes on the backend,
-      // so one call covers every selected class.
-      let assignWarning = '';
-      try {
-        await assignQuest({
-          quest: quest.id,
-          quest_mode: questMode,
-          due_date: dueDate.trim() ? dueDate.trim() : null,
-        });
-      } catch (assignError: any) {
-        assignWarning = extractErrorMessage(
-          assignError,
-          'Could not assign to groups. You can assign it later once the class(es) have groups.'
-        );
-      }
+      // so one call covers every selected class. This is the step that makes the quest
+      // appear on the students' side, so if it fails the teacher must be told clearly.
+      const assignedOk = await assignWithRetry(quest.id);
 
       const notes: string[] = [];
       if (rewardWarnings.length > 0) {
         notes.push(`Some rewards could not be saved: ${rewardWarnings.join('; ')}.`);
       }
-      if (assignWarning) notes.push(assignWarning);
 
-      Alert.alert(
-        'Quest Published',
-        notes.length > 0
-          ? `The quest was created successfully. However: ${notes.join(' ')}`
-          : 'Quest published and assigned to the selected class(es).',
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      if (!assignedOk) {
+        // Already handled in assignWithRetry (the teacher chose "Later"); leave the screen.
+        if (notes.length > 0) Alert.alert('Note', notes.join(' '));
+        router.back();
+      } else if (notes.length > 0) {
+        // Partial problems need to be read, so keep a blocking dialog here
+        Alert.alert(
+          'Quest Published',
+          `The quest was created successfully. However: ${notes.join(' ')}`,
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      } else {
+        toast.success(startDate && startDate > new Date()
+          ? 'Quest published. Students will see it on the start date.'
+          : 'Quest published and visible to your students');
+        router.back();
+      }
     } catch (e: any) {
       setError(extractErrorMessage(e, 'Could not save the quest. Please try again.'));
     } finally {
@@ -345,7 +390,8 @@ export default function CreateQuestScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <KeyboardSafe>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <View style={styles.detailsCard}>
@@ -357,16 +403,26 @@ export default function CreateQuestScreen() {
             <Ionicons name="chevron-forward" size={16} color="#8A6A2A" />
           </TouchableOpacity>
 
+          <Text style={styles.label}>Cover Photo (optional):</Text>
+          <CoverPhotoPicker value={coverUrl} onChange={setCoverUrl} />
+
           <Text style={styles.label}>Quest Title:</Text>
           <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="e.g. One Course Meal Prep" />
 
-          <Text style={styles.label}>Due Date:</Text>
-          <TextInput
-            style={styles.input}
-            value={dueDate}
-            onChangeText={setDueDate}
-            placeholder="YYYY-MM-DD"
+          <Text style={styles.label}>Start Date:</Text>
+          <DatePickerField
+            value={startDate}
+            onChange={(d) => {
+              setStartDate(d);
+              // keep the due date from ending up before the start date
+              if (d && dueDate && startOfDay(dueDate) < startOfDay(d)) setDueDate(null);
+            }}
+            placeholder="Right away"
           />
+          <Text style={styles.helpText}>Students see the quest from this day. Leave empty to open it right away.</Text>
+
+          <Text style={[styles.label, { marginTop: 12 }]}>Due Date:</Text>
+          <DatePickerField value={dueDate} onChange={setDueDate} minDate={startDate} placeholder="No due date" />
 
           <Text style={styles.label}>Quest Mode:</Text>
           <View style={styles.pillRow}>
@@ -437,10 +493,11 @@ export default function CreateQuestScreen() {
           {isSaving ? <ActivityIndicator color="#fff" /> : <Text style={styles.publishButtonText}>Publish Quest</Text>}
         </TouchableOpacity>
       </ScrollView>
+      </KeyboardSafe>
 
       {/* ---- Multi-select class picker modal ---- */}
       <Modal visible={classPickerVisible} transparent animationType="slide" onRequestClose={() => setClassPickerVisible(false)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardSafe style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeaderRow}>
               <Text style={styles.modalTitle}>Select Class(es)</Text>
@@ -476,12 +533,12 @@ export default function CreateQuestScreen() {
               )}
             </ScrollView>
           </View>
-        </View>
+        </KeyboardSafe>
       </Modal>
 
       {/* ---- Step edit/add modal ---- */}
       <Modal visible={stepModalVisible} transparent animationType="slide" onRequestClose={() => setStepModalVisible(false)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardSafe style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeaderRow}>
               <Text style={styles.modalTitle}>Step Details</Text>
@@ -527,6 +584,9 @@ export default function CreateQuestScreen() {
               </View>
 
               <Text style={styles.label}>Rewards (optional):</Text>
+              <Text style={styles.rewardHint}>
+                Step points are given when the checklist is complete. The last step's points and any badge are given to every group member after you send feedback on the final submission.
+              </Text>
               <View style={styles.rewardsBox}>
                 <Text style={styles.rewardLabel}>Points for completing this step</Text>
                 <TextInput
@@ -556,7 +616,7 @@ export default function CreateQuestScreen() {
               </View>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardSafe>
       </Modal>
     </View>
   );
@@ -574,6 +634,7 @@ const styles = StyleSheet.create({
   detailsCard: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1.5, borderColor: ORANGE, padding: 16, marginBottom: 20 },
   cardTitle: { fontSize: 15, fontWeight: '800', color: BROWN, marginBottom: 10 },
   label: { fontSize: 11, fontWeight: '700', color: '#8A6A2A', letterSpacing: 0.3, marginBottom: 6, marginTop: 10 },
+  helpText: { fontSize: 11, color: '#8A6A2A', marginTop: 4 },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#EADEC9', borderRadius: 10, padding: 10, fontSize: 14, color: BROWN },
   multiline: { minHeight: 70, textAlignVertical: 'top' },
 
@@ -620,5 +681,6 @@ const styles = StyleSheet.create({
 
   rewardsBox: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#EADEC9', padding: 12, gap: 8, marginBottom: 20 },
   rewardLabel: { fontSize: 12, fontWeight: '700', color: BROWN },
+  rewardHint: { fontSize: 11, color: '#8A6A2A', lineHeight: 16, marginBottom: 8 },
   badgeToggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
 });

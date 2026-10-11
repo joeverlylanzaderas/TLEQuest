@@ -7,11 +7,11 @@ import {
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getMyProfile } from '../../../src/api/accounts';
 import { getMyClasses, getClassGroups } from '../../../src/api/classrooms';
 import { getSubmissions } from '../../../src/api/submissions';
 import { ClassSummary } from '../../../src/types/classrooms';
 import { Submission } from '../../../src/types/submissions';
+import AppHeader from '../../../src/components/AppHeader';
 
 const GOLD = '#F5B921';
 const CREAM = '#F5EDD8';
@@ -35,7 +35,6 @@ function formatDateTime(iso: string): string {
 
 export default function TeacherSubmissions() {
   const router = useRouter();
-  const [teacherName, setTeacherName] = useState('');
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [groups, setGroups] = useState<GroupInfo[]>([]);
@@ -51,8 +50,7 @@ export default function TeacherSubmissions() {
   const load = useCallback(async () => {
     setError('');
     try {
-      const [p, s, c] = await Promise.all([getMyProfile(), getSubmissions(), getMyClasses()]);
-      setTeacherName(p.profile.first_name || p.username);
+      const [s, c] = await Promise.all([getSubmissions(), getMyClasses()]);
       setSubmissions(s);
       setClasses(c);
 
@@ -118,7 +116,6 @@ export default function TeacherSubmissions() {
   const groupLabel = groupId !== null ? groupById.get(groupId)?.name ?? 'Group' : 'All groups';
   const statusLabel = status === 'pending' ? 'Needs review' : status === 'reviewed' ? 'Reviewed' : 'All status';
 
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   const options: { key: string; label: string; selected: boolean; onPick: () => void }[] =
     picker === 'class'
@@ -152,21 +149,7 @@ export default function TeacherSubmissions() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={20} color={BROWN} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.welcomeSmall}>Welcome back,</Text>
-            <Text style={styles.welcomeName}>{teacherName || '...'}!</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.dateText}>{today}</Text>
-            <Text style={styles.classText}>Teacher's Portal</Text>
-          </View>
-        </View>
-      </View>
+      <AppHeader role="teacher" />
 
       {isLoading ? (
         <View style={styles.centered}>

@@ -4,6 +4,7 @@ export interface QuestProgress {
   quest_assignment: number;
   quest_title: string;
   quest_mode: string;
+  quest_cover_image_url: string;
   table_setting_type: string;
   group: number;
   student: number;
@@ -16,6 +17,10 @@ export interface QuestProgress {
   started_at: string | null;
   completed_at: string | null;
   step_completions: unknown[];
+  review_status: 'none' | 'waiting' | 'reviewed';
+  teacher_feedback: string;
+  teacher_rating: number | null;
+  reviewed_at: string | null;
 }
 
 export interface QuestAssignment {
@@ -26,6 +31,7 @@ export interface QuestAssignment {
   group_name: string;
   quest_mode: string;
   leader_at_assignment: string | null;
+  start_date: string | null;
   due_date: string | null;
   created_at: string;
 }
@@ -56,4 +62,5 @@ export interface QuestProgressDetail extends QuestProgress {
   group_name: string | null;
   is_group_leader: boolean;
   steps: ProgressStep[];
+  group_progress: { total: number; finished: number; pending_names: string[] };
 }

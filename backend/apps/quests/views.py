@@ -7,6 +7,7 @@ from apps.core.permissions import IsTeacherOrAdmin
 from apps.core.mixins import ReadAfterWriteMixin
 from apps.classrooms.models import ClassEnrollment
 from .models import Quest, QuestStep, StepChecklist
+from .services import refresh_quest_steps
 from .serializers import (
     QuestSerializer, QuestCreateUpdateSerializer,
     QuestStepSerializer, QuestStepCreateUpdateSerializer,
@@ -45,7 +46,7 @@ class QuestListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIView):
         return QuestCreateUpdateSerializer if self.request.method == "POST" else QuestSerializer
 
     def get_queryset(self):
-        return _visible_quests_for(self.request.user).prefetch_related("steps__checklist_items")
+        return _visible_quests_for(self.request.user).prefetch_related("steps__checklist_items", "steps__step_rewards__reward")
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -74,7 +75,7 @@ class QuestDetailView(ReadAfterWriteMixin, generics.RetrieveUpdateDestroyAPIView
         return QuestCreateUpdateSerializer if self.request.method in ("PUT", "PATCH") else QuestSerializer
 
     def get_queryset(self):
-        return _visible_quests_for(self.request.user).prefetch_related("steps__checklist_items")
+        return _visible_quests_for(self.request.user).prefetch_related("steps__checklist_items", "steps__step_rewards__reward")
 
     def perform_update(self, serializer):
         quest = self.get_object()
@@ -107,12 +108,13 @@ class QuestStepListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIView):
         return generics.get_object_or_404(_visible_quests_for(self.request.user), pk=self.kwargs["quest_id"])
 
     def get_queryset(self):
-        return QuestStep.objects.filter(quest=self.get_quest()).prefetch_related("checklist_items")
+        return QuestStep.objects.filter(quest=self.get_quest()).prefetch_related("checklist_items", "step_rewards__reward")
 
     def perform_create(self, serializer):
         quest = self.get_quest()
         _assert_owns_quest(self.request.user, quest)
         serializer.save(quest=quest)
+        refresh_quest_steps(quest)
 
 
 class QuestStepDetailView(ReadAfterWriteMixin, generics.RetrieveUpdateDestroyAPIView):
@@ -128,11 +130,14 @@ class QuestStepDetailView(ReadAfterWriteMixin, generics.RetrieveUpdateDestroyAPI
 
     def perform_update(self, serializer):
         _assert_owns_quest(self.request.user, self.get_object().quest)
-        serializer.save()
+        step = serializer.save()
+        refresh_quest_steps(step.quest)
 
     def perform_destroy(self, instance):
         _assert_owns_quest(self.request.user, instance.quest)
+        quest = instance.quest
         instance.delete()
+        refresh_quest_steps(quest)
 
 
 class StepChecklistListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIView):
@@ -162,6 +167,10 @@ class StepChecklistListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIVie
 class StepChecklistDetailView(ReadAfterWriteMixin, generics.RetrieveUpdateDestroyAPIView):
     read_serializer_class = StepChecklistSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        # Without this, PATCH /quests/checklist/<id>/ crashed with a 500 (no serializer_class)
+        return StepChecklistCreateUpdateSerializer if self.request.method in ("PUT", "PATCH") else StepChecklistSerializer
 
     def get_queryset(self):
         visible_quest_ids = _visible_quests_for(self.request.user).values_list("id", flat=True)

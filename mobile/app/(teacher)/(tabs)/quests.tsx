@@ -4,14 +4,14 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getMyProfile } from '../../../src/api/accounts';
 import { getMyQuests } from '../../../src/api/quests';
 import { getMyClasses } from '../../../src/api/classrooms';
 import { getAssignmentsForQuest } from '../../../src/api/assignments';
 import { Quest } from '../../../src/types/quests';
 import { ClassSummary } from '../../../src/types/classrooms';
+import AppHeader from '../../../src/components/AppHeader';
+import QuestCover from '../../../src/components/QuestCover';
 
-const GOLD = '#F5B921';
 const CREAM = '#F5EDD8';
 const BROWN = '#5C2C16';
 const GREEN = '#22C55E';
@@ -26,7 +26,6 @@ interface QuestDates {
 
 export default function TeacherQuestLibrary() {
   const router = useRouter();
-  const [teacherName, setTeacherName] = useState('');
   const [quests, setQuests] = useState<Quest[]>([]);
   const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [questDates, setQuestDates] = useState<Record<number, QuestDates>>({});
@@ -40,12 +39,10 @@ export default function TeacherQuestLibrary() {
   async function loadAll() {
     setError('');
     try {
-      const [profile, allQuests, allClasses] = await Promise.all([
-        getMyProfile(),
+      const [allQuests, allClasses] = await Promise.all([
         getMyQuests(),
         getMyClasses(),
       ]);
-      setTeacherName(profile.profile.first_name || profile.username);
       setQuests(allQuests);
       setClasses(allClasses);
 
@@ -103,7 +100,6 @@ export default function TeacherQuestLibrary() {
     return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   }
 
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   // ---- Apply the class filter before rendering ----
   const visibleQuests = selectedClassId === null
@@ -112,22 +108,7 @@ export default function TeacherQuestLibrary() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={20} color={BROWN} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.welcomeSmall}>Welcome back,</Text>
-            <Text style={styles.welcomeName}>{teacherName || '...'}!</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.dateText}>{today}</Text>
-            <Text style={styles.classText}>Teacher's Portal</Text>
-          </View>
-          <Ionicons name="notifications" size={20} color={BROWN} style={{ marginLeft: 8 }} />
-        </View>
-      </View>
+      <AppHeader role="teacher" />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -195,6 +176,9 @@ export default function TeacherQuestLibrary() {
                 style={styles.questCard}
                 onPress={() => router.push(`/(teacher)/quest/${quest.id}` as any)}
               >
+                {quest.cover_image_url ? (
+                  <QuestCover url={quest.cover_image_url} style={styles.cover} />
+                ) : null}
                 <Text style={styles.questTitle}>{quest.title}</Text>
                 {quest.description ? <Text style={styles.questDescription}>{quest.description}</Text> : null}
 
@@ -228,14 +212,6 @@ export default function TeacherQuestLibrary() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: CREAM },
-  header: { backgroundColor: GOLD, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
-  headerRow: { flexDirection: 'row', alignItems: 'center' },
-  avatarCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  welcomeSmall: { fontSize: 12, color: BROWN, opacity: 0.8 },
-  welcomeName: { fontSize: 16, fontWeight: '800', color: BROWN },
-  dateText: { fontSize: 11, color: BROWN, fontWeight: '600' },
-  classText: { fontSize: 11, color: BROWN, fontWeight: '700', marginTop: 2 },
-
   scrollContent: { padding: 20, paddingBottom: 60 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
   pageTitle: { fontSize: 18, fontWeight: '800', color: BROWN },
@@ -253,6 +229,7 @@ const styles = StyleSheet.create({
   filterPillTextActive: { color: '#fff' },
 
   questCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12 },
+  cover: { width: '100%', aspectRatio: 16 / 7, borderRadius: 12, marginBottom: 12 },
   questTitle: { fontSize: 15, fontWeight: '800', color: '#ea580c', marginBottom: 4 },
   questDescription: { fontSize: 12, color: '#666', marginBottom: 10, lineHeight: 17 },
   classBadgeRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },

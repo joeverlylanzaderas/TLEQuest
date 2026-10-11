@@ -39,6 +39,7 @@ export async function getAssignmentsForQuest(questId: number): Promise<QuestAssi
 export async function assignQuest(payload: {
   quest: number;
   quest_mode: 'individual' | 'group';
+  start_date?: string | null; // students see the quest from this moment (null = right away)
   due_date?: string | null;
   group_ids?: number[]; // omit = every group in the quest's classes
 }): Promise<QuestAssignment[]> {
@@ -48,5 +49,14 @@ export async function assignQuest(payload: {
 
 export async function updateAssignmentDueDate(assignmentId: number, dueDate: string | null): Promise<QuestAssignment> {
   const { data } = await apiClient.patch<QuestAssignment>(`/assignments/assignments/${assignmentId}/`, { due_date: dueDate });
+  return data;
+}
+
+// Change the start and/or due date of one group's assignment (send null to clear one)
+export async function updateAssignmentDates(
+  assignmentId: number,
+  dates: { start_date?: string | null; due_date?: string | null }
+): Promise<QuestAssignment> {
+  const { data } = await apiClient.patch<QuestAssignment>(`/assignments/assignments/${assignmentId}/`, dates);
   return data;
 }

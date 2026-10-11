@@ -20,7 +20,15 @@ export interface StudentReward {
   reward: number;
   reward_detail: RewardDetail;
   quest_assignment: number;
+  points_awarded: number;
   earned_at: string;
+}
+
+// GET /rewards/student-rewards/summary/ : the one source for every points/badge total
+export interface RewardSummary {
+  total_points: number;
+  total_badges: number;
+  per_quest: { quest_assignment: number; quest_title: string; points: number; badges: number }[];
 }
 
 export interface RewardCreatePayload {

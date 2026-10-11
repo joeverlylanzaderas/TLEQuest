@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-export const BASE_URL = 'http://192.168.68.57:8000/api'; // LAN IP
+export const BASE_URL = 'http://10.205.14.184:8000/api'; // LAN IP
 
 
 // --- Bridge so this file (outside the component tree) can tell

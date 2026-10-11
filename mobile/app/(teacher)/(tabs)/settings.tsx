@@ -21,6 +21,7 @@ import { useAuth } from '../../../src/context/AuthContext';
 import { getMyProfile, updateMyProfile } from '../../../src/api/accounts';
 import { FullUser, ProfileUpdatePayload } from '../../../src/types/accounts';
 import { getMediaUrl } from '../../../src/utils/media';
+import { useToast } from '../../../src/components/Toast';
 
 // ============================================================================
 // COLOR PALETTE — same as login/student profile, so the app feels consistent.
@@ -49,6 +50,7 @@ const EMPTY_FIELDS: EditableFields = {
 };
 
 export default function TeacherSettings() {
+  const toast = useToast();
   const { signOut } = useAuth();
   const router = useRouter();
 
@@ -158,12 +160,13 @@ export default function TeacherSettings() {
       setProfile(updated);
       setPendingImage(null);
       setIsEditing(false);
+      toast.success('Profile saved');
     } catch (e: any) {
       const message =
         e?.response?.data?.email?.[0] ||
         e?.response?.data?.detail ||
         'Could not save changes. Please check your info and try again.';
-      Alert.alert('Save failed', message);
+      toast.error(message);
     } finally {
       setIsSaving(false);
     }

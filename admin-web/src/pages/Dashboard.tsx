@@ -6,9 +6,11 @@ import {
   CalendarDays, Clock3, Search, FileDown, Flag, Trophy, Upload, Menu, X, Sliders,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { getDashboardSummary } from '../api/dashboard';
+import { getDashboardSummary, getMonthActivity, getDayActivity } from '../api/dashboard';
 import { getAdminReports } from '../api/reports';
-import type { DashboardSummary, RecentActivityEvent } from '../types/dashboard';
+import type { DashboardSummary, RecentActivityEvent, DayActivity, DayCounts } from '../types/dashboard';
+import ActivityCalendar, { toKey } from '../components/ActivityCalendar';
+import DayInsights from '../components/DayInsights';
 import type { AdminReports } from '../types/reports';
 import bannerImage from '../assets/admin-header.png';
 
@@ -64,11 +66,45 @@ export default function Dashboard() {
   const [search, setSearch] = useState('');
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
 
+  // ---- calendar + day insights ----
+  const [calClass, setCalClass] = useState<number | null>(null);
+  const [calMonth, setCalMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [selectedDay, setSelectedDay] = useState<string | null>(() => toKey(new Date()));
+  const [monthDays, setMonthDays] = useState<Record<string, DayCounts>>({});
+  const [monthLoading, setMonthLoading] = useState(false);
+  const [dayData, setDayData] = useState<DayActivity | null>(null);
+  const [dayLoading, setDayLoading] = useState(false);
+  const [dayError, setDayError] = useState('');
+
   useEffect(() => {
     loadDashboard();
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const monthKey = toKey(calMonth).slice(0, 7);
+  useEffect(() => {
+    let cancelled = false;
+    setMonthLoading(true);
+    getMonthActivity(monthKey, calClass)
+      .then((r) => { if (!cancelled) setMonthDays(r.days); })
+      .catch(() => { if (!cancelled) setMonthDays({}); })
+      .finally(() => { if (!cancelled) setMonthLoading(false); });
+    return () => { cancelled = true; };
+  }, [monthKey, calClass]);
+
+  const [dayReload, setDayReload] = useState(0);
+  useEffect(() => {
+    if (!selectedDay) { setDayData(null); return; }
+    let cancelled = false;
+    setDayLoading(true);
+    setDayError('');
+    getDayActivity(selectedDay, calClass)
+      .then((r) => { if (!cancelled) setDayData(r); })
+      .catch(() => { if (!cancelled) setDayError('Could not load this day. Please try again.'); })
+      .finally(() => { if (!cancelled) setDayLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedDay, dayReload, calClass]);
 
   async function loadDashboard() {
     setIsLoading(true);
@@ -159,17 +195,6 @@ export default function Dashboard() {
   const getDigitalClock = (date: Date) =>
     date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 
-  const getCalendarDays = () => {
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const days: (number | null)[] = [];
-    for (let i = 0; i < firstDay; i++) days.push(null);
-    for (let d = 1; d <= daysInMonth; d++) days.push(d);
-    return days;
-  };
-
   return (
     <div className="layout">
       <style>{`
@@ -221,7 +246,7 @@ export default function Dashboard() {
         .stat-badge { display: inline-block; background: rgba(36,169,86,0.1); color: #24A956; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; }
         .stat-subtext { font-size: 12px; color: #D6BB83; margin-left: 6px; }
 
-        .insights-section { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+        .insights-section { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; }
         .legend { display: flex; gap: 10px; font-size: 11px; font-weight: 600; flex-wrap: wrap; }
         .qf-chart { height: 200px; display: flex; align-items: flex-end; gap: 14px; padding-top: 12px; border-top: 1px dashed #F3EFD4; margin-top: 4px; overflow-x: auto; }
         .qf-col { flex: 1; min-width: 56px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
@@ -235,11 +260,39 @@ export default function Dashboard() {
         .progress-track { height: 8px; background: #FCECD6; border-radius: 4px; margin-top: 6px; overflow: hidden; }
         .progress-fill { height: 100%; border-radius: 4px; }
 
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; text-align: center; }
-        .cal-head { font-size: 11px; font-weight: 700; color: #C37800; padding-bottom: 6px; }
-        .cal-day { padding: 6px 0; font-size: 12px; font-weight: 600; border-radius: 8px; color: #804022; background: #F8EFE6; }
-        .cal-day.empty { background: transparent; }
-        .cal-day.today { background: #FDC200; color: #804022; font-weight: 800; box-shadow: 0 2px 6px rgba(253,194,0,0.4); }
+        .day-section { display: grid; grid-template-columns: 2fr minmax(300px, 1fr); gap: 16px; margin-bottom: 24px; align-items: start; }
+        .ac-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .ac-title { font-weight: 800; font-size: 14px; color: #804022; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .ac-loading { color: #D6BB83; font-weight: 600; font-size: 11px; }
+        .ac-nav-btn { background: #F8EFE6; border: 1px solid #D6BB83; color: #804022; border-radius: 8px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .ac-nav-btn:hover { background: #FCECD6; }
+        .ac-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; text-align: center; }
+        .ac-head { font-size: 11px; font-weight: 700; color: #C37800; padding-bottom: 4px; }
+        .ac-cell { aspect-ratio: 1 / 1; min-height: 34px; border: 2px solid transparent; border-radius: 10px; font-size: 13px; font-weight: 700; color: #804022; background: #F8EFE6; cursor: pointer; font-family: inherit; padding: 0; transition: transform .1s, box-shadow .1s; }
+        .ac-cell:hover:not(.ac-empty) { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(128,64,34,0.15); }
+        .ac-empty { background: transparent; cursor: default; }
+        .ac-l0 { background: #F8EFE6; }
+        .ac-l1 { background: #FDF0C4; }
+        .ac-l2 { background: #FBE08A; }
+        .ac-l3 { background: #F8CC4A; }
+        .ac-l4 { background: #E9A91A; color: #fff; }
+        .ac-today { border-color: #804022; }
+        .ac-selected { background: #804022 !important; color: #FDC200; border-color: #804022; box-shadow: 0 4px 10px rgba(128,64,34,0.3); }
+        .ac-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; gap: 8px; flex-wrap: wrap; }
+        .ac-scale { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #C37800; font-weight: 600; }
+        .ac-swatch { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+        .ac-today-btn { background: none; border: none; color: #C37800; font-weight: 700; font-size: 12px; cursor: pointer; text-decoration: underline; padding: 0; }
+
+        .di-card { min-height: 200px; }
+        .di-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #D6BB83; font-style: italic; font-size: 13px; padding: 36px 12px; }
+        .di-stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+        .di-stat { display: flex; align-items: center; gap: 6px; background: #F8EFE6; border-radius: 10px; padding: 8px 12px; font-size: 13px; color: #804022; }
+        .di-stat b { font-size: 18px; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .di-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .di-section-title { font-size: 12px; font-weight: 800; color: #C37800; text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 8px; }
+        .di-quest { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #F3EFD4; }
+        .di-quest:last-child { border-bottom: none; }
+        .di-events { max-height: 280px; overflow-y: auto; padding-right: 2px; }
 
         .bottom-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; }
         .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -259,10 +312,9 @@ export default function Dashboard() {
 
         @media (max-width: 1200px) {
           .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-          .insights-section { grid-template-columns: 1fr 1fr; }
-          .insights-section .card-quest-flow { grid-column: 1 / -1; }
+          .insights-section { grid-template-columns: 1fr; }
         }
-        @media (max-width: 992px) { .bottom-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 992px) { .bottom-grid { grid-template-columns: 1fr; } .day-section { grid-template-columns: 1fr; } .day-section > :last-child { order: -1; } }
         @media (max-width: 768px) {
           .layout { flex-direction: column; height: auto; min-height: 100vh; overflow-y: auto; }
           .mobile-header { display: flex; }
@@ -498,26 +550,53 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="card">
-                  <div className="card-header">
-                    <h2 className="card-title">Calendar</h2>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#C37800' }}>
-                      {now.toLocaleString('default', { month: 'short' })} {now.getFullYear()}
-                    </span>
-                  </div>
-                  <div className="calendar-grid">
-                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
-                      <div key={idx} className="cal-head">{day}</div>
-                    ))}
-                    {getCalendarDays().map((day, idx) => (
-                      <div key={idx} className={`cal-day ${day === now.getDate() ? 'today' : ''} ${!day ? 'empty' : ''}`}>
-                        {day}
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
             )}
+
+            {/* DAY INSIGHTS + CALENDAR */}
+            <div className="day-section">
+              {selectedDay ? (
+                <DayInsights
+                  dateKey={selectedDay}
+                  data={dayData}
+                  loading={dayLoading}
+                  error={dayError}
+                  onRetry={() => setDayReload((n) => n + 1)}
+                />
+              ) : (
+                <div className="card di-card">
+                  <div className="di-empty">
+                    <CalendarDays size={28} color="#D6BB83" />
+                    <p style={{ margin: '8px 0 0' }}>Select a date on the calendar to see its activity.</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="card">
+                <div className="card-header">
+                  <h2 className="card-title">Calendar</h2>
+                  <select
+                    className="filter-select"
+                    value={calClass ?? ''}
+                    onChange={(e) => setCalClass(e.target.value ? Number(e.target.value) : null)}
+                    aria-label="Filter calendar by class"
+                  >
+                    <option value="">All classes</option>
+                    {summary.classes.map((c) => (
+                      <option key={c.id} value={c.id}>{c.class_name}{c.section ? ` – ${c.section}` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+                <ActivityCalendar
+                  month={calMonth}
+                  onMonthChange={setCalMonth}
+                  selected={selectedDay}
+                  onSelect={setSelectedDay}
+                  days={monthDays}
+                  loading={monthLoading}
+                />
+              </div>
+            </div>
 
             {/* BOTTOM */}
             <div className="bottom-grid">

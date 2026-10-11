@@ -1,16 +1,16 @@
 // mobile/app/(student)/(tabs)/_layout.tsx
+import { View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTabScreenOptions, TAB_BG } from '../../../src/components/useTabScreenOptions';
 
 export default function StudentTabsLayout() {
+  const screenOptions = useTabScreenOptions();
   return (
+    <View style={{ flex: 1, backgroundColor: TAB_BG }}>
     <Tabs
       backBehavior="history"
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: '#ea580c',
-        tabBarInactiveTintColor: '#999',
-      }}
+      screenOptions={screenOptions}
     >
       <Tabs.Screen
         name="quests"
@@ -58,5 +58,6 @@ export default function StudentTabsLayout() {
         }}
       />
     </Tabs>
+    </View>
   );
 }

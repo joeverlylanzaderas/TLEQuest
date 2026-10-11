@@ -21,6 +21,8 @@ import { getMediaUrl } from '../../src/utils/media';
 
 import { getMyClasses, createClass, updateClass, getClassEnrollments } from '../../src/api/classrooms';
 import { ClassSummary, ClassEnrollment, ClassCreatePayload, ClassUpdatePayload } from '../../src/types/classrooms';
+import KeyboardSafe from '../../src/components/KeyboardSafe';
+import { useToast } from '../../src/components/Toast';
 
 const CREAM = '#F2E4C4';
 const CARD_BG = '#F9C544';
@@ -29,6 +31,7 @@ const GREEN = '#2FA85B';
 
 export default function ManageClasses() {
   const router = useRouter();
+  const toast = useToast();
 
   const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -119,6 +122,7 @@ export default function ManageClasses() {
         if (selectedClass?.id === updated.id) {
           setSelectedClass(updated);
         }
+        toast.success('Class updated');
       } else {
         // ---- Create mode ----
         const payload: ClassCreatePayload = {
@@ -129,6 +133,7 @@ export default function ManageClasses() {
         };
         const created = await createClass(payload);
         setClasses((prev) => [created, ...prev]);
+        toast.success('Class created');
       }
       resetForm();
       setShowFormModal(false);
@@ -138,7 +143,7 @@ export default function ManageClasses() {
         e?.response?.data?.class_name?.[0] ||
         e?.response?.data?.detail ||
         `Could not ${editingClass ? 'update' : 'create'} class. Please try again.`;
-      Alert.alert(editingClass ? 'Update failed' : 'Create failed', message);
+      toast.error(message);
     } finally {
       setIsSubmittingForm(false);
     }
@@ -288,7 +293,7 @@ export default function ManageClasses() {
 
       {/* ---------------- Create / Edit class modal ---------------- */}
       <Modal visible={showFormModal} transparent animationType="fade" onRequestClose={() => setShowFormModal(false)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardSafe style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>
               {editingClass ? 'Edit Class Details' : 'Create A New Class'}
@@ -347,7 +352,7 @@ export default function ManageClasses() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardSafe>
       </Modal>
     </SafeAreaView>
   );

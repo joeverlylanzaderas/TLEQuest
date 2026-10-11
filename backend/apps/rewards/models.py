@@ -36,6 +36,11 @@ class QuestStepReward(TimestampedModel):
     def effective_points(self):
         return self.points_override if self.points_override is not None else self.reward.points_value
 
+    @property
+    def awarded_points(self):
+        """What a student actually gets for this link: points for a points reward, 0 for a badge."""
+        return self.effective_points if self.reward.reward_type == Reward.RewardType.POINTS else 0
+
     def __str__(self):
         return f"{self.quest_step} → {self.reward.reward_name} ({self.effective_points} pts)"
 
@@ -53,6 +58,11 @@ class StudentReward(TimestampedModel):
     quest_step_reward = models.ForeignKey(
         QuestStepReward, on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
     )
+    # Points this row is worth, frozen when it was granted (the step's override if it
+    # has one, otherwise the reward's value; always 0 for badges). Every total in the
+    # app (Home, Profile, leaderboard, reports) is the SUM of this column, so they
+    # can never disagree with each other.
+    points_awarded = models.PositiveIntegerField(default=0)
     earned_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
