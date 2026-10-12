@@ -1,97 +1,142 @@
 // mobile/app/(auth)/login.tsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
+  Animated,
+  Easing,
+  Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Image,
-  Animated,
-  Easing,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
-import { router } from 'expo-router/build/exports';
+
+// ============================================================================
+// ASSETS
+// ============================================================================
+const LOGO = require('../../assets/images/tlequest-logo3.png');
+const TABLE_ART = require('../../assets/images/login-table-art.png');
+
+const logoSrc = Image.resolveAssetSource(LOGO);
+const artSrc = Image.resolveAssetSource(TABLE_ART);
+const LOGO_RATIO = logoSrc?.width && logoSrc?.height ? logoSrc.width / logoSrc.height : 1.26;
+const ART_RATIO = artSrc?.width && artSrc?.height ? artSrc.width / artSrc.height : 1.6;
+
+// ============================================================================
+// COLORS
+// ============================================================================
+const BG = '#faf6e8';           // off-white screen background
+const INK = '#14161A';          // labels and body text
+const FIELD_BG = '#C8BFBD';     // grey-mauve pill
+const FIELD_PLACEHOLDER = '#7A706E';
+const FOCUS_NAVY = '#1A1160';   // focused field border
+const BUTTON_BG = '#18303d';    // dark slate button
+const BUTTON_TEXT = '#F2B84B';  // yellow from the logo
+const LINK_ORANGE = '#F59A4B';
+const ERROR_RED = '#B3261E';
+
+const MAX_CONTENT_WIDTH = 480;
+const MAX_FONT_SCALE = 1.3;
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
-  const insets = useSafeAreaInsets(); // phone's bottom navigation bar / gesture area
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
-  // ---- Entrance animations (staggered) ----
+  const scrollRef = useRef<ScrollView>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const isMounted = useRef(true);
+
+  // ---- Responsive sizes ----
+  const contentWidth = Math.min(width, MAX_CONTENT_WIDTH);
+
+  // Enlarged logo sizing logic
+  const logoWidth = Math.round(
+    Math.max(180, Math.min(contentWidth * 0.82, height * 0.28 * LOGO_RATIO, 360))
+  );
+  const logoHeight = Math.round(logoWidth / LOGO_RATIO);
+
+  // --- ZOOMED ART ADJUSTMENTS ---
+  // Increased height from 0.32 to 0.45 to zoom/enlarge the graphic
+  const artHeight = Math.round(Math.min(width / ART_RATIO, height * 0.45));
+  const showArt = height >= 560;
+  const artVisible = showArt && !keyboardVisible;
+
+  // ---- Animations ----
   const logoAnim = useRef(new Animated.Value(0)).current;
   const fieldsAnim = useRef(new Animated.Value(0)).current;
-  const cardAnim = useRef(new Animated.Value(0)).current;
-
-  // ---- Input focus animations ----
+  const buttonAnim = useRef(new Animated.Value(0)).current;
+  const artAnim = useRef(new Animated.Value(0)).current;
   const userFocusAnim = useRef(new Animated.Value(0)).current;
   const passFocusAnim = useRef(new Animated.Value(0)).current;
-
-  // ---- Button press ----
   const buttonScale = useRef(new Animated.Value(1)).current;
-
-  // ---- Error shake ----
   const errorShake = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.stagger(140, [
-      Animated.timing(logoAnim, {
-        toValue: 1,
-        duration: 550,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(fieldsAnim, {
-        toValue: 1,
-        duration: 550,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(cardAnim, {
-        toValue: 1,
-        duration: 600,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
+    isMounted.current = true;
+    const intro = Animated.parallel([
+      Animated.stagger(140, [
+        Animated.timing(logoAnim, { toValue: 1, duration: 550, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(fieldsAnim, { toValue: 1, duration: 550, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(buttonAnim, { toValue: 1, duration: 550, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      ]),
+      Animated.timing(artAnim, { toValue: 1, duration: 900, delay: 200, useNativeDriver: true }),
+    ]);
+    intro.start();
+    return () => {
+      isMounted.current = false;
+      intro.stop();
+    };
+  }, [logoAnim, fieldsAnim, buttonAnim, artAnim]);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, () => {
+      setKeyboardVisible(true);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
   }, []);
 
-  function animateFocus(anim: Animated.Value, toValue: number) {
+  const animateFocus = (anim: Animated.Value, toValue: number) => {
     Animated.timing(anim, {
       toValue,
       duration: 180,
       easing: Easing.out(Easing.quad),
       useNativeDriver: false,
     }).start();
-  }
+  };
 
-  function handlePressIn() {
-    Animated.spring(buttonScale, {
-      toValue: 0.96,
-      useNativeDriver: true,
-    }).start();
-  }
+  const handlePressIn = () =>
+    Animated.spring(buttonScale, { toValue: 0.96, useNativeDriver: true }).start();
 
-  function handlePressOut() {
-    Animated.spring(buttonScale, {
-      toValue: 1,
-      friction: 3,
-      tension: 80,
-      useNativeDriver: true,
-    }).start();
-  }
+  const handlePressOut = () =>
+    Animated.spring(buttonScale, { toValue: 1, friction: 3, tension: 80, useNativeDriver: true }).start();
 
-  function triggerErrorShake() {
+  const triggerErrorShake = () => {
     errorShake.setValue(0);
     Animated.sequence([
       Animated.timing(errorShake, { toValue: 1, duration: 60, useNativeDriver: true }),
@@ -99,375 +144,364 @@ export default function LoginScreen() {
       Animated.timing(errorShake, { toValue: 1, duration: 60, useNativeDriver: true }),
       Animated.timing(errorShake, { toValue: 0, duration: 60, useNativeDriver: true }),
     ]).start();
-  }
+  };
 
-  async function handleLogin() {
-    if (!username || !password) {
+  const handleLogin = useCallback(async () => {
+    if (isSubmitting) return;
+
+    const cleanUsername = username.trim();
+    if (!cleanUsername || !password) {
       setError('Please enter both username and password.');
       triggerErrorShake();
       return;
     }
+
+    Keyboard.dismiss();
     setError('');
     setIsSubmitting(true);
     try {
-      await signIn({ username, password });
+      await signIn({ username: cleanUsername, password });
     } catch (e: any) {
-      const message =
-        e?.response?.data?.detail || 'Login failed. Check your credentials.';
-      setError(message);
-      triggerErrorShake();
+      const detail = e?.response?.data?.detail;
+      let message = 'Login failed. Check your credentials.';
+      if (typeof detail === 'string' && detail) {
+        message = detail;
+      } else if (!e?.response) {
+        message = 'Cannot reach the server. Check your internet connection and try again.';
+      }
+      if (isMounted.current) {
+        setError(message);
+        triggerErrorShake();
+      }
     } finally {
-      setIsSubmitting(false);
+      if (isMounted.current) setIsSubmitting(false);
     }
-  }
+  }, [username, password, isSubmitting, signIn]);
 
   const logoStyle = {
     opacity: logoAnim,
     transform: [
-      {
-        translateY: logoAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [24, 0],
-        }),
-      },
-      {
-        scale: logoAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0.9, 1],
-        }),
-      },
+      { translateY: logoAnim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
+      { scale: logoAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) },
     ],
   };
-
   const fieldsStyle = {
     opacity: fieldsAnim,
-    transform: [
-      {
-        translateY: fieldsAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [20, 0],
-        }),
-      },
-    ],
+    transform: [{ translateY: fieldsAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
   };
-
-  const cardStyle = {
-    opacity: cardAnim,
-    transform: [
-      {
-        translateY: cardAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [40, 0],
-        }),
-      },
-    ],
+  const buttonAreaStyle = {
+    opacity: buttonAnim,
+    transform: [{ translateY: buttonAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
   };
 
   const userBorderColor = userFocusAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['transparent', '#5C3A2E'],
+    outputRange: ['rgba(26,17,96,0)', 'rgba(26,17,96,1)'],
   });
   const passBorderColor = passFocusAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['transparent', '#5C3A2E'],
+    outputRange: ['rgba(26,17,96,0)', 'rgba(26,17,96,1)'],
   });
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top']}>
-      {/* NOTE: topArea is gone. The logo now lives directly inside the
-          scrollable content, right above the fields, and is spaced with
-          plain marginTop/marginBottom instead of a flex:1 centering box.
-          This means the logo sits close to the top (just past the safe
-          area), not vertically centered in leftover space anymore. */}
+    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+      <StatusBar style="dark" />
+
+      {/* --- ZOOMED ART ADJUSTMENTS --- */}
+      {artVisible ? (
+        <Animated.View pointerEvents="none" style={[styles.artWrap, { opacity: artAnim }]}>
+          <Image
+            source={TABLE_ART}
+            style={{ width, height: artHeight }}
+            // Changed to cover to maintain aspect ratio while zooming/filling width
+            resizeMode="cover"
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+        </Animated.View>
+      ) : null}
+
       <KeyboardAvoidingView
         style={styles.flexFill}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          ref={scrollRef}
+          contentContainerStyle={[
+            styles.scrollContent,
+            {
+              // Adjusted padding bottom to account for zoomed art
+              paddingBottom: Math.max(insets.bottom, 16) + (artVisible ? artHeight * 0.4 : 16),
+            },
+          ]}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
           bounces={false}
+          overScrollMode="never"
         >
-          {/* Logo — just an image with its own margins now */}
-          <Animated.View style={logoStyle}>
-            <Image
-              source={require('../../assets/tlequest-logo.png')}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
-          </Animated.View>
-
-          <Animated.View style={[styles.fieldsArea, fieldsStyle]}>
-            <Text style={styles.label}>USERNAME</Text>
-            <Animated.View
-              style={[
-                styles.inputRow,
-                { borderColor: userBorderColor, borderWidth: 2 },
-              ]}
-            >
-              <Ionicons name="person" size={18} color="#3A2B1A" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Username"
-                placeholderTextColor="#8A6A2A"
-                autoCapitalize="none"
-                value={username}
-                onChangeText={setUsername}
-                onFocus={() => animateFocus(userFocusAnim, 1)}
-                onBlur={() => animateFocus(userFocusAnim, 0)}
+          <View style={[styles.column, { maxWidth: MAX_CONTENT_WIDTH }]}>
+            {/* --- LOGO ADJUSTMENTS --- */}
+            {/* Logo is lower due to increased marginTop below and higher paddingTop in scrollContent */}
+            <Animated.View style={[styles.logoWrap, logoStyle]}>
+              <Image
+                source={LOGO}
+                style={{ width: logoWidth, height: logoHeight }}
+                resizeMode="contain"
+                accessible
+                accessibilityLabel="TLEQuest logo"
               />
             </Animated.View>
 
-            <Text style={styles.label}>PASSWORD</Text>
-            <Animated.View
-              style={[
-                styles.inputRow,
-                { borderColor: passBorderColor, borderWidth: 2 },
-              ]}
-            >
-              <Ionicons name="lock-closed" size={18} color="#3A2B1A" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor="#8A6A2A"
-                secureTextEntry={!showPassword}
-                value={password}
-                onChangeText={setPassword}
-                onFocus={() => animateFocus(passFocusAnim, 1)}
-                onBlur={() => animateFocus(passFocusAnim, 0)}
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword((s) => !s)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-off' : 'eye'}
-                  size={20}
-                  color="#3A2B1A"
+            {/* FIELDS */}
+            <Animated.View style={[styles.fieldsArea, fieldsStyle]}>
+              <Text style={styles.label} maxFontSizeMultiplier={MAX_FONT_SCALE}>Username</Text>
+              <Animated.View style={[styles.inputRow, { borderColor: userBorderColor }]}>
+                <Ionicons name="person" size={20} color={INK} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your username"
+                  placeholderTextColor={FIELD_PLACEHOLDER}
+                  selectionColor={FOCUS_NAVY}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="username"
+                  textContentType="username"
+                  importantForAutofill="yes"
+                  returnKeyType="next"
+                  blurOnSubmit={false}
+                  editable={!isSubmitting}
+                  value={username}
+                  onChangeText={setUsername}
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                  onFocus={() => animateFocus(userFocusAnim, 1)}
+                  onBlur={() => animateFocus(userFocusAnim, 0)}
+                  maxFontSizeMultiplier={MAX_FONT_SCALE}
+                  accessibilityLabel="Username"
                 />
-              </TouchableOpacity>
-            </Animated.View>
+              </Animated.View>
 
-            {error ? (
-              <Animated.Text
-                style={[
-                  styles.error,
-                  {
-                    transform: [
-                      {
-                        translateX: errorShake.interpolate({
-                          inputRange: [-1, 1],
-                          outputRange: [-8, 8],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              >
-                {error}
-              </Animated.Text>
-            ) : null}
-          </Animated.View>
+              <Text style={[styles.label, styles.labelSpaced]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                Password
+              </Text>
+              <Animated.View style={[styles.inputRow, { borderColor: passBorderColor }]}>
+                <Ionicons name="key" size={20} color={INK} style={styles.inputIcon} />
+                <TextInput
+                  ref={passwordRef}
+                  style={styles.input}
+                  placeholder="Enter your password"
+                  placeholderTextColor={FIELD_PLACEHOLDER}
+                  selectionColor={FOCUS_NAVY}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="password"
+                  textContentType="password"
+                  importantForAutofill="yes"
+                  returnKeyType="done"
+                  editable={!isSubmitting}
+                  value={password}
+                  onChangeText={setPassword}
+                  onSubmitEditing={handleLogin}
+                  onFocus={() => animateFocus(passFocusAnim, 1)}
+                  onBlur={() => animateFocus(passFocusAnim, 0)}
+                  maxFontSizeMultiplier={MAX_FONT_SCALE}
+                  accessibilityLabel="Password"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword((s) => !s)}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={22} color={INK} />
+                </TouchableOpacity>
+              </Animated.View>
 
-          {/* Card — sized to its content, not stretched to fill the screen */}
-          <Animated.View style={[styles.card, cardStyle, { height: 260 + insets.bottom, paddingBottom: 64 + insets.bottom }]}>
-            <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-              <TouchableOpacity
-                style={styles.button}
-                onPress={handleLogin}
-                onPressIn={handlePressIn}
-                onPressOut={handlePressOut}
-                disabled={isSubmitting}
-                activeOpacity={0.9}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>Login</Text>
-                )}
-              </TouchableOpacity>
-            </Animated.View>
+              {error ? (
+                <Animated.Text
+                  accessibilityLiveRegion="polite"
+                  maxFontSizeMultiplier={MAX_FONT_SCALE}
+                  style={[
+                    styles.error,
+                    {
+                      transform: [
+                        {
+                          translateX: errorShake.interpolate({
+                            inputRange: [-1, 1],
+                            outputRange: [-8, 8],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  {error}
+                </Animated.Text>
+              ) : null}
+
               <TouchableOpacity
                 onPress={() => router.push('/(auth)/forgot-password')}
                 style={styles.forgotWrapper}
                 activeOpacity={0.7}
+                disabled={isSubmitting}
+                accessibilityRole="link"
+                accessibilityLabel="Forgot password? Tap here"
               >
-                <Text style={styles.forgotText}>
-                  Forgot Password?{' '}
-                  <Text style={styles.forgotLink}>Click Here</Text>
+                <Text style={styles.forgotText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                  Forgot Password? <Text style={styles.forgotLink}>Click Here</Text>
                 </Text>
               </TouchableOpacity>
-          </Animated.View>
+            </Animated.View>
+
+            <View style={styles.spacer} />
+
+            {/* BUTTON */}
+            <Animated.View style={[styles.actions, buttonAreaStyle]}>
+              <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+                <TouchableOpacity
+                  style={[styles.button, isSubmitting && styles.buttonDisabled]}
+                  onPress={handleLogin}
+                  onPressIn={handlePressIn}
+                  onPressOut={handlePressOut}
+                  disabled={isSubmitting}
+                  activeOpacity={0.9}
+                  accessibilityRole="button"
+                  accessibilityLabel="Login"
+                  accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator color={BUTTON_TEXT} />
+                  ) : (
+                    <Text style={styles.buttonText} maxFontSizeMultiplier={MAX_FONT_SCALE}>Login</Text>
+                  )}
+                </TouchableOpacity>
+              </Animated.View>
+            </Animated.View>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-// ============================================================================
-// COLOR PALETTE
-// Keep all your colors here so you only ever have to change them in one place.
-// ============================================================================
-const CREAM = '#F2E4C4';       // Main background color (behind everything)
-const FIELD_BG = '#D6BB83';    // Yellow/orange pill background for username & password inputs
-const CARD_BG = '#F9C544';     // Slightly lighter yellow for the bottom rounded card
-const BROWN = '#3A2B1A';       // Dark brown used for text, icons, and input borders on focus
-
 const styles = StyleSheet.create({
-  // --------------------------------------------------------------------
-  // SCREEN — the outermost wrapper, covers the full phone screen
-  // --------------------------------------------------------------------
   screen: {
-    flex: 1,                    // fill the entire screen height
-    backgroundColor: CREAM,     // cream background color
+    flex: 1,
+    backgroundColor: BG,
   },
-
-  // Simple helper style, just means "take up all remaining space".
-  // Used to make KeyboardAvoidingView stretch to fill the screen.
   flexFill: {
     flex: 1,
   },
-
-  // --------------------------------------------------------------------
-  // SCROLL CONTENT WRAPPER
-  // Controls how the logo + fields + card are positioned inside the
-  // scroll area.
-  //   - justifyContent: 'flex-end' pushes everything toward the BOTTOM
-  //     of the available space. If the logo+fields+card together are
-  //     shorter than the screen, you'll get an empty gap ABOVE the logo
-  //     instead of the logo sitting right under the status bar.
-  //   - If you'd rather everything hug the TOP (logo right after the
-  //     safe area, no big gap above it), change this to 'flex-start'.
-  // --------------------------------------------------------------------
+  artWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+  },
   scrollContent: {
-    flexGrow: 1,                 // let content grow to fill available space
-    justifyContent: 'flex-end',  // ⬅ try 'flex-start' if you want content to hug the top instead
-  },
-
-  // --------------------------------------------------------------------
-  // LOGO
-  // No wrapping box anymore — just the image with its own margins.
-  //   - alignSelf: 'center' centers it horizontally (since there's no
-  //     parent box doing that for us now).
-  //   - marginTop controls the gap between the safe area (status bar)
-  //     and the top of the logo.
-  //   - marginBottom controls the gap between the logo and the
-  //     USERNAME field below it.
-  //   - width/height control the logo's size — keep them at roughly
-  //     the same ratio (~1.6:1) so it doesn't stretch oddly.
-  // --------------------------------------------------------------------
-  logoImage: {
-    width: 300,                  // ⬅ increase to make logo wider
-    height: 190,                 // ⬅ increase to make logo taller (keep ratio ~1.6:1)
-    alignSelf: 'center',         // ⬅ centers logo horizontally
-    marginTop: 20,               // ⬅ space between status bar and logo — increase for more top padding
-    marginBottom: 12,            // ⬅ space between logo and the fields below
-  },
-
-  // --------------------------------------------------------------------
-  // USERNAME / PASSWORD FIELDS SECTION
-  // --------------------------------------------------------------------
-  fieldsArea: {
-    paddingHorizontal: 24,       // left/right margin for the whole fields block
-  },
-
-  // "USERNAME" / "PASSWORD" small caption text above each input
-  label: {
-    fontSize: 12,                // ⬅ increase for bigger label text
-    fontWeight: '700',
-    color: BROWN,
-    letterSpacing: 0.5,          // spacing between letters (gives it that "caption" look)
-    marginBottom: 8,             // space between label and the pill input below it
-    marginTop: 16,               // space above label (between fields)
-  },
-
-  // The pill-shaped row containing icon + text input (+ eye icon for password)
-  inputRow: {
-    flexDirection: 'row',        // icon, text input, and eye icon sit side by side
-    alignItems: 'center',        // vertically center everything in the row
-    backgroundColor: FIELD_BG,   // pill background color
-    borderRadius: 30,            // ⬅ increase for more rounded pill, decrease for squarer
-    paddingHorizontal: 18,       // left/right inner padding
-    height: 52,                  // ⬅ increase to make the input taller/thicker
-    // NOTE: borderColor and borderWidth for this are applied inline above
-    // (they animate on focus, so they're not in this static style block)
-  },
-
-  // Space between the person/lock icon and the text input
-  inputIcon: {
-    marginRight: 10,
-  },
-
-  // The actual typed text inside the input
-  input: {
-    flex: 1,                     // take up all remaining space in the row
-    fontSize: 16,                // ⬅ increase for bigger typed text
-    color: BROWN,
-    fontWeight: '600',
-  },
-
-  // --------------------------------------------------------------------
-  // BOTTOM CARD (rounded panel containing the Login button)
-  //   - This card is sized to fit its CONTENT (button + link), not
-  //     stretched to fill the screen. If you want it taller/shorter,
-  //     adjust paddingTop / paddingBottom, NOT flex.
-  // --------------------------------------------------------------------
-  card: {
-    marginTop: 32,                    // gap between password field and top of card
-    backgroundColor: CARD_BG,
-    borderColor: BROWN,                // slightly darker yellow for the card border
-    borderWidth: 3,
-    borderTopLeftRadius: 40,          // ⬅ increase for a more rounded card corner
-    borderTopRightRadius: 40,
-    paddingHorizontal: 24,            // left/right inner padding
-    paddingTop: 32,                   // space between top of card and the button
-    paddingBottom: 64,                // space below the "Forgot Password?" link (bottom of card)
-    height: 260,                      // adjust this to change the overall height of the card
-  },
-
-  // The brown "Login" button itself
-  button: {
-    backgroundColor: '#5C3A2E',       // ⬅ change this to recolor the button
-    borderRadius: 30,                 // ⬅ increase for more pill-shaped, decrease for squarer
-    height: 56,                       // ⬅ increase to make button taller
+    flexGrow: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    // --- LOGO ADJUSTMENTS ---
+    // Increased top padding to help push content down
+    paddingTop: 40,
   },
-
-  // Text inside the Login button
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,                     // ⬅ increase for bigger button text
+  column: {
+    width: '100%',
+    flexGrow: 1,
+    paddingHorizontal: 28,
+  },
+  logoWrap: {
+    alignItems: 'center',
+    // --- LOGO ADJUSTMENTS ---
+    marginTop: 16,
+    marginBottom: 30,
+  },
+  fieldsArea: {
+    width: '100%',
+  },
+  label: {
+    fontSize: 16,
     fontWeight: '700',
+    color: INK,
+    marginBottom: 8,
   },
-
-  // Wrapper around "Forgot Password? Click Here" — controls its position
-  // NOTE: no alignItems/alignSelf: 'center' here. A shrink-to-fit Text that mixes
-  // regular + bold words gets measured too narrow on Android, which cut off the last
-  // word ("Here"). The text now takes the full width and is centered with textAlign.
+  labelSpaced: {
+    marginTop: 16,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: FIELD_BG,
+    borderRadius: 40,
+    borderWidth: 2,
+    paddingHorizontal: 20,
+    minHeight: 52,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: INK,
+    fontWeight: '600',
+    paddingVertical: Platform.OS === 'android' ? 8 : 12,
+    textAlignVertical: 'center',
+  },
   forgotWrapper: {
     alignSelf: 'stretch',
     marginTop: 16,
+    minHeight: 44,
+    justifyContent: 'center',
   },
-
-  // "Forgot Password? " part of the text
   forgotText: {
-    fontSize: 13,
-    color: '#5C3A2E',
+    fontSize: 14,
+    fontWeight: '600',
+    color: INK,
     textAlign: 'center',
   },
-
-  // "Click Here" part — bold to stand out as the tappable link
   forgotLink: {
     fontWeight: '700',
-    color: '#3A2B1A',
+    color: LINK_ORANGE,
   },
-  
-  // Error message shown above the card when login fails / fields are empty
   error: {
-    color: '#B3261E',                
-    marginTop: 12,
+    color: ERROR_RED,
+    marginTop: 10,
     textAlign: 'center',
     fontSize: 13,
+  },
+  spacer: {
+    flexGrow: 1,
+    minHeight: 20,
+  },
+  actions: {
+    width: '100%',
+  },
+  button: {
+    backgroundColor: BUTTON_BG,
+    borderRadius: 40,
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  buttonText: {
+    color: BUTTON_TEXT,
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });

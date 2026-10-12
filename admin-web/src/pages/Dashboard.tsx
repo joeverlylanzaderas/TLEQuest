@@ -1,8 +1,10 @@
 // admin-web/src/pages/Dashboard.tsx
+//import sidebarLogo from '../assets/sidebar-logo2.png';
+import sidebarLogo from '../assets/tlequest-logo3.png';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, BookOpen, Users, ChartColumn, Settings, LogOut, Shield,
+  LayoutDashboard, BookOpen, Users, ChartColumn, Settings, LogOut,
   CalendarDays, Clock3, Search, FileDown, Flag, Trophy, Upload, Menu, X, Sliders,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -208,7 +210,10 @@ export default function Dashboard() {
         .menu-toggle-btn { background: none; border: none; color: #804022; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 6px; }
 
         .sidebar { width: 260px; background: #FFFFFF; border-right: 1px solid #D6BB83; display: flex; flex-direction: column; padding: 24px 16px; flex-shrink: 0; z-index: 100; transition: transform 0.3s ease; }
-        .logo { font-size: 22px; font-weight: 800; color: #C37800; margin-bottom: 36px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; }
+        .logo { font-size: 22px; font-weight: 800; color: #C37800; margin-bottom: 20px; padding: 0 12px; display: flex; align-items: center; justify-content: center; position: relative; }
+        .logo .menu-toggle-btn { position: absolute; top: 0; right: 0; }
+        .brand-logo { height: 120px; width: auto; max-width: 100%; object-fit: contain; display: block; margin: 0 auto; }
+        .brand-logo-mobile { height: 44px; margin: 0; }
         .logo-brand { display: flex; align-items: center; gap: 10px; }
         .logo-icon { background: #FDC200; color: #804022; border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
         .menu-label { font-size: 11px; text-transform: uppercase; color: #D6BB83; font-weight: 700; margin: 0 12px 12px; letter-spacing: 0.6px; }
@@ -260,7 +265,7 @@ export default function Dashboard() {
         .progress-track { height: 8px; background: #FCECD6; border-radius: 4px; margin-top: 6px; overflow: hidden; }
         .progress-fill { height: 100%; border-radius: 4px; }
 
-        .day-section { display: grid; grid-template-columns: 2fr minmax(300px, 1fr); gap: 16px; margin-bottom: 24px; align-items: start; }
+        .day-section { display: grid; grid-template-columns: minmax(300px, 1fr) 2fr; gap: 16px; margin-bottom: 24px; align-items: start; }
         .ac-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
         .ac-title { font-weight: 800; font-size: 14px; color: #804022; font-family: 'Plus Jakarta Sans', sans-serif; }
         .ac-loading { color: #D6BB83; font-weight: 600; font-size: 11px; }
@@ -314,7 +319,7 @@ export default function Dashboard() {
           .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
           .insights-section { grid-template-columns: 1fr; }
         }
-        @media (max-width: 992px) { .bottom-grid { grid-template-columns: 1fr; } .day-section { grid-template-columns: 1fr; } .day-section > :last-child { order: -1; } }
+        @media (max-width: 992px) { .bottom-grid { grid-template-columns: 1fr; } .day-section { grid-template-columns: 1fr; } }
         @media (max-width: 768px) {
           .layout { flex-direction: column; height: auto; min-height: 100vh; overflow-y: auto; }
           .mobile-header { display: flex; }
@@ -337,10 +342,7 @@ export default function Dashboard() {
 
       {/* --- MOBILE TOP HEADER --- */}
       <header className="mobile-header">
-        <div className="logo-brand">
-          <div className="logo-icon"><Shield size={18} /></div>
-          <span style={{ fontWeight: 800, color: '#C37800', fontSize: 18 }}>TLEQuest</span>
-        </div>
+        <img src={sidebarLogo} alt="TLEQuest" className="brand-logo brand-logo-mobile" />
         <button className="menu-toggle-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)} aria-label="Toggle Navigation Menu">
           {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
@@ -351,10 +353,7 @@ export default function Dashboard() {
       {/* --- SIDEBAR --- */}
       <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="logo">
-          <div className="logo-brand">
-            <div className="logo-icon"><Shield size={18} /></div>
-            TLEQuest
-          </div>
+          <img src={sidebarLogo} alt="TLEQuest" className="brand-logo" />
           <button className="menu-toggle-btn" style={{ display: isSidebarOpen ? 'block' : 'none' }} onClick={() => setIsSidebarOpen(false)}>
             <X size={20} />
           </button>
@@ -553,25 +552,8 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* DAY INSIGHTS + CALENDAR */}
+            {/* CALENDAR + DAY INSIGHTS */}
             <div className="day-section">
-              {selectedDay ? (
-                <DayInsights
-                  dateKey={selectedDay}
-                  data={dayData}
-                  loading={dayLoading}
-                  error={dayError}
-                  onRetry={() => setDayReload((n) => n + 1)}
-                />
-              ) : (
-                <div className="card di-card">
-                  <div className="di-empty">
-                    <CalendarDays size={28} color="#D6BB83" />
-                    <p style={{ margin: '8px 0 0' }}>Select a date on the calendar to see its activity.</p>
-                  </div>
-                </div>
-              )}
-
               <div className="card">
                 <div className="card-header">
                   <h2 className="card-title">Calendar</h2>
@@ -596,6 +578,23 @@ export default function Dashboard() {
                   loading={monthLoading}
                 />
               </div>
+
+              {selectedDay ? (
+                <DayInsights
+                  dateKey={selectedDay}
+                  data={dayData}
+                  loading={dayLoading}
+                  error={dayError}
+                  onRetry={() => setDayReload((n) => n + 1)}
+                />
+              ) : (
+                <div className="card di-card">
+                  <div className="di-empty">
+                    <CalendarDays size={28} color="#D6BB83" />
+                    <p style={{ margin: '8px 0 0' }}>Select a date on the calendar to see its activity.</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* BOTTOM */}

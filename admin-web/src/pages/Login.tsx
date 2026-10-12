@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 // Import local image assets relative to src/pages/
-import loginBg from '../assets/login-bg3.png';
-import logoImg from '../assets/logo.png';
+import loginBg from '../assets/web tlequest.png';
+import logoImg from '../assets/tlequest-logo3.png';
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -53,15 +53,24 @@ export default function Login() {
         />
 
         {/* Login Card - Fluid Responsive Container */}
-        <form onSubmit={handleSubmit} style={styles.card}>
-          <h2 style={styles.cardTitle}>TLEQuest Admin</h2>
+        <style>{formCss}</style>
+        <form onSubmit={handleSubmit} style={styles.card} className="lf-card">
+          {/* Yellow bar at the top */}
+          <div style={styles.accentBarTop} />
+          {/* Blue border accent bar at the bottom */}
+          <div style={styles.accentBarBottom} />
+
+          <h2 style={styles.cardTitle}>Welcome back</h2>
+          <p style={styles.cardSub}>Sign in to manage TLEQuest</p>
 
           {/* Username Field */}
           <div style={styles.fieldContainer}>
-            <label style={styles.label}>USERNAME</label>
+            <label style={styles.label} htmlFor="lf-user">USERNAME</label>
             <div style={styles.inputWrapper}>
               <UserIcon style={styles.leftIcon} />
               <input
+                id="lf-user"
+                className="lf-input"
                 style={styles.input}
                 placeholder="Enter username"
                 value={username}
@@ -74,10 +83,12 @@ export default function Login() {
 
           {/* Password Field */}
           <div style={styles.fieldContainer}>
-            <label style={styles.label}>PASSWORD</label>
+            <label style={styles.label} htmlFor="lf-pass">PASSWORD</label>
             <div style={styles.inputWrapper}>
               <LockIcon style={styles.leftIcon} />
               <input
+                id="lf-pass"
+                className="lf-input"
                 style={{ ...styles.input, paddingRight: '52px' }}
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Enter password"
@@ -91,16 +102,17 @@ export default function Login() {
                 onClick={() => setShowPassword(!showPassword)}
                 style={styles.eyeButton}
                 tabIndex={-1}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 <EyeIcon style={styles.rightIcon} isVisible={showPassword} />
               </button>
             </div>
           </div>
 
-          {error && <p style={styles.error}>{error}</p>}
+          {error && <p style={styles.error} role="alert">{error}</p>}
 
           {/* Submit Button */}
-          <button type="submit" style={styles.button} disabled={isSubmitting}>
+          <button type="submit" style={styles.button} className="lf-btn" disabled={isSubmitting}>
             {isSubmitting ? 'LOGGING IN...' : 'LOGIN'}
           </button>
         </form>
@@ -112,7 +124,7 @@ export default function Login() {
 // Inline SVGs for Field Icons
 function UserIcon({ style }: { style: React.CSSProperties }) {
   return (
-    <svg style={style} viewBox="0 0 24 24" fill="#2E180B" width="22" height="22">
+    <svg style={style} viewBox="0 0 24 24" fill="#1F2D33" width="22" height="22">
       <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
     </svg>
   );
@@ -120,7 +132,7 @@ function UserIcon({ style }: { style: React.CSSProperties }) {
 
 function LockIcon({ style }: { style: React.CSSProperties }) {
   return (
-    <svg style={style} viewBox="0 0 24 24" fill="#2E180B" width="22" height="22">
+    <svg style={style} viewBox="0 0 24 24" fill="#1F2D33" width="22" height="22">
       <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
     </svg>
   );
@@ -128,7 +140,7 @@ function LockIcon({ style }: { style: React.CSSProperties }) {
 
 function EyeIcon({ style, isVisible }: { style: React.CSSProperties; isVisible: boolean }) {
   return (
-    <svg style={style} viewBox="0 0 24 24" fill="#2E180B" width="22" height="22">
+    <svg style={style} viewBox="0 0 24 24" fill="#1F2D33" width="22" height="22">
       {isVisible ? (
         <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
       ) : (
@@ -157,7 +169,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundRepeat: 'no-repeat',
     fontFamily: "'Fredoka', 'Quicksand', 'Nunito', 'Segoe UI', sans-serif",
     boxSizing: 'border-box',
-    overflowY: 'auto', // Safely allows scroll if browser height is extremely small
+    overflowY: 'auto',
     overflowX: 'hidden',
     padding: '16px',
   },
@@ -168,51 +180,76 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     alignItems: 'center',
     width: '100%',
-    maxWidth: 'clamp(300px, 90vw, 450px)', // Fluid width scaling
+    maxWidth: 'clamp(280px, 85vw, 420px)',
     boxSizing: 'border-box',
     margin: 'auto',
   },
   logoImage: {
-    width: '100%',
-    maxWidth: 'clamp(260px, 85vw, 520px)', // Scales up to 520px on big screens, shrinks cleanly on mobile
-    maxHeight: 'clamp(120px, 30vh, 320px)', // Constrains vertical height on small screens
-    height: 'auto',
-    marginBottom: 'clamp(6px, 1.5vh, 16px)',
+    width: 'auto',
+    height: 'clamp(140px, 28vh, 260px)', // Slightly optimized height to avoid vertical cramping
+    maxWidth: '80vw',
+    marginTop: '0px',
+    marginBottom: '16px', // ⬅️ Adds proper spacing to prevent overlap with the form card
     objectFit: 'contain',
-    filter: 'drop-shadow(0px 8px 16px rgba(0, 0, 0, 0.45))',
+    filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.9)) drop-shadow(0 0 18px rgba(255,255,255,0.55)) drop-shadow(0 8px 14px rgba(0,0,0,0.35))',
   },
   card: {
-    backgroundColor: '#FFFDF5',
-    borderRadius: '28px',
-    padding: 'clamp(20px, 5vw, 32px)', // Fluid card padding
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: '#FFFDF7',
+    borderRadius: '22px',
+    padding: 'clamp(22px, 4.5vw, 32px) clamp(18px, 4.5vw, 30px) clamp(20px, 3.5vw, 26px)',
     width: '100%',
     boxSizing: 'border-box',
-    boxShadow: '0 16px 40px rgba(0, 0, 0, 0.5)',
-    border: '3px solid #EADEC9',
+    boxShadow: '0 20px 50px rgba(31, 45, 51, 0.35), 0 2px 6px rgba(31, 45, 51, 0.12)',
+    border: '1px solid #EFE3C2',
     display: 'flex',
     flexDirection: 'column',
-    gap: 'clamp(10px, 2vh, 18px)', // Dynamic gap between fields
+    gap: 'clamp(8px, 1.8vh, 14px)',
+  },
+  accentBarTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '6px',
+    backgroundColor: '#F2B84B',
+  },
+  accentBarBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '6px',
+    backgroundColor: '#1F2D33',
   },
   cardTitle: {
     textAlign: 'center',
-    margin: '0 0 2px 0',
-    color: '#2E180B',
-    fontSize: 'clamp(20px, 4vw, 26px)', // Fluid title text
+    margin: '2px 0 0 0',
+    color: '#1F2D33',
+    fontSize: 'clamp(22px, 4vw, 28px)',
     fontWeight: 700,
     fontFamily: "'Fredoka', 'Quicksand', sans-serif",
-    letterSpacing: '0.5px',
+  },
+  cardSub: {
+    textAlign: 'center',
+    margin: '-6px 0 4px 0',
+    color: '#6A7479',
+    fontSize: 'clamp(12px, 2.8vw, 14px)',
+    fontWeight: 400,
+    fontFamily: "'Fredoka', 'Quicksand', sans-serif",
   },
   fieldContainer: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px',
+    gap: '5px',
   },
   label: {
-    fontSize: 'clamp(11px, 2.5vw, 13px)',
+    fontSize: 'clamp(10px, 2.2vw, 11px)',
     fontWeight: 700,
-    color: '#3D2514',
-    letterSpacing: '1px',
-    marginLeft: '14px',
+    color: '#1F2D33',
+    letterSpacing: '1.2px',
+    marginLeft: '6px',
     fontFamily: "'Fredoka', 'Quicksand', sans-serif",
   },
   inputWrapper: {
@@ -222,7 +259,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   leftIcon: {
     position: 'absolute',
-    left: '16px',
+    left: '15px',
     pointerEvents: 'none',
   },
   rightIcon: {
@@ -241,40 +278,53 @@ const styles: Record<string, React.CSSProperties> = {
   },
   input: {
     width: '100%',
-    padding: 'clamp(10px, 2.5vh, 14px) 20px clamp(10px, 2.5vh, 14px) 50px',
-    borderRadius: '28px',
-    border: '2px solid #38200B',
-    backgroundColor: '#FDE396',
-    fontSize: 'clamp(14px, 3vw, 16px)',
-    fontWeight: 600,
-    color: '#2E180B',
+    padding: 'clamp(10px, 2.2vh, 13px) 16px clamp(10px, 2.2vh, 13px) 46px',
+    borderRadius: '12px',
+    border: '2px solid #EBDDB4',
+    backgroundColor: '#FFF6DC',
+    fontSize: 'clamp(13px, 2.8vw, 15px)',
+    fontWeight: 500,
+    color: '#1F2D33',
     outline: 'none',
     boxSizing: 'border-box',
-    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.06)',
     fontFamily: "'Fredoka', 'Quicksand', sans-serif",
   },
   button: {
     width: '100%',
-    padding: 'clamp(11px, 2.5vh, 15px)',
+    padding: 'clamp(11px, 2.2vh, 14px)',
     marginTop: '4px',
-    borderRadius: '28px',
+    borderRadius: '12px',
     border: 'none',
-    backgroundColor: '#2E180B',
-    color: '#FFF8EA',
-    fontSize: 'clamp(15px, 3.5vw, 18px)',
+    backgroundColor: '#1F2D33',
+    color: '#FFF6DC',
+    fontSize: 'clamp(14px, 3.2vw, 16px)',
     fontWeight: 700,
-    letterSpacing: '1px',
+    letterSpacing: '1.5px',
     cursor: 'pointer',
-    boxShadow: '0 6px 14px rgba(46, 24, 11, 0.35)',
-    transition: 'transform 0.1s ease, background-color 0.15s ease',
+    boxShadow: '0 8px 18px rgba(31, 45, 51, 0.3)',
     fontFamily: "'Fredoka', 'Quicksand', sans-serif",
   },
   error: {
-    color: '#DF1B39',
+    color: '#B3261E',
+    background: '#FDECEC',
+    border: '1px solid #F5C6C2',
+    borderRadius: '10px',
+    padding: '8px 10px',
     fontSize: '12px',
-    fontWeight: 600,
+    fontWeight: 500,
     margin: 0,
     textAlign: 'center',
     fontFamily: "'Fredoka', 'Quicksand', sans-serif",
   },
 };
+
+// Hover / focus states
+const formCss = `
+  .lf-input::placeholder { color: #8C8566; }
+  .lf-input { transition: border-color .15s, box-shadow .15s, background-color .15s; }
+  .lf-input:focus { border-color: #F2B84B !important; background-color: #FFFFFF !important; box-shadow: 0 0 0 4px rgba(242,184,75,0.3); }
+  .lf-btn { transition: transform .1s, background-color .15s, box-shadow .15s; }
+  .lf-btn:hover:not(:disabled) { background-color: #2B3F47 !important; }
+  .lf-btn:active:not(:disabled) { transform: translateY(1px); box-shadow: 0 4px 10px rgba(31,45,51,0.25) !important; }
+  .lf-btn:disabled { opacity: .7; cursor: not-allowed; }
+`;
