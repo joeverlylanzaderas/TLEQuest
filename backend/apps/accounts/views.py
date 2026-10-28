@@ -101,7 +101,7 @@ class AdminBulkUserUploadView(APIView):
                 continue
 
             data = serializer.validated_data
-            password = generate_simple_password()
+            password = data.get("password") or generate_simple_password()
 
             try:
                 # All-or-nothing per row: never leave a User without a UserProfile.

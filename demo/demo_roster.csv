@@ -1,0 +1,5 @@
+username,role,first_name,last_name,middle_name,email,school,grade_level,section,occupation,password
+T-00045,teacher,Rosa,Almendras,,,TLEQuest Demo School,,,Teacher,Demopass123!
+2024-00201,student,Carlo,Reyes,,,TLEQuest Demo School,Grade 9,Sampaguita,,Demopass123!
+2024-00202,student,Liza,Santos,,,TLEQuest Demo School,Grade 9,Sampaguita,,Demopass123!
+2024-00203,student,Miguel,Cruz,,,TLEQuest Demo School,Grade 9,Sampaguita,,Demopass123!

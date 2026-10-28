@@ -205,6 +205,17 @@ class BulkUserRowSerializer(serializers.Serializer):
     grade_level     = serializers.CharField(max_length=20, required=False, allow_blank=True)
     section         = serializers.CharField(max_length=20, required=False, allow_blank=True)
     occupation      = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    # Optional. Blank/missing = the server generates a random password (default).
+    # Filled = that exact password is used (e.g. a uniform demo password).
+    password        = serializers.CharField(max_length=128, required=False, allow_blank=True, write_only=True)
+
+    def validate_password(self, value):
+        if value:
+            from apps.core.models import SystemSettings
+            min_len = SystemSettings.get_solo().min_password_length
+            if len(value) < min_len:
+                raise serializers.ValidationError(f"Password must be at least {min_len} characters.")
+        return value
 
     def validate_username(self, value):
         if User.objects.filter(username=value).exists():

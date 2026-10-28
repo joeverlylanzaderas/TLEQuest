@@ -50,6 +50,53 @@ function formatApiError(data: any): string {
   return messages.join('\n') || 'Something went wrong.';
 }
 
+// ---- One plain-language message for a CSV bulk upload (no per-row logs in the UI) ----
+function summarizeBulkResult(result: BulkUploadResult): { message: string; type: 'success' | 'error' | 'info' } {
+  const created = result.created_count ?? result.created?.length ?? 0;
+  const rowErrors = result.errors ?? [];
+  const isDuplicate = (errs: unknown) =>
+    JSON.stringify(errs ?? '').toLowerCase().includes('already');
+  const duplicates = rowErrors.filter((e) => isDuplicate(e.errors)).length;
+  const invalid = rowErrors.length - duplicates;
+  const s = (n: number) => (n === 1 ? '' : 's');
+
+  if (created === 0) {
+    if (rowErrors.length === 0) return { message: 'No accounts were imported. The file seems to be empty.', type: 'error' };
+    if (invalid === 0) {
+      return {
+        message: duplicates === 1
+          ? 'This account already exists, so nothing was imported.'
+          : 'These accounts already exist, so nothing was imported.',
+        type: 'error',
+      };
+    }
+    if (duplicates === 0) {
+      return {
+        message: 'No accounts were imported. Some rows have missing or invalid information. Please check your CSV file and try again.',
+        type: 'error',
+      };
+    }
+    return {
+      message: 'No accounts were imported. Some accounts already exist and some rows have missing or invalid information. Please check your CSV file.',
+      type: 'error',
+    };
+  }
+
+  if (rowErrors.length === 0) {
+    return { message: `${created} account${s(created)} created successfully.`, type: 'success' };
+  }
+  const reasons =
+    invalid === 0
+      ? (duplicates === 1 ? 'it already exists' : 'they already exist')
+      : duplicates === 0
+        ? 'missing or invalid information'
+        : 'some already exist, others have missing or invalid information';
+  return {
+    message: `${created} account${s(created)} created. ${rowErrors.length} row${s(rowErrors.length)} skipped (${reasons}).`,
+    type: 'info',
+  };
+}
+
 /**
  * Builds a CSV of the newly generated credentials in the browser and downloads it.
  * Passwords are hashed on the server, so this is the ONLY chance to get them.
@@ -211,14 +258,17 @@ export default function UserManagement() {
     try {
       const result = await bulkUploadUsers(csvFile);
       setBulkResult(result);
-      showToast(`Bulk upload complete: ${result.created_count} created, ${result.error_count} errors.`, 'success');
+      const summary = summarizeBulkResult(result);
+      showToast(summary.message, summary.type);
       await load();
     } catch (e: any) {
       const data = e?.response?.data;
       // When every row fails, the server answers 400 but still sends the per-row errors.
       if (data && Array.isArray(data.errors)) {
-        setBulkResult(data as BulkUploadResult);
-        showToast('No users were created. See the errors below.', 'error');
+        const failed = data as BulkUploadResult;
+        setBulkResult(failed);
+        const summary = summarizeBulkResult(failed);
+        showToast(summary.message, summary.type);
       } else {
         showToast(formatApiError(data), 'error');
       }
@@ -549,9 +599,11 @@ export default function UserManagement() {
             </button>
           </div>
 
-          {bulkResult && (
+          {bulkResult && (bulkResult.created?.length ?? 0) > 0 && (
             <div style={{ marginTop: 12, fontSize: 13, borderTop: '1px solid #FCC896', paddingTop: 8 }}>
-              <div>✅ {bulkResult.created_count} created | ❌ {bulkResult.error_count} errors</div>
+              {(bulkResult.created?.length ?? 0) > 0 && (
+                <div>✅ {bulkResult.created_count} account{bulkResult.created_count === 1 ? '' : 's'} created</div>
+              )}
 
               {(bulkResult.created?.length ?? 0) > 0 && (
                 <div
@@ -577,18 +629,6 @@ export default function UserManagement() {
                 </div>
               )}
 
-              {bulkResult.errors.length > 0 && (
-                <details style={{ marginTop: 6 }}>
-                  <summary style={{ cursor: 'pointer', color: '#DF1B39' }}>View errors</summary>
-                  <ul>
-                    {bulkResult.errors.map((err, idx) => (
-                      <li key={idx}>
-                        Row {err.row} ({err.username || 'no username'}): {JSON.stringify(err.errors)}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
             </div>
           )}
         </div>
@@ -629,7 +669,7 @@ export default function UserManagement() {
                   const fullName = u.profile
                     ? `${u.profile.first_name} ${u.profile.last_name}`.trim() || u.username
                     : u.username;
-                  const email = u.profile?.email || `${u.username}@example.com`;
+                  const email = u.profile?.email || '—';
                   const isSelected = selectedIds.includes(u.id);
 
                   // Extract Initials for Avatar Fallback
