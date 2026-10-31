@@ -7,13 +7,11 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getMyProfile } from '../../../../../src/api/accounts';
-import { getMyClasses } from '../../../../../src/api/classrooms';
+import { useClassScope } from '../../../../../src/utils/selectedClass';
 import { getProgressDetail, toggleChecklistItem } from '../../../../../src/api/assignments';
 import { QuestProgressDetail } from '../../../../../src/types/assignments';
 import { FullUser } from '../../../../../src/types/accounts';
 import SubmitOutputCard from '../../../../../src/components/SubmitOutputCard';
-import ReviewStatusNote from '../../../../../src/components/ReviewStatusNote';
-import QuestCover from '../../../../../src/components/QuestCover';
 
 const GOLD = '#F5B921';
 const CREAM = '#F5EDD8';
@@ -37,7 +35,7 @@ export default function QuestStepScreen() {
 
   const [progress, setProgress] = useState<QuestProgressDetail | null>(null);
   const [profile, setProfile] = useState<FullUser | null>(null);
-  const [className, setClassName] = useState('');
+  const scope = useClassScope();
   const [currentStepId, setCurrentStepId] = useState(Number(stepId));
   const [showComplete, setShowComplete] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,7 +44,6 @@ export default function QuestStepScreen() {
 
   useEffect(() => {
     getMyProfile().then(setProfile).catch(() => {});
-    getMyClasses().then((c) => setClassName(c[0]?.class_name ?? '')).catch(() => {});
   }, []);
 
   const load = useCallback(async () => {
@@ -162,12 +159,14 @@ export default function QuestStepScreen() {
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={styles.dateText}>{today}</Text>
-            <Text style={styles.classText}>{className}</Text>
+            <Text style={styles.classText}>{(scope.classes.find((c) => c.id === (progress ? scope.groupClass[progress.group] : undefined)) ?? scope.classes.find((c) => c.id === scope.selectedId))?.class_name ?? ''}</Text>
           </View>
         </View>
 
         <View style={styles.currentQuestCard}>
-          <QuestCover url={progress.quest_cover_image_url} style={styles.imagePlaceholder} />
+          <View style={styles.imagePlaceholder}>
+            <Ionicons name="restaurant" size={26} color="#fff" />
+          </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={styles.questTitle} numberOfLines={1}>{progress.quest_title}</Text>
             <Text style={styles.questMode}>
@@ -257,7 +256,6 @@ export default function QuestStepScreen() {
               </TouchableOpacity>
             </View>
 
-            {step.is_final_step && isCompleted && <ReviewStatusNote status={progress.review_status} />}
             {showRewards && (
               <View style={styles.rewardsRow}>
                 <Text style={styles.rewardsLabel}>Rewards Earned:</Text>

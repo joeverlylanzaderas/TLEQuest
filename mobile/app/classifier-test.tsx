@@ -92,7 +92,7 @@ export default function ClassifierTest() {
         </ScrollView>
       ) : (
         <>
-          <CameraView ref={cameraRef} style={styles.camera} facing="back" />
+          <CameraView ref={cameraRef} style={styles.camera} facing="back" ratio='4:3'/>
           <View style={styles.captureBar}>
             <TouchableOpacity style={styles.captureOuter} onPress={handleCapture} disabled={isBusy}>
               <View style={styles.captureInner} />

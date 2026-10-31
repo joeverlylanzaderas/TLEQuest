@@ -11,6 +11,7 @@ import { getMyProfile } from '../api/accounts';
 import { getMyClasses } from '../api/classrooms';
 import { getUnreadNotifications } from '../api/notifications';
 import { FullUser } from '../types/accounts';
+import { useClassScope, selectedClassName } from '../utils/selectedClass';
 
 const GOLD = '#F5B921';
 const DARK = '#3A2B1A';
@@ -31,6 +32,7 @@ interface Props {
 
 export default function AppHeader({ role, subtitle, children }: Props) {
   const router = useRouter();
+  const scope = useClassScope();
   const [profile, setProfile] = useState<FullUser | null>(cache?.role === role ? cache.profile : null);
   const [className, setClassName] = useState(cache?.role === role ? cache.className : '');
   const [unread, setUnread] = useState(0);
@@ -64,7 +66,9 @@ export default function AppHeader({ role, subtitle, children }: Props) {
 
   const displayName = profile?.profile.first_name || profile?.username || '';
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
-  const sub = subtitle ?? (role === 'teacher' ? "Teacher's Portal" : className || '');
+  const sub = subtitle ?? (role === 'teacher'
+    ? "Teacher's Portal"
+    : scope.loaded ? selectedClassName(scope) : className || '');
 
   return (
     <View style={styles.header}>
