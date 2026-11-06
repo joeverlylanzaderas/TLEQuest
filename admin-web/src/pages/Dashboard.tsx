@@ -14,7 +14,7 @@ import type { DashboardSummary, RecentActivityEvent, DayActivity, DayCounts } fr
 import ActivityCalendar, { toKey } from '../components/ActivityCalendar';
 import DayInsights from '../components/DayInsights';
 import type { AdminReports } from '../types/reports';
-import bannerImage from '../assets/admin-header.png';
+import bannerImage from '../assets/admin-header.webp';
 
 const BANNER_IMAGE_URL = bannerImage;
 

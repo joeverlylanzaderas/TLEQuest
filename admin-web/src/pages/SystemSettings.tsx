@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, LogOut, Settings, Palette, ShieldCheck, ToggleLeft, Save } from 'lucide-react';
+import { ArrowLeft, LogOut, Palette, ShieldCheck, ToggleLeft, Save } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { getSystemSettings, updateSystemSettings } from '../api/settings';

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 // Import local image assets relative to src/pages/
-import loginBg from '../assets/web tlequest.png';
+import loginBg from '../assets/login-bg3.webp';
 import logoImg from '../assets/tlequest-logo3.png';
 
 export default function Login() {

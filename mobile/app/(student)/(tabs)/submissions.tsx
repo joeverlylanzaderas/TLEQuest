@@ -7,9 +7,14 @@ import {
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { getMyProfile } from '../../../src/api/accounts';
+import { refreshClasses, inSelectedClass, selectedClassName, useClassScope } from '../../../src/utils/selectedClass';
+import ClassSwitcher from '../../../src/components/ClassSwitcher';
+import { useAuth } from '../../../src/context/AuthContext';
 import { getSubmissions } from '../../../src/api/submissions';
+import { getUnreadNotifications } from '../../../src/api/notifications';
+import { FullUser } from '../../../src/types/accounts';
 import { Submission } from '../../../src/types/submissions';
-import AppHeader from '../../../src/components/AppHeader';
 
 const GOLD = '#F5B921';
 const CREAM = '#F5EDD8';
@@ -34,7 +39,11 @@ function Stars({ rating }: { rating: number }) {
 
 export default function StudentSubmissions() {
   const router = useRouter();
+  const { user } = useAuth();
+  const scope = useClassScope();
+  const [profile, setProfile] = useState<FullUser | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [zoomUri, setZoomUri] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -43,11 +52,19 @@ export default function StudentSubmissions() {
   const load = useCallback(async () => {
     setError('');
     try {
-      setSubmissions(await getSubmissions());
+      const [p, , s, u] = await Promise.all([
+        getMyProfile(),
+        refreshClasses(user!.id),
+        getSubmissions(),
+        getUnreadNotifications(),
+      ]);
+      setProfile(p);
+      setSubmissions(s);
+      setUnreadCount(u.length);
     } catch (e: any) {
       setError(e?.response?.data?.detail || 'Could not load your submissions.');
     }
-  }, []);
+  }, [user?.id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -61,10 +78,32 @@ export default function StudentSubmissions() {
     setIsRefreshing(false);
   }
 
+  const classSubmissions = submissions.filter((s) => inSelectedClass(scope, s.group));
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const displayName = profile?.profile.first_name || profile?.username || '';
 
   return (
     <View style={styles.screen}>
-      <AppHeader role="student" />
+      <View style={styles.header}>
+        <View style={styles.headerRow}>
+          <View style={styles.avatarCircle}>
+            <Ionicons name="person" size={20} color={BROWN} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.welcomeSmall}>Welcome back,</Text>
+            <Text style={styles.welcomeName}>{displayName}!</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={styles.dateText}>{today}</Text>
+            <Text style={styles.classText}>{selectedClassName(scope)}</Text>
+          </View>
+          <TouchableOpacity onPress={() => router.push('/(student)/notifications' as any)} style={{ marginLeft: 8 }}>
+            <Ionicons name="notifications" size={20} color={BROWN} />
+            {unreadCount > 0 && <View style={styles.bellDot} />}
+          </TouchableOpacity>
+        </View>
+      </View>
+      <ClassSwitcher />
 
       {isLoading ? (
         <View style={styles.centered}>
@@ -79,7 +118,7 @@ export default function StudentSubmissions() {
 
           <Text style={styles.pageTitle}>SUBMISSIONS</Text>
 
-          {submissions.length === 0 ? (
+          {classSubmissions.length === 0 ? (
             <View style={styles.emptyCard}>
               <Ionicons name="camera-outline" size={32} color="#B8A671" />
               <Text style={styles.emptyTitle}>No submissions yet</Text>
@@ -88,7 +127,7 @@ export default function StudentSubmissions() {
               </Text>
             </View>
           ) : (
-            submissions.map((s) => {
+            classSubmissions.map((s) => {
               const accepted = s.classifier_result === 'ACCEPTED';
               return (
                 <View key={s.id} style={styles.card}>

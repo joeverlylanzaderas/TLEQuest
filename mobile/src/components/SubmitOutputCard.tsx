@@ -6,10 +6,9 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { classifyImage, ClassificationResult } from '../ml/classifier';
-import { uploadSubmissionPhoto } from '../api/cloudinary';
-import { createSubmission } from '../api/submissions';
+import { useAuth } from '../context/AuthContext';
+import { enqueueSubmission, flushQueue, getItemStatus, discardSubmission } from '../utils/submissionQueue';
 import { QuestProgressDetail } from '../types/assignments';
-import ReviewStatusNote from './ReviewStatusNote';
 
 const BROWN = '#5C2C16';
 const GREEN = '#22C55E';
@@ -50,7 +49,12 @@ export default function SubmitOutputCard({ progress }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stage, setStage] = useState('');
   const [error, setError] = useState('');
-  const [submitted, setSubmitted] = useState<{ result: ClassificationResult; aiUnavailable: boolean } | null>(null);
+  const [submitted, setSubmitted] = useState<{
+    result: ClassificationResult;
+    aiUnavailable: boolean;
+    queued?: boolean; // saved on the phone, will be sent when signal returns
+  } | null>(null);
+  const { user } = useAuth();
 
   async function openCamera() {
     setError('');
@@ -101,21 +105,31 @@ export default function SubmitOutputCard({ progress }: Props) {
         };
       }
 
-      // 2. Upload the photo
-      setStage('Uploading your photo...');
-      const imageUrl = await uploadSubmissionPhoto(photoUri);
+      // 2. Save the submission on the phone first, so a weak signal can never lose it
+      if (!user) throw new Error('Please log in again.');
+      setStage('Saving your submission...');
+      const saved = await enqueueSubmission(
+        user.id,
+        {
+          quest_assignment: progress.quest_assignment,
+          classifier_result: result.label,
+          confidence_score: result.confidence,
+          generated_feedback: feedbackFor(result.label),
+        },
+        photoUri
+      );
 
-      // 3. Save the submission
-      setStage('Submitting...');
-      await createSubmission({
-        quest_assignment: progress.quest_assignment,
-        image_url: imageUrl,
-        classifier_result: result.label,
-        confidence_score: result.confidence,
-        generated_feedback: feedbackFor(result.label),
-      });
+      // 3. Try to send it now (uploads the photo, then creates the submission)
+      setStage('Sending to your teacher...');
+      await flushQueue(user.id);
+      const status = await getItemStatus(user.id, saved.id);
 
-      setSubmitted({ result, aiUnavailable });
+      if (status.state === 'failed') {
+        await discardSubmission(user.id, saved.id);
+        throw new Error(status.message);
+      }
+
+      setSubmitted({ result, aiUnavailable, queued: status.state === 'pending' });
       setPhotoUri(null);
     } catch (e: any) {
       setError(errorText(e));
@@ -124,16 +138,6 @@ export default function SubmitOutputCard({ progress }: Props) {
       setStage('');
     }
   }
-
-  // Once the output is submitted there is no resubmit: the group waits for the
-  // teacher's feedback, which releases the final points + badge.
-  const reviewStatus = progress.review_status === 'reviewed' ? 'reviewed' : submitted ? 'waiting' : progress.review_status;
-  const alreadySubmitted = reviewStatus === 'waiting' || reviewStatus === 'reviewed';
-
-  // The leader can only submit when every group member finished their steps.
-  const gp = progress.group_progress;
-  const groupReady = !gp || gp.finished >= gp.total;
-  const pendingNames = gp?.pending_names ?? [];
 
   // ---- Not the leader: no buttons, just the explanation ----
   if (!progress.is_group_leader) {
@@ -145,7 +149,6 @@ export default function SubmitOutputCard({ progress }: Props) {
           You have completed all steps for this quest! Your group leader will submit your group's final output.
           Keep it up and good luck!
         </Text>
-        <ReviewStatusNote status={reviewStatus} />
       </View>
     );
   }
@@ -159,40 +162,31 @@ export default function SubmitOutputCard({ progress }: Props) {
         work automatically.
       </Text>
 
-      {!alreadySubmitted && gp && !groupReady ? (
+      {submitted ? (
         <View style={styles.resultBox}>
-          <Ionicons name="people" size={34} color={ORANGE} />
-          <Text style={[styles.resultLabel, { color: ORANGE, fontSize: 18 }]}>
-            Waiting for your group ({gp.finished}/{gp.total} done)
-          </Text>
-          <Text style={styles.resultNote}>
-            You can submit once every member has finished all steps.
-            {pendingNames.length ? `\nStill working: ${pendingNames.join(', ')}` : ''}
-          </Text>
-        </View>
-      ) : submitted || alreadySubmitted ? (
-        <View style={styles.resultBox}>
-          {submitted ? (<>
           <Ionicons
-            name={submitted.result.label === 'ACCEPTED' ? 'checkmark-circle' : 'time'}
+            name={submitted.queued ? 'cloud-upload-outline' : submitted.result.label === 'ACCEPTED' ? 'checkmark-circle' : 'time'}
             size={34}
-            color={submitted.result.label === 'ACCEPTED' ? GREEN : ORANGE}
+            color={submitted.queued ? BROWN : submitted.result.label === 'ACCEPTED' ? GREEN : ORANGE}
           />
-          <Text style={[styles.resultLabel, { color: submitted.result.label === 'ACCEPTED' ? GREEN : ORANGE }]}>
-            {submitted.result.label}
+          <Text style={[styles.resultLabel, { color: submitted.queued ? BROWN : submitted.result.label === 'ACCEPTED' ? GREEN : ORANGE }]}>
+            {submitted.queued ? 'SAVED ON YOUR PHONE' : submitted.result.label}
           </Text>
-          {!submitted.aiUnavailable && (
+          {!submitted.aiUnavailable && !submitted.queued && (
             <Text style={styles.resultConfidence}>Confidence: {(submitted.result.confidence * 100).toFixed(1)}%</Text>
           )}
           <Text style={styles.resultNote}>
-            {submitted.aiUnavailable
+            {submitted.queued
+              ? 'There is no signal right now. Your photo is saved on this phone and will be sent to your teacher automatically when the signal returns. You can close this screen.'
+              : submitted.aiUnavailable
               ? 'AI check is not available on this device, so your teacher will review your output directly.'
               : feedbackFor(submitted.result.label)}
           </Text>
-          </>) : (
-            <Text style={styles.resultNote}>Your final output was submitted.</Text>
+          {!submitted.queued && (
+            <TouchableOpacity style={styles.secondaryButton} onPress={openCamera}>
+              <Text style={styles.secondaryButtonText}>Submit another photo</Text>
+            </TouchableOpacity>
           )}
-          <ReviewStatusNote status={reviewStatus} />
         </View>
       ) : (
         <>
@@ -206,7 +200,7 @@ export default function SubmitOutputCard({ progress }: Props) {
               {photoUri ? 'Looks good? Submit it, or retake.' : 'Take a photo of your finished table setup'}
             </Text>
             <TouchableOpacity style={styles.orangeButton} onPress={openCamera} disabled={isSubmitting}>
-              <Text style={styles.orangeButtonText}>{photoUri ? 'Retake' : 'Take a Photo'}</Text>
+              <Text style={styles.orangeButtonText}>{photoUri ? 'Retake' : 'Take a Photo v2'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -234,7 +228,10 @@ export default function SubmitOutputCard({ progress }: Props) {
       {/* In-app camera: no gallery, the photo has to be taken live */}
       <Modal visible={cameraOpen} animationType="slide" onRequestClose={() => setCameraOpen(false)}>
         <View style={styles.cameraScreen}>
-          <CameraView ref={cameraRef} style={{ flex: 1 }} facing="back" />
+          {/* 3:4 frame (like a normal phone camera): what you see is what gets photographed */}
+          <View style={styles.cameraFrame}>
+            <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" ratio="4:3" />
+          </View>
           <TouchableOpacity style={styles.closeButton} onPress={() => setCameraOpen(false)}>
             <Ionicons name="close" size={24} color="#fff" />
           </TouchableOpacity>
@@ -267,6 +264,8 @@ const styles = StyleSheet.create({
   orangeButton: { backgroundColor: ORANGE, borderRadius: 10, paddingHorizontal: 22, paddingVertical: 10, minWidth: 120, alignItems: 'center' },
   orangeButtonText: { color: '#fff', fontWeight: '800', fontSize: 13 },
   disabledButton: { backgroundColor: '#E5B999' },
+  secondaryButton: { marginTop: 14, borderWidth: 1.5, borderColor: ORANGE, borderRadius: 20, paddingHorizontal: 18, paddingVertical: 8 },
+  secondaryButtonText: { color: ORANGE, fontWeight: '700', fontSize: 12 },
 
   resultBox: { width: '100%', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 18 },
   resultLabel: { fontSize: 22, fontWeight: '900', marginTop: 6 },
@@ -275,7 +274,8 @@ const styles = StyleSheet.create({
 
   errorText: { color: '#B3261E', fontSize: 12, marginTop: 12, textAlign: 'center' },
 
-  cameraScreen: { flex: 1, backgroundColor: '#000' },
+  cameraScreen: { flex: 1, backgroundColor: '#000', justifyContent: 'center' },
+  cameraFrame: { width: '100%', aspectRatio: 3 / 4, overflow: 'hidden' },
   closeButton: { position: 'absolute', top: 50, left: 16, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 20, padding: 8 },
   captureBar: { position: 'absolute', bottom: 40, left: 0, right: 0, alignItems: 'center' },
   captureOuter: { width: 74, height: 74, borderRadius: 37, borderWidth: 4, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' },

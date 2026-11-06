@@ -17,16 +17,19 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import { getMyClasses, getClassEnrollments, getClassGroups, joinClass } from '../../../src/api/classrooms';
+import { getClassEnrollments, getClassGroups, joinClass } from '../../../src/api/classrooms';
 import { getMyProgress } from '../../../src/api/assignments';
 import { getMyRewardSummary } from '../../../src/api/rewards';
-import { ClassSummary, ClassEnrollment, Group } from '../../../src/types/classrooms';
+import { ClassEnrollment, Group } from '../../../src/types/classrooms';
 import { QuestProgress } from '../../../src/types/assignments';
 import { Ionicons } from '@expo/vector-icons';
 import MyGroupCard from '../../../src/components/MyGroupCard';
 import KeyboardSafe from '../../../src/components/KeyboardSafe';
 import AppHeader from '../../../src/components/AppHeader';
 import QuestCover from '../../../src/components/QuestCover';
+import ClassSwitcher from '../../../src/components/ClassSwitcher';
+import { useAuth } from '../../../src/context/AuthContext';
+import { refreshClasses, inSelectedClass, useClassScope } from '../../../src/utils/selectedClass';
 
 const GOLD = '#F5B921';
 const CREAM = '#F5EDD8';
@@ -38,9 +41,10 @@ const AVATAR_COLORS = ['#f87171', '#4ade80', '#fbbf24', '#60a5fa', '#f472b6', '#
 
 export default function StudentHome() {
   const router = useRouter();
+  const { user } = useAuth();
+  const scope = useClassScope();
   const { width: screenWidth } = useWindowDimensions();
   const [questIndex, setQuestIndex] = useState(0);
-  const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [classmates, setClassmates] = useState<ClassEnrollment[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [progress, setProgress] = useState<QuestProgress[]>([]);
@@ -59,29 +63,31 @@ export default function StudentHome() {
   const loadEverything = useCallback(async () => {
     setError('');
     try {
-      const [classesData, progressData, summary] = await Promise.all([
-        getMyClasses(),
+      const [snap, progressData, summary] = await Promise.all([
+        refreshClasses(user!.id),
         getMyProgress(),
         getMyRewardSummary().catch(() => null),
       ]);
-      setClasses(classesData);
       setProgress(progressData);
       setTotals(summary ? { points: summary.total_points, badges: summary.total_badges } : null);
 
-      if (classesData.length > 0) {
+      if (snap.selectedId !== null) {
         const [enrollments, groupsData] = await Promise.all([
-          getClassEnrollments(classesData[0].id),
-          getClassGroups(classesData[0].id),
+          getClassEnrollments(snap.selectedId),
+          getClassGroups(snap.selectedId),
         ]);
         setClassmates(enrollments);
         setGroups(groupsData);
+      } else {
+        setClassmates([]);
+        setGroups([]);
       }
     } catch (e: any) {
       setError(e?.response?.data?.detail || 'Failed to load dashboard data.');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user?.id, scope.selectedId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -132,9 +138,10 @@ export default function StudentHome() {
 
   // Swipeable "current quest" cards: every unfinished quest, first one is the current quest.
   // If everything is finished, show the most recent one so it is still reachable from Home.
-  const unfinished = progress.filter((p) => !p.completed_at);
+  const classProgress = progress.filter((p) => inSelectedClass(scope, p.group));
+  const unfinished = classProgress.filter((p) => !p.completed_at);
   const carouselQuests: QuestProgress[] =
-    unfinished.length > 0 ? unfinished : progress.length > 0 ? [progress[progress.length - 1]] : [];
+    unfinished.length > 0 ? unfinished : classProgress.length > 0 ? [classProgress[classProgress.length - 1]] : [];
   const CARD_GAP = 12;
   const cardWidth = carouselQuests.length > 1 ? screenWidth - 56 : screenWidth - 40;
   const snapInterval = cardWidth + CARD_GAP;
@@ -147,7 +154,7 @@ export default function StudentHome() {
   // Same numbers as the Profile tab. Falls back to the per-quest sums only if the summary call failed.
   const totalPoints = totals ? totals.points : progress.reduce((sum, p) => sum + (p.points_earned || 0), 0);
   const totalBadges = totals ? totals.badges : progress.filter((p) => p.badge_earned).length;
-  const doneCount = progress.filter((p) => p.completed_at).length;
+  const doneCount = classProgress.filter((p) => p.completed_at).length;
 
   return (
     <View style={styles.screen}>
@@ -178,10 +185,12 @@ export default function StudentHome() {
         </View>
       </View>
 
+      <ClassSwitcher />
+
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {/* Join class — small link when already in a class, big CTA card when not */}
-      {classes.length > 0 ? (
+      {scope.classes.length > 0 ? (
         <TouchableOpacity style={styles.joinLinkRow} onPress={() => setShowJoinModal(true)}>
           <Text style={styles.joinLinkText}>+ Join another class</Text>
         </TouchableOpacity>
@@ -294,10 +303,10 @@ export default function StudentHome() {
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionHeader}>Assigned Quests</Text>
       </View>
-      {progress.length === 0 ? (
+      {classProgress.length === 0 ? (
         <Text style={styles.emptyText}>No quests assigned yet.</Text>
       ) : (
-        progress.map((item) => (
+        classProgress.map((item) => (
           <TouchableOpacity key={item.id} style={styles.questCard} onPress={() => openQuest(item)}>
             <View style={styles.questCardTop}>
               <Text style={styles.questTitle} numberOfLines={2}>{item.quest_title}</Text>

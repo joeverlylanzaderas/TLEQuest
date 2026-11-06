@@ -30,7 +30,6 @@ const TABS: { key: TabKey; label: string }[] = [
 const COLOR_PRIMARY = '#5C2C16';   // Deep Warm Brown
 const COLOR_SECONDARY = '#C37800'; // Amber Gold
 const COLOR_TERTIARY = '#804022';  // Terracotta
-const COLOR_ACCENT = '#FDC200';    // Bright Gold
 const COLOR_BORDER = '#D6BB83';    // Muted Gold
 const COLOR_BG = '#F8EFE6';        // Soft Cream Background
 const COLOR_DANGER = '#DF1B39';    // Crimson Red

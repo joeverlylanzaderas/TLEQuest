@@ -12,7 +12,6 @@ const COLOR_SECONDARY = '#C37800'; // Amber Gold
 const COLOR_TERTIARY = '#804022';  // Terracotta
 const COLOR_ACCENT_BG = '#FCECD6'; // Warm Soft Cream
 const COLOR_BORDER = '#D6BB83';    // Muted Gold Border
-const COLOR_DANGER = '#DF1B39';    // Crimson Red
 
 function formatApiError(data: any): string {
   if (!data || typeof data !== 'object') return 'Something went wrong.';
