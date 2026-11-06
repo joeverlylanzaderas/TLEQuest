@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-export const BASE_URL = 'http://15.134.238.123/api'; //AWS server
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://tlequest.duckdns.org/api';
 
 
 // --- Bridge so this file (outside the component tree) can tell
@@ -15,7 +15,7 @@ export function registerForceSignOutHandler(handler: SignOutHandler) {
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000,
+  timeout: 3000,
 });
 
 apiClient.interceptors.request.use(async (config) => {

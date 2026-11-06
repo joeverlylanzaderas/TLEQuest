@@ -64,6 +64,13 @@ export default function TeacherSettings() {
   const [fields, setFields] = useState<EditableFields>(EMPTY_FIELDS);
   const [pendingImage, setPendingImage] = useState<{ uri: string; name: string; type: string } | null>(null);
 
+  function confirmSignOut() {
+    Alert.alert('Sign out?', 'You will need to log in again.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: signOut },
+    ]);
+  }
+
   async function loadData() {
     setError('');
     try {
@@ -311,7 +318,7 @@ export default function TeacherSettings() {
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={styles.signOutButton} onPress={signOut}>
+            <TouchableOpacity style={styles.signOutButton} onPress={confirmSignOut}>
               <Ionicons name="log-out-outline" size={18} color="#B3261E" />
               <Text style={styles.signOutText}>Sign Out</Text>
             </TouchableOpacity>

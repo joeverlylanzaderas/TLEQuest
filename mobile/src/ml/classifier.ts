@@ -10,14 +10,36 @@ export type ClassificationLabel = typeof CLASS_NAMES[number];
 // teacher as FOR REVIEW instead. Tune this after real-world testing.
 export const CONFIDENCE_THRESHOLD = 0.75;
 
-const SIZE = 224;
+// Fallback input size. The real size is read from the loaded model, so a
+// retrained model with a different input size (e.g. 384) works by just
+// replacing tlequest_classifier.tflite, with no code change.
+const DEFAULT_SIZE = 224;
+
+function getModelInputSize(model: any): number {
+  const shape = model?.inputs?.[0]?.shape; // [1, H, W, 3]
+  const size = Array.isArray(shape) ? Number(shape[1]) : NaN;
+  return Number.isFinite(size) && size > 0 ? size : DEFAULT_SIZE;
+}
 
 export interface ClassificationResult {
   label: ClassificationLabel;
   confidence: number;                  // confidence of the final label (0-1)
   probabilities: Record<string, number>; // raw model output per class
   elapsedMs: number;
+  // Debug helpers: the exact image the model received, and the size of the
+  // original photo. Used by the classifier-test screen to spot rotation or
+  // stretching problems.
+  inputPreviewUri?: string;
+  originalWidth?: number;
+  originalHeight?: number;
 }
+
+// The training photos were rotated to an upright portrait view (glass on the
+// upper right). Phone cameras often hand us the raw landscape file (e.g.
+// 4128 x 3096), so when a photo is wider than it is tall we rotate it first.
+// Degrees clockwise. Try 90 first; if "What the AI sees" is upside-down use
+// 270, and use 0 to turn this off.
+const LANDSCAPE_ROTATE_DEGREES = 0;
 
 // The native module is required lazily so that importing this file never
 // crashes in Expo Go (it only exists inside the development build).
@@ -70,10 +92,27 @@ export async function classifyImage(imageUri: string): Promise<ClassificationRes
   const started = Date.now();
   console.log('CLASSIFY: start');
 
-  // 1. Resize (stretch, same as Roboflow) and get the JPEG back as base64
+  // 0. Load the model first so we know the input size it expects
+  const model = await loadModel();
+  const SIZE = getModelInputSize(model);
+  console.log('CLASSIFY: model input size', SIZE);
+
+  // 0b. Find out how the photo is oriented (needed to decide on rotation)
+  const info = await ImageManipulator.manipulateAsync(imageUri, [], { compress: 1 });
+  const originalWidth = info.width;
+  const originalHeight = info.height;
+  console.log('CLASSIFY: original photo size', originalWidth, 'x', originalHeight);
+
+  // 1. Rotate if landscape, then resize (stretch, same as Roboflow) and get the JPEG as base64
+  const actions: any[] = [];
+  if (LANDSCAPE_ROTATE_DEGREES && originalWidth > originalHeight) {
+    actions.push({ rotate: LANDSCAPE_ROTATE_DEGREES });
+    console.log('CLASSIFY: landscape photo, rotating', LANDSCAPE_ROTATE_DEGREES);
+  }
+  actions.push({ resize: { width: SIZE, height: SIZE } });
   const resized = await ImageManipulator.manipulateAsync(
     imageUri,
-    [{ resize: { width: SIZE, height: SIZE } }],
+    actions,
     { compress: 1, format: ImageManipulator.SaveFormat.JPEG, base64: true }
   );
   if (!resized.base64) throw new Error('Could not read the photo.');
@@ -97,8 +136,6 @@ export async function classifyImage(imageUri: string): Promise<ClassificationRes
   console.log('CLASSIFY: input ready', input.length);
 
   // 4. Run the model (v3 of react-native-fast-tflite works with ArrayBuffers)
-  console.log('CLASSIFY: loading model');
-  const model = await loadModel();
   console.log('CLASSIFY: running model');
   const outputs = await model.run([input.buffer]);
   console.log('CLASSIFY: model done, outputs =', outputs.length);
@@ -117,5 +154,13 @@ export async function classifyImage(imageUri: string): Promise<ClassificationRes
     confidence = probs[1];
   }
 
-  return { label, confidence, probabilities, elapsedMs: Date.now() - started };
+  return {
+    label,
+    confidence,
+    probabilities,
+    elapsedMs: Date.now() - started,
+    inputPreviewUri: resized.uri,
+    originalWidth,
+    originalHeight,
+  };
 }

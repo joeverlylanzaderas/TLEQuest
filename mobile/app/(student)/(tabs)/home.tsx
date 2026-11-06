@@ -23,6 +23,7 @@ import { getMyRewardSummary } from '../../../src/api/rewards';
 import { ClassSummary, ClassEnrollment, Group } from '../../../src/types/classrooms';
 import { QuestProgress } from '../../../src/types/assignments';
 import { Ionicons } from '@expo/vector-icons';
+import MyGroupCard from '../../../src/components/MyGroupCard';
 import KeyboardSafe from '../../../src/components/KeyboardSafe';
 import AppHeader from '../../../src/components/AppHeader';
 import QuestCover from '../../../src/components/QuestCover';
@@ -193,6 +194,8 @@ export default function StudentHome() {
           </View>
         </TouchableOpacity>
       )}
+
+      {classes.length > 0 && <MyGroupCard groups={groups} />}
 
       {carouselQuests.length > 0 ? (
         <View style={styles.questCarouselWrap}>

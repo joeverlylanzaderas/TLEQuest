@@ -1,11 +1,11 @@
 //admin-web/src/api/client.ts
 import axios from 'axios';
 
-const BASE_URL = 'http://15.134.238.123/api'; // AWS server
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://tlequest.duckdns.org/api';
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000,
+  timeout: 3000,
 });
 
 apiClient.interceptors.request.use((config) => {
