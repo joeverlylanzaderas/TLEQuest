@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet, Alert,
 } from 'react-native';
+import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../../../src/theme/theme';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,12 +14,13 @@ import { QuestProgressDetail } from '../../../../../src/types/assignments';
 import { FullUser } from '../../../../../src/types/accounts';
 import SubmitOutputCard from '../../../../../src/components/SubmitOutputCard';
 
-const GOLD = '#F5B921';
-const CREAM = '#F5EDD8';
-const BROWN = '#5C2C16';
-const CARD_BROWN = '#4A2E1D';
+
+const GOLD = T('#F5B921');
+const CREAM = T('#F5EDD8');
+const BROWN = T('#5C2C16');
+const CARD_BROWN = activeTheme === 'school' ? '#15366B' : '#4A2E1D';
 const GREEN = '#22C55E';
-const ORANGE = '#EA580C';
+const ORANGE = T('#EA580C');
 
 const TABS = [
   { icon: 'restaurant-outline', label: 'Quests', route: '/(student)/(tabs)/quests', active: true },
@@ -300,20 +302,20 @@ const styles = StyleSheet.create({
   backPillText: { color: '#fff', fontWeight: '700' },
 
   header: {
-    backgroundColor: GOLD, paddingTop: 50, paddingBottom: 16, paddingHorizontal: 20,
+    backgroundColor: HEADER_BG, paddingTop: 50, paddingBottom: 16, paddingHorizontal: 20,
     borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   avatarCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  welcomeSmall: { fontSize: 12, color: BROWN, opacity: 0.8 },
-  welcomeName: { fontSize: 16, fontWeight: '800', color: BROWN },
-  dateText: { fontSize: 11, color: BROWN, fontWeight: '600' },
-  classText: { fontSize: 11, color: BROWN, fontWeight: '700', marginTop: 2 },
+  welcomeSmall: { fontSize: 12, color: HEADER_TEXT, opacity: 0.8 },
+  welcomeName: { fontSize: 16, fontWeight: '800', color: HEADER_TEXT },
+  dateText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '600' },
+  classText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '700', marginTop: 2 },
 
   currentQuestCard: { backgroundColor: CARD_BROWN, borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center' },
-  imagePlaceholder: { width: 56, height: 56, borderRadius: 12, backgroundColor: '#8a5a3a', alignItems: 'center', justifyContent: 'center' },
-  questTitle: { color: ORANGE, fontSize: 15, fontWeight: '800' },
-  questMode: { color: '#fbbf24', fontSize: 11, fontStyle: 'italic', marginBottom: 6 },
+  imagePlaceholder: { width: 56, height: 56, borderRadius: 12, backgroundColor: activeTheme === 'school' ? '#2F6FD0' : '#8a5a3a', alignItems: 'center', justifyContent: 'center' },
+  questTitle: { color: activeTheme === 'school' ? '#FFFFFF' : ORANGE, fontSize: 15, fontWeight: '800' },
+  questMode: { color: activeTheme === 'school' ? '#FFFFFF' : '#fbbf24', fontSize: 13, fontStyle: 'italic' },
   progressTrack: { height: 6, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: 6, backgroundColor: '#fff', borderRadius: 3 },
   percentText: { color: '#fff', fontSize: 10, marginTop: 3, fontStyle: 'italic' },
@@ -322,11 +324,11 @@ const styles = StyleSheet.create({
 
   stepCard: { backgroundColor: '#fff', borderRadius: 20, borderWidth: 2, borderColor: ORANGE, padding: 18 },
   stepHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14 },
-  stepLabel: { fontSize: 13, fontWeight: '700', color: '#8A6A2A' },
+  stepLabel: { fontSize: 13, fontWeight: '700', color: T('#8A6A2A') },
 
   stepBodyRow: { flexDirection: 'row', marginBottom: 18 },
   stepImagePlaceholder: {
-    width: 64, height: 64, borderRadius: 12, backgroundColor: '#EADEC9',
+    width: 64, height: 64, borderRadius: 12, backgroundColor: T('#EADEC9'),
     alignItems: 'center', justifyContent: 'center',
   },
   stepTitle: { fontSize: 16, fontWeight: '800', color: ORANGE, marginBottom: 4 },

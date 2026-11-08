@@ -3,14 +3,15 @@
 // Pass the groups of the class being viewed (Home already loads them).
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
+import { T } from '../theme/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { Group } from '../types/classrooms';
 
-const GOLD = '#F5B921';
-const BROWN = '#5C2C16';
+const GOLD = T('#F5B921');
+const BROWN = T('#5C2C16');
 const GREEN = '#22C55E';
-const MUTED = '#8A6A2A';
+const MUTED = T('#8A6A2A');
 
 interface Props {
   groups: Group[];

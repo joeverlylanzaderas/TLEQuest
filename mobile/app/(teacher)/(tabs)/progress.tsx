@@ -4,6 +4,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
   RefreshControl, StyleSheet,
 } from 'react-native';
+import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,11 +14,11 @@ import { QuestAssignment, QuestProgress } from '../../../src/types/assignments';
 import { Submission } from '../../../src/types/submissions';
 import AppHeader from '../../../src/components/AppHeader';
 
-const GOLD = '#F5B921';
-const CREAM = '#F5EDD8';
-const BROWN = '#5C2C16';
+const GOLD = T('#F5B921');
+const CREAM = T('#F5EDD8');
+const BROWN = T('#5C2C16');
 const GREEN = '#22C55E';
-const ORANGE = '#EA580C';
+const ORANGE = T('#EA580C');
 
 function isDone(p: QuestProgress): boolean {
   return !!p.completed_at || p.percent_complete >= 100;
@@ -244,20 +245,20 @@ export default function TeacherProgress() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: CREAM },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { backgroundColor: GOLD, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
+  header: { backgroundColor: HEADER_BG, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
   headerRow: { flexDirection: 'row', alignItems: 'center' },
   avatarCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  welcomeSmall: { fontSize: 12, color: BROWN, opacity: 0.8 },
-  welcomeName: { fontSize: 16, fontWeight: '800', color: BROWN },
-  dateText: { fontSize: 11, color: BROWN, fontWeight: '600' },
-  classText: { fontSize: 11, color: BROWN, fontWeight: '700', marginTop: 2 },
+  welcomeSmall: { fontSize: 12, color: HEADER_TEXT, opacity: 0.8 },
+  welcomeName: { fontSize: 16, fontWeight: '800', color: HEADER_TEXT },
+  dateText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '600' },
+  classText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '700', marginTop: 2 },
 
   scrollContent: { padding: 20, paddingBottom: 60 },
   errorText: { color: '#B3261E', marginBottom: 12, fontSize: 13 },
   pageTitle: { fontSize: 18, fontWeight: '800', color: BROWN, marginBottom: 12 },
-  emptyText: { color: '#8A6A2A', fontStyle: 'italic', textAlign: 'center', marginTop: 24, lineHeight: 20 },
+  emptyText: { color: T('#8A6A2A'), fontStyle: 'italic', textAlign: 'center', marginTop: 24, lineHeight: 20 },
 
-  pill: { maxWidth: 200, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#EADEC9', marginRight: 8 },
+  pill: { maxWidth: 200, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: T('#EADEC9'), marginRight: 8 },
   pillActive: { backgroundColor: ORANGE, borderColor: ORANGE },
   pillText: { fontSize: 12, fontWeight: '700', color: BROWN },
   pillTextActive: { color: '#fff' },
@@ -265,12 +266,12 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   statCard: { flex: 1, backgroundColor: '#fff', borderRadius: 14, paddingVertical: 12, alignItems: 'center' },
   statValue: { fontSize: 18, fontWeight: '900', color: BROWN },
-  statLabel: { fontSize: 10, color: '#8A6A2A', fontWeight: '600', marginTop: 2 },
+  statLabel: { fontSize: 10, color: T('#8A6A2A'), fontWeight: '600', marginTop: 2 },
 
   groupCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 12 },
   groupTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  groupName: { fontSize: 15, fontWeight: '800', color: '#7c2d12' },
-  questName: { fontSize: 12, color: '#8A6A2A', marginTop: 2 },
+  groupName: { fontSize: 15, fontWeight: '800', color: T('#7c2d12') },
+  questName: { fontSize: 12, color: T('#8A6A2A'), marginTop: 2 },
   dueText: { fontSize: 11, color: '#B8A671', marginTop: 2 },
   groupPercent: { fontSize: 18, fontWeight: '900', color: ORANGE },
 
@@ -278,16 +279,16 @@ const styles = StyleSheet.create({
   fill: { height: 8, borderRadius: 4 },
 
   statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
-  memberCount: { fontSize: 11, color: '#8A6A2A', fontWeight: '600' },
+  memberCount: { fontSize: 11, color: T('#8A6A2A'), fontWeight: '600' },
   statusBadge: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
   statusText: { fontSize: 11, fontWeight: '800' },
 
   membersBox: { marginTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(58,43,26,0.08)', paddingTop: 10 },
-  emptyMembers: { fontSize: 12, color: '#8A6A2A', fontStyle: 'italic' },
+  emptyMembers: { fontSize: 12, color: T('#8A6A2A'), fontStyle: 'italic' },
   memberRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
   memberName: { fontSize: 13, fontWeight: '700', color: BROWN, marginBottom: 5 },
   trackSmall: { height: 5, backgroundColor: '#F3EBCB', borderRadius: 3, overflow: 'hidden' },
   fillSmall: { height: 5, borderRadius: 3 },
   memberPercent: { fontSize: 13, fontWeight: '800', color: BROWN },
-  memberMeta: { fontSize: 10, color: '#8A6A2A', marginTop: 2 },
+  memberMeta: { fontSize: 10, color: T('#8A6A2A'), marginTop: 2 },
 });

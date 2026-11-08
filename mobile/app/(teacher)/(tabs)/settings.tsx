@@ -12,6 +12,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,10 +27,10 @@ import { useToast } from '../../../src/components/Toast';
 // ============================================================================
 // COLOR PALETTE — same as login/student profile, so the app feels consistent.
 // ============================================================================
-const CREAM = '#F2E4C4';
-const FIELD_BG = '#F5B921';
-const CARD_BG = '#F9C544';
-const BROWN = '#3A2B1A';
+const CREAM = T('#F2E4C4');
+const FIELD_BG = T('#F5B921');
+const CARD_BG = T('#F9C544');
+const BROWN = T('#3A2B1A');
 
 interface EditableFields {
   first_name: string;
@@ -390,9 +391,9 @@ const styles = StyleSheet.create({
   editIconText: { fontSize: 13, fontWeight: '700', color: BROWN },
   editActionsRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   topBarButton: { paddingHorizontal: 8, paddingVertical: 8 },
-  cancelText: { fontSize: 14, color: '#8A6A2A', fontWeight: '600' },
+  cancelText: { fontSize: 14, color: T('#8A6A2A'), fontWeight: '600' },
   saveButton: {
-    backgroundColor: '#5C3A2E', borderRadius: 20, paddingHorizontal: 20,
+    backgroundColor: T('#5C3A2E'), borderRadius: 20, paddingHorizontal: 20,
     paddingVertical: 8, minWidth: 64, alignItems: 'center',
   },
   saveButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
@@ -404,7 +405,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#EADEC9',
+    borderColor: T('#EADEC9'),
     padding: 16,
     marginBottom: 20,
   },
@@ -422,11 +423,11 @@ const styles = StyleSheet.create({
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   name: { fontSize: 17, fontWeight: '800', color: BROWN },
   roleBadge: {
-    backgroundColor: '#FCECD6', borderWidth: 1, borderColor: '#EADEC9',
+    backgroundColor: '#FCECD6', borderWidth: 1, borderColor: T('#EADEC9'),
     borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2,
   },
   roleBadgeText: { fontSize: 10, fontWeight: '800', color: BROWN, letterSpacing: 0.5 },
-  subInfo: { fontSize: 12, color: '#8A6A2A', marginTop: 2 },
+  subInfo: { fontSize: 12, color: T('#8A6A2A'), marginTop: 2 },
 
   infoCard: {
     backgroundColor: CARD_BG, borderRadius: 20,
@@ -437,24 +438,24 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: 'rgba(58,43,26,0.1)',
   },
   infoIcon: { marginRight: 10 },
-  infoLabel: { fontSize: 13, color: '#8A6A2A', width: 90 },
+  infoLabel: { fontSize: 13, color: T('#8A6A2A'), width: 90 },
   infoValue: { flex: 1, fontSize: 13, fontWeight: '600', color: BROWN, textAlign: 'right' },
 
   formCard: { backgroundColor: CARD_BG, borderRadius: 20, paddingHorizontal: 16, marginBottom: 20 },
   formFieldRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(58,43,26,0.1)' },
   formLabel: {
-    fontSize: 11, fontWeight: '700', color: '#8A6A2A',
+    fontSize: 11, fontWeight: '700', color: T('#8A6A2A'),
     letterSpacing: 0.4, marginBottom: 4, textTransform: 'uppercase',
   },
   formInput: { fontSize: 15, fontWeight: '600', color: BROWN, padding: 0 },
 
   sectionLabel: {
-    fontSize: 11, fontWeight: '700', color: '#8A6A2A',
+    fontSize: 11, fontWeight: '700', color: T('#8A6A2A'),
     letterSpacing: 0.5, marginBottom: 8, marginLeft: 4,
   },
   actionsCard: {
     backgroundColor: '#fff', borderRadius: 20, borderWidth: 1,
-    borderColor: '#EADEC9', marginBottom: 16, overflow: 'hidden',
+    borderColor: T('#EADEC9'), marginBottom: 16, overflow: 'hidden',
   },
   actionRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -468,7 +469,7 @@ const styles = StyleSheet.create({
   },
   signOutText: { color: '#B3261E', fontSize: 15, fontWeight: '700' },
 
-  errorText: { fontSize: 14, color: '#8A6A2A', textAlign: 'center', marginBottom: 16 },
+  errorText: { fontSize: 14, color: T('#8A6A2A'), textAlign: 'center', marginBottom: 16 },
   retryButton: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, backgroundColor: CARD_BG },
   retryButtonText: { color: BROWN, fontWeight: '700' },
 });

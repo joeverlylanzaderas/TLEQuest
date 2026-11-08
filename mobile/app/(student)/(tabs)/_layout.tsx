@@ -1,5 +1,6 @@
 // mobile/app/(student)/(tabs)/_layout.tsx
 import { View } from 'react-native';
+import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTabScreenOptions, TAB_BG } from '../../../src/components/useTabScreenOptions';

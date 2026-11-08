@@ -106,38 +106,38 @@ export default function Classes() {
       <style>{`
         .cls-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
         .cls-search { position: relative; flex: 1; max-width: 380px; min-width: 240px; }
-        .cls-search input { width: 100%; background: #FFFFFF; border: 1px solid #D6BB83; padding: 10px 16px 10px 40px; border-radius: 9999px; font-size: 14px; color: #804022; outline: none; }
-        .cls-search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #C37800; }
-        .cls-count { font-size: 13px; color: #804022; font-weight: 600; }
-        .cls-card { background: #FFFFFF; border: 1px solid #D6BB83; border-radius: 16px; box-shadow: 0 4px 20px rgba(128,64,34,0.05); overflow: hidden; }
+        .cls-search input { width: 100%; background: #FFFFFF; border: 1px solid var(--t-d6bb83); padding: 10px 16px 10px 40px; border-radius: 9999px; font-size: 14px; color: var(--t-804022); outline: none; }
+        .cls-search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--t-c37800); }
+        .cls-count { font-size: 13px; color: var(--t-804022); font-weight: 600; }
+        .cls-card { background: #FFFFFF; border: 1px solid var(--t-d6bb83); border-radius: 16px; box-shadow: 0 4px 20px rgba(128,64,34,0.05); overflow: hidden; }
         .cls-scroll { width: 100%; overflow-x: auto; }
         .cls-table { width: 100%; border-collapse: collapse; text-align: left; }
-        .cls-table thead tr { background: #5C2C16; color: #FFFFFF; }
+        .cls-table thead tr { background: var(--t-5c2c16); color: #FFFFFF; }
         .cls-table th { padding: 14px 16px; font-size: 13px; font-weight: 700; white-space: nowrap; }
-        .cls-table td { padding: 12px 16px; font-size: 14px; color: #5C2C16; border-bottom: 1px solid #F3EFD4; }
+        .cls-table td { padding: 12px 16px; font-size: 14px; color: var(--t-5c2c16); border-bottom: 1px solid var(--t-f3efd4); }
         .cls-table tbody tr { cursor: pointer; transition: background 0.15s; }
         .cls-table tbody tr:hover { background: #FCF8F2; }
-        .cls-code { font-family: monospace; font-weight: 700; background: #FCECD6; padding: 3px 8px; border-radius: 6px; }
+        .cls-code { font-family: monospace; font-weight: 700; background: var(--t-fcecd6); padding: 3px 8px; border-radius: 6px; }
         .cls-badge { display: inline-block; padding: 3px 12px; border-radius: 9999px; font-size: 12px; font-weight: 700; color: #FFFFFF; }
         .cls-badge.on { background: #22C55E; } .cls-badge.off { background: #6B7280; }
-        .cls-empty { padding: 32px; text-align: center; color: #804022; font-style: italic; }
+        .cls-empty { padding: 32px; text-align: center; color: var(--t-804022); font-style: italic; }
         .cls-error { color: #DF1B39; font-size: 13px; margin-bottom: 12px; }
         .cls-overlay { position: fixed; inset: 0; background: rgba(40,20,10,0.5); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; }
-        .cls-modal { background: #FFFFFF; border: 1px solid #D6BB83; border-radius: 20px; width: 100%; max-width: 720px; max-height: 90vh; overflow-y: auto; padding: 28px; }
+        .cls-modal { background: #FFFFFF; border: 1px solid var(--t-d6bb83); border-radius: 20px; width: 100%; max-width: 720px; max-height: 90vh; overflow-y: auto; padding: 28px; }
         .cls-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
-        .cls-modal h2 { margin: 0; font-size: 22px; color: #5C2C16; }
-        .cls-sub { margin: 4px 0 0; font-size: 13px; color: #804022; }
-        .cls-icon-btn { background: transparent; border: none; cursor: pointer; color: #804022; padding: 6px; border-radius: 8px; display: inline-flex; }
-        .cls-icon-btn:hover { background: #FCECD6; }
+        .cls-modal h2 { margin: 0; font-size: 22px; color: var(--t-5c2c16); }
+        .cls-sub { margin: 4px 0 0; font-size: 13px; color: var(--t-804022); }
+        .cls-icon-btn { background: transparent; border: none; cursor: pointer; color: var(--t-804022); padding: 6px; border-radius: 8px; display: inline-flex; }
+        .cls-icon-btn:hover { background: var(--t-fcecd6); }
         .cls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-        .cls-field label { display: block; font-size: 11px; font-weight: 700; color: #C37800; margin-bottom: 4px; text-transform: uppercase; }
-        .cls-field input { width: 100%; background: #F8EFE6; border: 1px solid #D6BB83; padding: 10px 12px; border-radius: 10px; font-size: 14px; color: #5C2C16; outline: none; }
-        .cls-field .val { font-size: 14px; font-weight: 600; color: #5C2C16; }
-        .cls-section { font-size: 14px; font-weight: 800; color: #5C2C16; margin: 18px 0 8px; }
-        .cls-list { border: 1px solid #F3EFD4; border-radius: 12px; overflow: hidden; }
-        .cls-row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 14px; border-bottom: 1px solid #F3EFD4; font-size: 13px; color: #5C2C16; }
+        .cls-field label { display: block; font-size: 11px; font-weight: 700; color: var(--t-c37800); margin-bottom: 4px; text-transform: uppercase; }
+        .cls-field input { width: 100%; background: var(--t-f8efe6); border: 1px solid var(--t-d6bb83); padding: 10px 12px; border-radius: 10px; font-size: 14px; color: var(--t-5c2c16); outline: none; }
+        .cls-field .val { font-size: 14px; font-weight: 600; color: var(--t-5c2c16); }
+        .cls-section { font-size: 14px; font-weight: 800; color: var(--t-5c2c16); margin: 18px 0 8px; }
+        .cls-list { border: 1px solid var(--t-f3efd4); border-radius: 12px; overflow: hidden; }
+        .cls-row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--t-f3efd4); font-size: 13px; color: var(--t-5c2c16); }
         .cls-row:last-child { border-bottom: none; }
-        .cls-muted { color: #804022; font-size: 12px; }
+        .cls-muted { color: var(--t-804022); font-size: 12px; }
         .cls-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
         @media (max-width: 640px) { .cls-grid { grid-template-columns: 1fr; } }
       `}</style>

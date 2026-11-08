@@ -5,12 +5,13 @@
 //   <DatePickerField label="Due date" value={due} onChange={setDue} minDate={start ?? undefined} />
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { T } from '../theme/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { formatPickedDate, isSameDay, startOfDay } from '../utils/dates';
 
-const BROWN = '#3A2B1A';
-const ORANGE = '#EA580C';
-const GOLD = '#F5B921';
+const BROWN = T('#3A2B1A');
+const ORANGE = T('#EA580C');
+const GOLD = T('#F5B921');
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -71,14 +72,14 @@ export default function DatePickerField({
         disabled={disabled}
         activeOpacity={0.8}
       >
-        <Ionicons name="calendar-outline" size={18} color="#8A6A2A" />
+        <Ionicons name="calendar-outline" size={18} color={T('#8A6A2A')} />
         <Text style={[styles.fieldText, !value && styles.placeholder]} numberOfLines={1}>
           {value ? formatPickedDate(value) : placeholder}
         </Text>
         {value && clearable && !disabled ? (
           <Ionicons name="close-circle" size={18} color="#B8A671" onPress={() => onChange(null)} />
         ) : (
-          <Ionicons name="chevron-down" size={16} color="#8A6A2A" />
+          <Ionicons name="chevron-down" size={16} color={T('#8A6A2A')} />
         )}
       </TouchableOpacity>
 
@@ -132,11 +133,11 @@ export default function DatePickerField({
               </TouchableOpacity>
               {clearable && (
                 <TouchableOpacity onPress={() => { onChange(null); setOpen(false); }}>
-                  <Text style={[styles.footerLink, { color: '#8A6A2A' }]}>Clear</Text>
+                  <Text style={[styles.footerLink, { color: T('#8A6A2A') }]}>Clear</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity onPress={() => setOpen(false)}>
-                <Text style={[styles.footerLink, { color: '#8A6A2A' }]}>Cancel</Text>
+                <Text style={[styles.footerLink, { color: T('#8A6A2A') }]}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </Pressable>
@@ -152,7 +153,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '700', color: BROWN, marginBottom: 6 },
   field: {
     flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff',
-    borderWidth: 1, borderColor: '#EADEC9', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 11,
+    borderWidth: 1, borderColor: T('#EADEC9'), borderRadius: 10, paddingHorizontal: 10, paddingVertical: 11,
   },
   fieldText: { flex: 1, fontSize: 14, color: BROWN, fontWeight: '600' },
   placeholder: { color: '#B8A671', fontWeight: '400' },
@@ -163,7 +164,7 @@ const styles = StyleSheet.create({
   navBtn: { padding: 6 },
   monthText: { fontSize: 15, fontWeight: '800', color: BROWN },
   weekRow: { flexDirection: 'row', marginBottom: 4 },
-  weekday: { width: CELL, textAlign: 'center', fontSize: 11, fontWeight: '700', color: '#8A6A2A' },
+  weekday: { width: CELL, textAlign: 'center', fontSize: 11, fontWeight: '700', color: T('#8A6A2A') },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: { width: CELL, aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
   dayCircle: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },

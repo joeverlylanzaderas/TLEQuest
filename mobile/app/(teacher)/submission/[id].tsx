@@ -4,6 +4,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator,
   StyleSheet, Image, Alert, Modal, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,11 +12,11 @@ import { getSubmission, reviewSubmission } from '../../../src/api/submissions';
 import { Submission } from '../../../src/types/submissions';
 import { useToast } from '../../../src/components/Toast';
 
-const GOLD = '#F5B921';
-const CREAM = '#F5EDD8';
-const BROWN = '#5C2C16';
+const GOLD = T('#F5B921');
+const CREAM = T('#F5EDD8');
+const BROWN = T('#5C2C16');
 const GREEN = '#22C55E';
-const ORANGE = '#EA580C';
+const ORANGE = T('#EA580C');
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('en-US', {
@@ -203,30 +204,30 @@ const styles = StyleSheet.create({
   backPill: { backgroundColor: BROWN, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10 },
   backPillText: { color: '#fff', fontWeight: '700' },
 
-  header: { backgroundColor: GOLD, paddingTop: 50, paddingBottom: 16, paddingHorizontal: 20, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  header: { backgroundColor: HEADER_BG, paddingTop: 50, paddingBottom: 16, paddingHorizontal: 20, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   backRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerTitle: { fontSize: 18, fontWeight: '800', color: BROWN },
 
   content: { padding: 20, paddingBottom: 60 },
-  photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: 18, backgroundColor: '#EADEC9' },
+  photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: 18, backgroundColor: T('#EADEC9') },
   zoomHint: { position: 'absolute', right: 10, bottom: 10, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 },
   zoomHintText: { color: '#fff', fontSize: 10, fontWeight: '700' },
 
   infoCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginTop: 14 },
-  questTitle: { fontSize: 16, fontWeight: '800', color: '#7c2d12' },
-  meta: { fontSize: 12, color: '#8A6A2A', marginTop: 3 },
+  questTitle: { fontSize: 16, fontWeight: '800', color: T('#7c2d12') },
+  meta: { fontSize: 12, color: T('#8A6A2A'), marginTop: 3 },
 
   aiBox: { backgroundColor: '#FFF7D6', borderRadius: 12, padding: 12, marginTop: 14 },
-  aiLabel: { fontSize: 10, fontWeight: '800', color: '#8A6A2A', letterSpacing: 0.5, marginBottom: 6 },
+  aiLabel: { fontSize: 10, fontWeight: '800', color: T('#8A6A2A'), letterSpacing: 0.5, marginBottom: 6 },
   aiRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   aiResult: { fontSize: 18, fontWeight: '900', flex: 1 },
   aiConfidence: { fontSize: 14, fontWeight: '800', color: BROWN },
-  aiNote: { fontSize: 11, color: '#8A6A2A', marginTop: 8, lineHeight: 16 },
+  aiNote: { fontSize: 11, color: T('#8A6A2A'), marginTop: 8, lineHeight: 16 },
 
-  sectionLabel: { fontSize: 10, fontWeight: '800', color: '#8A6A2A', letterSpacing: 0.5, marginBottom: 8 },
+  sectionLabel: { fontSize: 10, fontWeight: '800', color: T('#8A6A2A'), letterSpacing: 0.5, marginBottom: 8 },
   starRow: { flexDirection: 'row', gap: 6 },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#EADEC9', borderRadius: 12, padding: 12, fontSize: 14, color: BROWN, minHeight: 110, textAlignVertical: 'top' },
-  reviewedNote: { fontSize: 11, color: '#8A6A2A', marginTop: 10, fontStyle: 'italic' },
+  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: T('#EADEC9'), borderRadius: 12, padding: 12, fontSize: 14, color: BROWN, minHeight: 110, textAlignVertical: 'top' },
+  reviewedNote: { fontSize: 11, color: T('#8A6A2A'), marginTop: 10, fontStyle: 'italic' },
   saveButton: { backgroundColor: GREEN, borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 16 },
   saveButtonText: { color: '#fff', fontWeight: '800', fontSize: 15 },
 

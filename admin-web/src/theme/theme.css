@@ -1,0 +1,27 @@
+/* admin-web/src/theme/theme.css
+   Every color the admin pages use is a variable named after its ORIGINAL hex.
+   Default theme = the original colors. School theme = blue / white / cream / yellow. */
+:root {
+  --t-804022: #804022;
+  --t-5c2c16: #5C2C16;
+  --t-2e180b: #2E180B;
+  --t-d6bb83: #D6BB83;
+  --t-c37800: #C37800;
+  --t-fcecd6: #FCECD6;
+  --t-f3efd4: #F3EFD4;
+  --t-f8efe6: #F8EFE6;
+  --t-fdc200: #FDC200;
+  --t-eadec9: #EADEC9;
+}
+:root[data-theme='school'] {
+  --t-804022: #18303D;
+  --t-5c2c16: #18303D;
+  --t-2e180b: #0F2230;
+  --t-d6bb83: #C9C2A6;
+  --t-c37800: #1E4D8F;
+  --t-fcecd6: #E8EFF8;
+  --t-f3efd4: #EAF0F8;
+  --t-f8efe6: #FAF6E8;
+  --t-fdc200: #F2B84B;
+  --t-eadec9: #E3DCC6;
+}

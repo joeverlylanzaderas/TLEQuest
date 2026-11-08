@@ -4,6 +4,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
   RefreshControl, StyleSheet, Image, Modal,
 } from 'react-native';
+import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,9 +17,9 @@ import { getUnreadNotifications } from '../../../src/api/notifications';
 import { FullUser } from '../../../src/types/accounts';
 import { Submission } from '../../../src/types/submissions';
 
-const GOLD = '#F5B921';
-const CREAM = '#F5EDD8';
-const BROWN = '#5C2C16';
+const GOLD = T('#F5B921');
+const CREAM = T('#F5EDD8');
+const BROWN = T('#5C2C16');
 const GREEN = '#22C55E';
 
 function formatDateTime(iso: string): string {
@@ -190,13 +191,13 @@ export default function StudentSubmissions() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: CREAM },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { backgroundColor: GOLD, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
+  header: { backgroundColor: HEADER_BG, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
   headerRow: { flexDirection: 'row', alignItems: 'center' },
   avatarCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  welcomeSmall: { fontSize: 12, color: BROWN, opacity: 0.8 },
-  welcomeName: { fontSize: 16, fontWeight: '800', color: BROWN },
-  dateText: { fontSize: 11, color: BROWN, fontWeight: '600' },
-  classText: { fontSize: 11, color: BROWN, fontWeight: '700', marginTop: 2 },
+  welcomeSmall: { fontSize: 12, color: HEADER_TEXT, opacity: 0.8 },
+  welcomeName: { fontSize: 16, fontWeight: '800', color: HEADER_TEXT },
+  dateText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '600' },
+  classText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '700', marginTop: 2 },
   bellDot: { position: 'absolute', top: -1, right: -1, width: 8, height: 8, borderRadius: 4, backgroundColor: '#DC2626' },
 
   scrollContent: { padding: 20, paddingBottom: 60 },
@@ -205,13 +206,13 @@ const styles = StyleSheet.create({
 
   emptyCard: { backgroundColor: '#fff', borderRadius: 20, padding: 28, alignItems: 'center', gap: 8 },
   emptyTitle: { fontSize: 16, fontWeight: '800', color: BROWN },
-  emptyText: { color: '#8A6A2A', fontSize: 13, textAlign: 'center', lineHeight: 19 },
+  emptyText: { color: T('#8A6A2A'), fontSize: 13, textAlign: 'center', lineHeight: 19 },
 
   card: { backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden', marginBottom: 16 },
-  photo: { width: '100%', aspectRatio: 4 / 3, backgroundColor: '#EADEC9' },
+  photo: { width: '100%', aspectRatio: 4 / 3, backgroundColor: T('#EADEC9') },
   cardBody: { padding: 14 },
-  questTitle: { fontSize: 15, fontWeight: '800', color: '#7c2d12' },
-  meta: { fontSize: 11, color: '#8A6A2A', marginTop: 3 },
+  questTitle: { fontSize: 15, fontWeight: '800', color: T('#7c2d12') },
+  meta: { fontSize: 11, color: T('#8A6A2A'), marginTop: 3 },
   badgeRow: { flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' },
   badge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
   badgeText: { fontSize: 11, fontWeight: '800' },
@@ -219,9 +220,9 @@ const styles = StyleSheet.create({
 
   teacherBox: { backgroundColor: '#FFF7D6', borderRadius: 12, padding: 12, marginTop: 12 },
   teacherTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  teacherLabel: { fontSize: 10, fontWeight: '800', color: '#8A6A2A', letterSpacing: 0.5 },
+  teacherLabel: { fontSize: 10, fontWeight: '800', color: T('#8A6A2A'), letterSpacing: 0.5 },
   teacherText: { fontSize: 13, color: BROWN, lineHeight: 19 },
-  reviewedBy: { fontSize: 11, color: '#8A6A2A', marginTop: 6, fontStyle: 'italic' },
+  reviewedBy: { fontSize: 11, color: T('#8A6A2A'), marginTop: 6, fontStyle: 'italic' },
 
   zoomOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' },
   zoomImage: { width: '100%', height: '80%' },

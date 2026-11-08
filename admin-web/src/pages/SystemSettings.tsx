@@ -1,10 +1,29 @@
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, LogOut, Palette, ShieldCheck, ToggleLeft, Save } from 'lucide-react';
+import { ArrowLeft, LogOut, Settings, Palette, School, ShieldCheck, ToggleLeft, Save } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { getSystemSettings, updateSystemSettings } from '../api/settings';
-import type { SystemSettings as SystemSettingsType } from '../types/settings';
+import type { SystemSettings as SystemSettingsType, ThemeKey } from '../types/settings';
+import { applyTheme } from '../theme/theme';
+
+// Mini previews of the two app themes (the real colors live in the mobile app).
+const THEMES: { key: ThemeKey; name: string; description: string; swatches: string[]; header: string; page: string; button: string; buttonText: string }[] = [
+  {
+    key: 'default',
+    name: 'TLEQuest Default',
+    description: 'The current app look: gold, brown and orange.',
+    swatches: ['#F5B921', '#5C2C16', '#EA580C', '#F5EDD8'],
+    header: '#F5B921', page: '#F5EDD8', button: '#EA580C', buttonText: '#FFFFFF',
+  },
+  {
+    key: 'school',
+    name: 'School Blue',
+    description: 'Blue, white and cream, like the app login page. Follows the school colors.',
+    swatches: ['#1E4D8F', '#18303D', '#FAF6E8', '#FFFFFF'],
+    header: '#1E4D8F', page: '#FAF6E8', button: '#18303D', buttonText: '#F2B84B',
+  },
+];
 
 function formatApiError(data: any): string {
   if (!data || typeof data !== 'object') return 'Something went wrong.';
@@ -36,6 +55,7 @@ export default function SystemSettingsPage() {
     try {
       const data = await getSystemSettings();
       setSettings(data);
+      applyTheme(data.theme);
     } catch (e: any) {
       setError(formatApiError(e?.response?.data));
     } finally {
@@ -58,12 +78,13 @@ export default function SystemSettingsPage() {
       const updated = await updateSystemSettings({
         school_name: settings.school_name,
         school_year: settings.school_year,
-        primary_color: settings.primary_color,
+        theme: settings.theme,
         min_password_length: settings.min_password_length,
         bulk_upload_enabled: settings.bulk_upload_enabled,
         self_service_password_reset_enabled: settings.self_service_password_reset_enabled,
       });
       setSettings(updated);
+      applyTheme(updated.theme);
       showToast('System settings saved.', 'success');
     } catch (e: any) {
       showToast(formatApiError(e?.response?.data), 'error');
@@ -74,7 +95,7 @@ export default function SystemSettingsPage() {
 
   if (isLoading || !settings) {
     return (
-      <div style={{ padding: 32, color: '#C37800', fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>
+      <div style={{ padding: 32, color: 'var(--t-c37800)', fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>
         Loading system settings...
       </div>
     );
@@ -86,8 +107,8 @@ export default function SystemSettingsPage() {
         *, *::before, *::after { box-sizing: border-box; }
         body {
           margin: 0;
-          background-color: #F8EFE6;
-          color: #804022;
+          background-color: var(--t-f8efe6);
+          color: var(--t-804022);
           font-family: 'Inter', sans-serif;
         }
         h1, h2, h3, .card-title, .modal-title {
@@ -109,8 +130,8 @@ export default function SystemSettingsPage() {
         }
         .back-btn {
           background: #FFFFFF;
-          border: 1px solid #D6BB83;
-          color: #804022;
+          border: 1px solid var(--t-d6bb83);
+          color: var(--t-804022);
           padding: 10px 18px;
           border-radius: 9999px;
           font-size: 14px;
@@ -122,7 +143,7 @@ export default function SystemSettingsPage() {
           box-shadow: 0 2px 8px rgba(128, 64, 34, 0.05);
           transition: all 0.2s ease;
         }
-        .back-btn:hover { background: #FCECD6; border-color: #C37800; color: #C37800; }
+        .back-btn:hover { background: var(--t-fcecd6); border-color: var(--t-c37800); color: var(--t-c37800); }
         .signout-btn {
           background: rgba(223, 27, 57, 0.1);
           color: #DF1B39;
@@ -139,12 +160,12 @@ export default function SystemSettingsPage() {
         .signout-btn:hover { background: rgba(223, 27, 57, 0.2); }
 
         .page-title-area { text-align: center; margin-bottom: 24px; }
-        .page-title-area h1 { font-size: 32px; font-weight: 800; color: #5C2C16; margin: 0 0 8px 0; }
-        .page-title-area p { margin: 0; color: #804022; font-size: 15px; font-weight: 500; }
+        .page-title-area h1 { font-size: 32px; font-weight: 800; color: var(--t-5c2c16); margin: 0 0 8px 0; }
+        .page-title-area p { margin: 0; color: var(--t-804022); font-size: 15px; font-weight: 500; }
 
         .settings-section {
           background: #FFFFFF;
-          border: 1px solid #D6BB83;
+          border: 1px solid var(--t-d6bb83);
           border-radius: 16px;
           padding: 24px;
           margin-bottom: 20px;
@@ -160,47 +181,58 @@ export default function SystemSettingsPage() {
           width: 36px;
           height: 36px;
           border-radius: 10px;
-          background: #FCECD6;
-          color: #5C2C16;
+          background: var(--t-fcecd6);
+          color: var(--t-5c2c16);
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
         }
-        .section-title { font-size: 16px; font-weight: 800; color: #5C2C16; margin: 0; }
-        .section-subtitle { font-size: 13px; color: #804022; margin: 2px 0 0 0; }
+        .section-title { font-size: 16px; font-weight: 800; color: var(--t-5c2c16); margin: 0; }
+        .section-subtitle { font-size: 13px; color: var(--t-804022); margin: 2px 0 0 0; }
 
         .field-row {
           display: flex;
           justify-content: space-between;
           align-items: center;
           padding: 12px 0;
-          border-bottom: 1px solid #F3EFD4;
+          border-bottom: 1px solid var(--t-f3efd4);
           gap: 16px;
         }
         .field-row:last-child { border-bottom: none; }
-        .field-label { font-size: 14px; font-weight: 600; color: #5C2C16; }
-        .field-hint { font-size: 12px; color: #804022; margin-top: 2px; }
+        .field-label { font-size: 14px; font-weight: 600; color: var(--t-5c2c16); }
+        .field-hint { font-size: 12px; color: var(--t-804022); margin-top: 2px; }
 
         .settings-input {
-          background: #F8EFE6;
-          border: 1px solid #D6BB83;
+          background: var(--t-f8efe6);
+          border: 1px solid var(--t-d6bb83);
           padding: 10px 14px;
           border-radius: 10px;
           font-size: 14px;
-          color: #804022;
+          color: var(--t-804022);
           outline: none;
           min-width: 220px;
         }
         .settings-input-narrow { min-width: 100px; }
-        .color-swatch-input {
-          width: 44px;
-          height: 36px;
-          padding: 2px;
-          border: 1px solid #D6BB83;
-          border-radius: 8px;
-          cursor: pointer;
+        .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .theme-card {
+          text-align: left; background: #FFFFFF; border: 2px solid var(--t-d6bb83); border-radius: 16px;
+          padding: 12px; cursor: pointer; font-family: inherit; color: var(--t-5c2c16);
+          transition: border-color 0.2s, box-shadow 0.2s;
         }
+        .theme-card:hover { border-color: var(--t-c37800); }
+        .theme-card.selected { border-color: #22C55E; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2); }
+        .theme-preview { border-radius: 12px; overflow: hidden; border: 1px solid rgba(0,0,0,0.08); height: 120px; display: flex; flex-direction: column; }
+        .theme-preview-header { height: 38px; flex-shrink: 0; }
+        .theme-preview-body { flex: 1; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .theme-preview-line { height: 8px; border-radius: 4px; background: rgba(0,0,0,0.12); width: 70%; }
+        .theme-preview-btn { align-self: flex-start; font-size: 10px; font-weight: 800; padding: 5px 12px; border-radius: 9999px; }
+        .theme-info { margin-top: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .theme-name { font-size: 14px; font-weight: 800; }
+        .theme-desc { font-size: 12px; color: var(--t-804022); margin-top: 2px; }
+        .theme-dots { display: flex; gap: 4px; margin-top: 8px; }
+        .theme-dot { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.15); }
+        .theme-badge { font-size: 11px; font-weight: 800; color: #166534; background: #DCFCE7; padding: 3px 10px; border-radius: 9999px; white-space: nowrap; }
 
         /* Toggle switch */
         .toggle-switch {
@@ -214,7 +246,7 @@ export default function SystemSettingsPage() {
           position: absolute;
           cursor: pointer;
           inset: 0;
-          background-color: #D6BB83;
+          background-color: var(--t-d6bb83);
           border-radius: 9999px;
           transition: background-color 0.2s;
         }
@@ -233,7 +265,7 @@ export default function SystemSettingsPage() {
         .toggle-switch input:checked + .toggle-slider::before { transform: translateX(22px); }
 
         .action-btn-primary {
-          background: #5C2C16;
+          background: var(--t-5c2c16);
           color: #FFFFFF;
           border: none;
           padding: 12px 24px;
@@ -246,7 +278,7 @@ export default function SystemSettingsPage() {
           gap: 8px;
           transition: background 0.2s;
         }
-        .action-btn-primary:hover { background: #804022; }
+        .action-btn-primary:hover { background: var(--t-804022); }
         .action-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
         .save-bar {
@@ -258,7 +290,7 @@ export default function SystemSettingsPage() {
         .last-updated {
           text-align: center;
           font-size: 12px;
-          color: #C37800;
+          color: var(--t-c37800);
           margin-top: 16px;
         }
 
@@ -266,6 +298,7 @@ export default function SystemSettingsPage() {
           .page-wrapper { padding: 16px; }
           .field-row { flex-direction: column; align-items: flex-start; }
           .settings-input { width: 100%; min-width: 0; }
+          .theme-grid { grid-template-columns: 1fr; }
         }
       `}</style>
 
@@ -291,13 +324,13 @@ export default function SystemSettingsPage() {
         </div>
       )}
 
-      {/* Branding */}
+      {/* School information */}
       <div className="settings-section">
         <div className="section-header">
-          <div className="section-icon"><Palette size={18} /></div>
+          <div className="section-icon"><School size={18} /></div>
           <div>
-            <h2 className="section-title">Branding</h2>
-            <p className="section-subtitle">School identity shown across the app</p>
+            <h2 className="section-title">School Information</h2>
+            <p className="section-subtitle">Shown across the app</p>
           </div>
         </div>
 
@@ -324,17 +357,50 @@ export default function SystemSettingsPage() {
             placeholder="e.g. 2026-2027"
           />
         </div>
+      </div>
 
-        <div className="field-row">
+      {/* Theme */}
+      <div className="settings-section">
+        <div className="section-header">
+          <div className="section-icon"><Palette size={18} /></div>
           <div>
-            <div className="field-label">Primary Color</div>
+            <h2 className="section-title">Theme</h2>
+            <p className="section-subtitle">Choose the color look of the mobile app. Click Save Settings to apply.</p>
           </div>
-          <input
-            type="color"
-            className="color-swatch-input"
-            value={settings.primary_color}
-            onChange={(e) => updateField('primary_color', e.target.value)}
-          />
+        </div>
+
+        <div className="theme-grid">
+          {THEMES.map((t) => {
+            const selected = settings.theme === t.key;
+            return (
+              <button
+                type="button"
+                key={t.key}
+                className={`theme-card${selected ? ' selected' : ''}`}
+                onClick={() => { updateField('theme', t.key); applyTheme(t.key); }}
+                aria-pressed={selected}
+              >
+                <div className="theme-preview" style={{ background: t.page }}>
+                  <div className="theme-preview-header" style={{ background: t.header }} />
+                  <div className="theme-preview-body">
+                    <div className="theme-preview-line" />
+                    <div className="theme-preview-line" style={{ width: '45%' }} />
+                    <div className="theme-preview-btn" style={{ background: t.button, color: t.buttonText }}>Button</div>
+                  </div>
+                </div>
+                <div className="theme-info">
+                  <div>
+                    <div className="theme-name">{t.name}</div>
+                    <div className="theme-desc">{t.description}</div>
+                  </div>
+                  {selected && <span className="theme-badge">Selected</span>}
+                </div>
+                <div className="theme-dots">
+                  {t.swatches.map((c) => <span key={c} className="theme-dot" style={{ background: c }} />)}
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 

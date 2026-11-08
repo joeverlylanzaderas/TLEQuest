@@ -4,6 +4,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
   RefreshControl, StyleSheet,
 } from 'react-native';
+import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../../src/theme/theme';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,12 +13,12 @@ import { QuestProgressDetail, ProgressStep } from '../../../../src/types/assignm
 import SubmitOutputCard from '../../../../src/components/SubmitOutputCard';
 import QuestCover from '../../../../src/components/QuestCover';
 
-const GOLD = '#F5B921';
-const CREAM = '#F5EDD8';
-const BROWN = '#5C2C16';
+const GOLD = T('#F5B921');
+const CREAM = T('#F5EDD8');
+const BROWN = T('#5C2C16');
 const CARD_BROWN = '#4A2E1D';
 const GREEN = '#22C55E';
-const ORANGE = '#EA580C';
+const ORANGE = T('#EA580C');
 
 function checkedCount(step: ProgressStep): number {
   return step.checklist_items.filter((i) => i.is_checked).length;
@@ -174,24 +175,24 @@ export default function QuestOverview() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: CREAM },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: CREAM },
-  header: { backgroundColor: GOLD, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
+  header: { backgroundColor: HEADER_BG, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
   backRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   backTitle: { fontSize: 17, fontWeight: '800', color: BROWN, marginLeft: 8 },
 
   currentQuestCard: { backgroundColor: CARD_BROWN, borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center' },
   imagePlaceholder: { width: 56, height: 56, borderRadius: 12, backgroundColor: '#8a5a3a', alignItems: 'center', justifyContent: 'center' },
   questTitle: { color: ORANGE, fontSize: 15, fontWeight: '800' },
-  questMode: { color: '#fbbf24', fontSize: 11, fontStyle: 'italic', marginBottom: 6 },
+  questMode: { color: T('#fbbf24'), fontSize: 11, fontStyle: 'italic', marginBottom: 6 },
   progressTrack: { height: 6, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: 6, backgroundColor: '#fff', borderRadius: 3 },
   percentText: { color: '#fff', fontSize: 10, marginTop: 3 },
 
   scrollContent: { padding: 20, paddingBottom: 60 },
   errorText: { color: '#B3261E', marginBottom: 12, fontSize: 13 },
-  emptyText: { color: '#8A6A2A', fontStyle: 'italic', textAlign: 'center', marginTop: 20 },
+  emptyText: { color: T('#8A6A2A'), fontStyle: 'italic', textAlign: 'center', marginTop: 20 },
 
   aboutCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 14 },
-  aboutLabel: { fontSize: 10, fontWeight: '800', color: '#8A6A2A', letterSpacing: 0.5, marginBottom: 4 },
+  aboutLabel: { fontSize: 10, fontWeight: '800', color: T('#8A6A2A'), letterSpacing: 0.5, marginBottom: 4 },
   aboutText: { fontSize: 13, color: '#444', lineHeight: 19 },
 
   stepCard: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 14 },
@@ -200,9 +201,9 @@ const styles = StyleSheet.create({
   stepBadgeCompleted: { backgroundColor: GREEN },
   stepBadgeLocked: { backgroundColor: '#9CA3AF' },
   stepBadgeText: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  stepTitle: { fontSize: 14, fontWeight: '800', color: '#7c2d12', marginBottom: 4 },
+  stepTitle: { fontSize: 14, fontWeight: '800', color: T('#7c2d12'), marginBottom: 4 },
   stepDescription: { fontSize: 12, color: '#666', marginBottom: 6, lineHeight: 17 },
-  stepChecklistMeta: { fontSize: 11, color: '#8A6A2A', marginBottom: 8 },
+  stepChecklistMeta: { fontSize: 11, color: T('#8A6A2A'), marginBottom: 8 },
 
   stepButton: { alignSelf: 'flex-start', backgroundColor: '#fde68a', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6 },
   stepButtonCompleted: { backgroundColor: GREEN },

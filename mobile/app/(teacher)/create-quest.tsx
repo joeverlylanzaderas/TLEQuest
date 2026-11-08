@@ -4,6 +4,7 @@ import {
   View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, Modal, Switch,
 } from 'react-native';
+import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../src/theme/theme';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -20,11 +21,11 @@ import { useToast } from '../../src/components/Toast';
 import DatePickerField from '../../src/components/DatePickerField';
 import { startOfDay, startOfDayISO, endOfDayISO } from '../../src/utils/dates';
 
-const CREAM = '#F2E4C4';
-const BROWN = '#3A2B1A';
+const CREAM = T('#F2E4C4');
+const BROWN = T('#3A2B1A');
 const GREEN = '#2FA85B';
-const ORANGE = '#EA580C';
-const GOLD = '#F5B921';
+const ORANGE = T('#EA580C');
+const GOLD = T('#F5B921');
 
 interface DraftChecklistItem {
   text: string;
@@ -400,7 +401,7 @@ export default function CreateQuestScreen() {
           <Text style={styles.label}>Assign to Class(es):</Text>
           <TouchableOpacity style={styles.classSummaryBox} onPress={() => setClassPickerVisible(true)}>
             <Text style={styles.classSummaryText} numberOfLines={2}>{selectedClassNames()}</Text>
-            <Ionicons name="chevron-forward" size={16} color="#8A6A2A" />
+            <Ionicons name="chevron-forward" size={16} color={T('#8A6A2A')} />
           </TouchableOpacity>
 
           <Text style={styles.label}>Cover Photo (optional):</Text>
@@ -602,7 +603,7 @@ export default function CreateQuestScreen() {
                   <Switch
                     value={modalBadgeOn}
                     onValueChange={setModalBadgeOn}
-                    trackColor={{ false: '#EADEC9', true: GREEN }}
+                    trackColor={{ false: T('#EADEC9'), true: GREEN }}
                   />
                 </View>
                 {modalBadgeOn && (
@@ -624,7 +625,7 @@ export default function CreateQuestScreen() {
 
 const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: CREAM },
-  header: { backgroundColor: GOLD, paddingTop: 50, paddingBottom: 16, paddingHorizontal: 20, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  header: { backgroundColor: HEADER_BG, paddingTop: 50, paddingBottom: 16, paddingHorizontal: 20, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   backRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerTitle: { fontSize: 18, fontWeight: '800', color: BROWN },
 
@@ -633,19 +634,19 @@ const styles = StyleSheet.create({
 
   detailsCard: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1.5, borderColor: ORANGE, padding: 16, marginBottom: 20 },
   cardTitle: { fontSize: 15, fontWeight: '800', color: BROWN, marginBottom: 10 },
-  label: { fontSize: 11, fontWeight: '700', color: '#8A6A2A', letterSpacing: 0.3, marginBottom: 6, marginTop: 10 },
-  helpText: { fontSize: 11, color: '#8A6A2A', marginTop: 4 },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#EADEC9', borderRadius: 10, padding: 10, fontSize: 14, color: BROWN },
+  label: { fontSize: 11, fontWeight: '700', color: T('#8A6A2A'), letterSpacing: 0.3, marginBottom: 6, marginTop: 10 },
+  helpText: { fontSize: 11, color: T('#8A6A2A'), marginTop: 4 },
+  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: T('#EADEC9'), borderRadius: 10, padding: 10, fontSize: 14, color: BROWN },
   multiline: { minHeight: 70, textAlignVertical: 'top' },
 
   classSummaryBox: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#fff', borderWidth: 1, borderColor: '#EADEC9', borderRadius: 10, padding: 12,
+    backgroundColor: '#fff', borderWidth: 1, borderColor: T('#EADEC9'), borderRadius: 10, padding: 12,
   },
   classSummaryText: { flex: 1, fontSize: 13, color: BROWN, fontWeight: '600' },
 
   pillRow: { flexDirection: 'row', gap: 8 },
-  pill: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#EADEC9' },
+  pill: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: T('#EADEC9') },
   pillActive: { backgroundColor: BROWN, borderColor: BROWN },
   pillText: { fontSize: 12, fontWeight: '700', color: BROWN },
   pillTextActive: { color: '#fff' },
@@ -655,10 +656,10 @@ const styles = StyleSheet.create({
   stepNumberCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
   stepNumberText: { color: '#fff', fontWeight: '800' },
   stepCardTitle: { fontSize: 13, fontWeight: '700', color: ORANGE },
-  stepCardMeta: { fontSize: 11, color: '#8A6A2A', marginTop: 2 },
+  stepCardMeta: { fontSize: 11, color: T('#8A6A2A'), marginTop: 2 },
 
   addStepButton: { borderWidth: 1.5, borderColor: '#B8A671', borderStyle: 'dashed', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 4, marginBottom: 20 },
-  addStepButtonText: { color: '#8A6A2A', fontWeight: '700' },
+  addStepButtonText: { color: T('#8A6A2A'), fontWeight: '700' },
 
   publishButton: { backgroundColor: ORANGE, borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
   publishButtonText: { color: '#fff', fontWeight: '800', fontSize: 16 },
@@ -667,20 +668,20 @@ const styles = StyleSheet.create({
   modalCard: { backgroundColor: CREAM, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '85%' },
   modalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   modalTitle: { fontSize: 17, fontWeight: '800', color: BROWN },
-  modalSubtitle: { fontSize: 12, color: '#8A6A2A', marginBottom: 10 },
+  modalSubtitle: { fontSize: 12, color: T('#8A6A2A'), marginBottom: 10 },
 
   classRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(58,43,26,0.08)' },
   classRowName: { fontSize: 14, fontWeight: '700', color: BROWN },
-  classRowMeta: { fontSize: 11, color: '#8A6A2A' },
-  emptyText: { color: '#8A6A2A', fontStyle: 'italic', marginTop: 20, textAlign: 'center' },
+  classRowMeta: { fontSize: 11, color: T('#8A6A2A') },
+  emptyText: { color: T('#8A6A2A'), fontStyle: 'italic', marginTop: 20, textAlign: 'center' },
 
   checklistRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
   checklistText: { flex: 1, fontSize: 13, color: BROWN },
   checklistInputRow: { flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 6 },
   addChecklistButton: { backgroundColor: ORANGE, borderRadius: 10, width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
 
-  rewardsBox: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#EADEC9', padding: 12, gap: 8, marginBottom: 20 },
+  rewardsBox: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: T('#EADEC9'), padding: 12, gap: 8, marginBottom: 20 },
   rewardLabel: { fontSize: 12, fontWeight: '700', color: BROWN },
-  rewardHint: { fontSize: 11, color: '#8A6A2A', lineHeight: 16, marginBottom: 8 },
+  rewardHint: { fontSize: 11, color: T('#8A6A2A'), lineHeight: 16, marginBottom: 8 },
   badgeToggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
 });

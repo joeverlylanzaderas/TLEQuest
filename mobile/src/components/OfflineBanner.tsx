@@ -3,6 +3,7 @@
 // no signal, or when submissions are waiting on the phone to be sent.
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { T } from '../theme/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNetworkStatus } from '../utils/networkStatus';
 
@@ -43,6 +44,6 @@ export default function OfflineBanner() {
 
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center', zIndex: 999, elevation: 999 },
-  pill: { backgroundColor: '#5C2C16', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 6, maxWidth: '92%' },
+  pill: { backgroundColor: T('#5C2C16'), borderRadius: 16, paddingHorizontal: 14, paddingVertical: 6, maxWidth: '92%' },
   text: { color: '#fff', fontSize: 12, fontWeight: '600', textAlign: 'center' },
 });

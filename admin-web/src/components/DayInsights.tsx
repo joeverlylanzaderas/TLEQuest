@@ -6,15 +6,15 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import { Flag, Trophy, Upload, CalendarX2, MessageSquareText, Star } from 'lucide-react';
 import type { DayActivity, DayEventType } from '../types/dashboard';
 
-const C_STARTED = '#FDC200';
+const C_STARTED = 'var(--t-fdc200)';
 const C_FINISHED = '#24A956';
 const C_SUBMITTED = '#EC7D76';
 const C_REVIEWED = '#6C8EBF';
 const C_REWARDED = '#9B6BC4';
 
 const ICONS: Record<DayEventType, React.ReactNode> = {
-  quest_started: <Flag size={16} color="#C37800" />,
-  quest_finished: <Trophy size={16} color="#FDC200" />,
+  quest_started: <Flag size={16} color="var(--t-c37800)" />,
+  quest_finished: <Trophy size={16} color="var(--t-fdc200)" />,
   submission_made: <Upload size={16} color="#24A956" />,
   feedback_given: <MessageSquareText size={16} color="#6C8EBF" />,
   reward_earned: <Star size={16} color="#9B6BC4" />,
@@ -62,7 +62,7 @@ export default function DayInsights({ dateKey, data, loading, error, onRetry }: 
         <div className="di-empty">Loading this day…</div>
       ) : !data || data.counts.total === 0 ? (
         <div className="di-empty">
-          <CalendarX2 size={28} color="#D6BB83" />
+          <CalendarX2 size={28} color="var(--t-d6bb83)" />
           <p style={{ margin: '8px 0 0' }}>Nothing happened on this day.</p>
         </div>
       ) : (
@@ -79,10 +79,10 @@ export default function DayInsights({ dateKey, data, loading, error, onRetry }: 
           <div style={{ width: '100%', height: 180 }}>
             <ResponsiveContainer>
               <BarChart data={hours} margin={{ top: 6, right: 8, left: -22, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3EFD4" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#804022' }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#804022' }} axisLine={false} tickLine={false} />
-                <Tooltip cursor={{ fill: 'rgba(253,194,0,0.12)' }} contentStyle={{ borderRadius: 10, border: '1px solid #D6BB83', fontSize: 12 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--t-f3efd4)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--t-804022)' }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--t-804022)' }} axisLine={false} tickLine={false} />
+                <Tooltip cursor={{ fill: 'rgba(253,194,0,0.12)' }} contentStyle={{ borderRadius: 10, border: '1px solid var(--t-d6bb83)', fontSize: 12 }} />
                 <Bar dataKey="started" name="Started" stackId="a" fill={C_STARTED} />
                 <Bar dataKey="finished" name="Finished" stackId="a" fill={C_FINISHED} />
                 <Bar dataKey="submitted" name="Submitted" stackId="a" fill={C_SUBMITTED} />
@@ -100,7 +100,7 @@ export default function DayInsights({ dateKey, data, loading, error, onRetry }: 
                 return (
                   <div className="di-quest" key={q.quest_title}>
                     <div className="truncate-text" style={{ fontWeight: 700, fontSize: 13 }}>{q.quest_title}</div>
-                    <div style={{ fontSize: 12, color: '#C37800', flexShrink: 0 }}>
+                    <div style={{ fontSize: 12, color: 'var(--t-c37800)', flexShrink: 0 }}>
                       {total} event{total === 1 ? '' : 's'}
                     </div>
                   </div>
@@ -117,7 +117,7 @@ export default function DayInsights({ dateKey, data, loading, error, onRetry }: 
                   <div className="item-icon-box" style={{ width: 32, height: 32, marginRight: 10 }}>{ICONS[e.type]}</div>
                   <div style={{ minWidth: 0 }}>
                     <div className="truncate-text" style={{ fontWeight: 700, fontSize: 13 }}>{e.student_full_name}</div>
-                    <div className="truncate-text" style={{ fontSize: 11, color: '#C37800', marginTop: 2 }}>{e.description}</div>
+                    <div className="truncate-text" style={{ fontSize: 11, color: 'var(--t-c37800)', marginTop: 2 }}>{e.description}</div>
                   </div>
                 </div>
                 <span className="status-badge" style={{ flexShrink: 0 }}>

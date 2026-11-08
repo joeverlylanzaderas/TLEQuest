@@ -303,7 +303,7 @@ export default function UserManagement() {
 
   if (isLoading) {
     return (
-      <div style={{ padding: 32, color: '#C37800', fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>
+      <div style={{ padding: 32, color: 'var(--t-c37800)', fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>
         Loading user directory...
       </div>
     );
@@ -319,17 +319,17 @@ export default function UserManagement() {
           margin-bottom: 24px;
         }
         .stat-card {
-          background: #FFFFFF; border: 1px solid #D6BB83; border-radius: 16px;
+          background: #FFFFFF; border: 1px solid var(--t-d6bb83); border-radius: 16px;
           padding: 16px 20px; display: flex; align-items: center; gap: 16px;
           box-shadow: 0 4px 12px rgba(128, 64, 34, 0.04);
         }
         .stat-icon {
           width: 44px; height: 44px; border-radius: 12px;
-          background: #FCECD6; color: #5C2C16;
+          background: var(--t-fcecd6); color: var(--t-5c2c16);
           display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
-        .stat-value { font-size: 22px; font-weight: 800; color: #5C2C16; line-height: 1.1; }
-        .stat-label { font-size: 13px; color: #804022; font-weight: 600; margin-top: 2px; }
+        .stat-value { font-size: 22px; font-weight: 800; color: var(--t-5c2c16); line-height: 1.1; }
+        .stat-label { font-size: 13px; color: var(--t-804022); font-weight: 600; margin-top: 2px; }
 
         .toolbar-container {
           display: flex; justify-content: space-between; align-items: center;
@@ -338,36 +338,36 @@ export default function UserManagement() {
         .toolbar-left { display: flex; align-items: center; gap: 10px; flex: 1; flex-wrap: wrap; }
         .pill-search { position: relative; min-width: 260px; flex: 1; max-width: 360px; }
         .pill-search input {
-          width: 100%; background: #FFFFFF; border: 1px solid #D6BB83;
+          width: 100%; background: #FFFFFF; border: 1px solid var(--t-d6bb83);
           padding: 10px 16px 10px 40px; border-radius: 9999px;
-          font-size: 14px; color: #804022; outline: none;
+          font-size: 14px; color: var(--t-804022); outline: none;
         }
-        .pill-search .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #C37800; }
+        .pill-search .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--t-c37800); }
         .pill-select {
-          background: #FFFFFF; border: 1px solid #D6BB83;
+          background: #FFFFFF; border: 1px solid var(--t-d6bb83);
           padding: 10px 16px; border-radius: 9999px; font-size: 14px;
-          color: #804022; outline: none; font-weight: 600; cursor: pointer;
+          color: var(--t-804022); outline: none; font-weight: 600; cursor: pointer;
         }
 
-        .bulk-card { background: #FCECD6; border: 1px solid #FCC896; border-radius: 16px; padding: 18px 24px; margin-bottom: 20px; }
+        .bulk-card { background: var(--t-fcecd6); border: 1px solid #FCC896; border-radius: 16px; padding: 18px 24px; margin-bottom: 20px; }
 
         .table-card {
-          background: #FFFFFF; border-radius: 16px; border: 1px solid #D6BB83;
+          background: #FFFFFF; border-radius: 16px; border: 1px solid var(--t-d6bb83);
           box-shadow: 0 4px 20px rgba(128, 64, 34, 0.05); overflow: hidden;
         }
         .table-responsive { width: 100%; overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; text-align: left; }
-        thead tr { background-color: #5C2C16; color: #FFFFFF; }
+        thead tr { background-color: var(--t-5c2c16); color: #FFFFFF; }
         th { padding: 14px 16px; font-size: 13px; font-weight: 700; letter-spacing: 0.3px; border-bottom: 2px solid #3D1C0E; white-space: nowrap; }
-        tbody tr { border-bottom: 1px solid #F3EFD4; transition: background 0.15s; }
+        tbody tr { border-bottom: 1px solid var(--t-f3efd4); transition: background 0.15s; }
         tbody tr:hover { background-color: #FCF8F2; }
-        tbody tr.selected-row { background-color: #FCECD6; }
-        td { padding: 12px 16px; font-size: 14px; vertical-align: middle; color: #5C2C16; }
+        tbody tr.selected-row { background-color: var(--t-fcecd6); }
+        td { padding: 12px 16px; font-size: 14px; vertical-align: middle; color: var(--t-5c2c16); }
 
         .user-cell { display: flex; align-items: center; gap: 12px; }
         .avatar-circle {
           width: 36px; height: 36px; border-radius: 50%;
-          background: #FCECD6; border: 1px solid #D6BB83; color: #804022;
+          background: var(--t-fcecd6); border: 1px solid var(--t-d6bb83); color: var(--t-804022);
           display: flex; align-items: center; justify-content: center;
           font-weight: 700; font-size: 13px; overflow: hidden; flex-shrink: 0;
         }
@@ -378,29 +378,29 @@ export default function UserManagement() {
         .status-pill-badge.inactive { background-color: #6B7280; }
 
         .action-icon-btn {
-          background: transparent; border: none; color: #804022; padding: 6px;
+          background: transparent; border: none; color: var(--t-804022); padding: 6px;
           border-radius: 6px; cursor: pointer; display: inline-flex;
           align-items: center; justify-content: center; transition: all 0.15s;
         }
-        .action-icon-btn:hover { background: #FCECD6; color: #C37800; }
+        .action-icon-btn:hover { background: var(--t-fcecd6); color: var(--t-c37800); }
         .action-icon-btn.danger:hover { background: rgba(223, 27, 57, 0.1); color: #DF1B39; }
 
-        .custom-checkbox { width: 16px; height: 16px; accent-color: #5C2C16; cursor: pointer; }
+        .custom-checkbox { width: 16px; height: 16px; accent-color: var(--t-5c2c16); cursor: pointer; }
 
         .table-footer {
           display: flex; justify-content: space-between; align-items: center;
-          padding: 14px 20px; background: #FFFFFF; border-top: 1px solid #F3EFD4;
-          font-size: 13px; color: #804022; flex-wrap: wrap; gap: 12px;
+          padding: 14px 20px; background: #FFFFFF; border-top: 1px solid var(--t-f3efd4);
+          font-size: 13px; color: var(--t-804022); flex-wrap: wrap; gap: 12px;
         }
         .pagination-controls { display: flex; align-items: center; gap: 6px; }
         .page-btn {
-          width: 32px; height: 32px; border-radius: 8px; border: 1px solid #D6BB83;
-          background: #FFFFFF; color: #804022; display: flex;
+          width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--t-d6bb83);
+          background: #FFFFFF; color: var(--t-804022); display: flex;
           align-items: center; justify-content: center; font-weight: 600;
           cursor: pointer; transition: all 0.15s;
         }
-        .page-btn:hover:not(:disabled) { background: #FCECD6; }
-        .page-btn.active { background: #5C2C16; color: #FFFFFF; border-color: #5C2C16; }
+        .page-btn:hover:not(:disabled) { background: var(--t-fcecd6); }
+        .page-btn.active { background: var(--t-5c2c16); color: #FFFFFF; border-color: var(--t-5c2c16); }
         .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
         .modal-overlay {
@@ -409,17 +409,17 @@ export default function UserManagement() {
         }
         .modal-card {
           background: #FFFFFF; border-radius: 20px; padding: 28px; width: 100%; max-width: 420px;
-          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15); border: 1px solid #D6BB83;
+          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15); border: 1px solid var(--t-d6bb83);
           display: flex; flex-direction: column; gap: 16px;
         }
         .modal-input {
-          width: 100%; background: #F8EFE6; border: 1px solid #D6BB83;
-          padding: 12px 16px; border-radius: 12px; font-size: 14px; color: #804022; outline: none;
+          width: 100%; background: var(--t-f8efe6); border: 1px solid var(--t-d6bb83);
+          padding: 12px 16px; border-radius: 12px; font-size: 14px; color: var(--t-804022); outline: none;
         }
         .credential-box {
           font-family: monospace; font-size: 20px; font-weight: 700;
-          background: #F8EFE6; border: 1px dashed #C37800; padding: 14px;
-          border-radius: 12px; text-align: center; color: #804022;
+          background: var(--t-f8efe6); border: 1px dashed var(--t-c37800); padding: 14px;
+          border-radius: 12px; text-align: center; color: var(--t-804022);
         }
 
         @media (max-width: 768px) {
@@ -660,7 +660,7 @@ export default function UserManagement() {
             <tbody>
               {paginatedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#C37800' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: 40, color: 'var(--t-c37800)' }}>
                     No users found matching your filters.
                   </td>
                 </tr>
@@ -706,10 +706,10 @@ export default function UserManagement() {
                       </td>
 
                       {/* Email */}
-                      <td style={{ color: '#804022' }}>{email}</td>
+                      <td style={{ color: 'var(--t-804022)' }}>{email}</td>
 
                       {/* Username */}
-                      <td style={{ color: '#804022', fontWeight: 500 }}>{u.username}</td>
+                      <td style={{ color: 'var(--t-804022)', fontWeight: 500 }}>{u.username}</td>
 
                       {/* Status */}
                       <td>
@@ -722,7 +722,7 @@ export default function UserManagement() {
                       <td style={{ textTransform: 'capitalize', fontWeight: 600 }}>{u.role}</td>
 
                       {/* Joined Date */}
-                      <td style={{ color: '#804022', fontSize: 13 }}>
+                      <td style={{ color: 'var(--t-804022)', fontSize: 13 }}>
                         {new Date(u.date_joined).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -782,7 +782,7 @@ export default function UserManagement() {
               <option value={20}>20</option>
               <option value={50}>50</option>
             </select>
-            <span style={{ color: '#804022', marginLeft: 8 }}>
+            <span style={{ color: 'var(--t-804022)', marginLeft: 8 }}>
               of {totalRows} rows
             </span>
           </div>
@@ -813,7 +813,7 @@ export default function UserManagement() {
 
                 return (
                   <React.Fragment key={page}>
-                    {showEllipsis && <span style={{ padding: '0 4px', color: '#804022' }}>...</span>}
+                    {showEllipsis && <span style={{ padding: '0 4px', color: 'var(--t-804022)' }}>...</span>}
                     <button
                       className={`page-btn ${currentPage === page ? 'active' : ''}`}
                       onClick={() => setCurrentPage(page)}
@@ -872,13 +872,13 @@ export default function UserManagement() {
         <div className="modal-overlay" onClick={() => setResetResult(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 className="modal-title" style={{ margin: 0, fontSize: 18, color: '#804022' }}>
+              <h3 className="modal-title" style={{ margin: 0, fontSize: 18, color: 'var(--t-804022)' }}>
                 Password Reset
               </h3>
               <X size={20} style={{ cursor: 'pointer' }} onClick={() => setResetResult(null)} />
             </div>
 
-            <p style={{ margin: 0, fontSize: 14, color: '#804022' }}>
+            <p style={{ margin: 0, fontSize: 14, color: 'var(--t-804022)' }}>
               New password for <strong>{resetResult.username}</strong>:
             </p>
 
@@ -924,7 +924,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
     <div className="modal-overlay" onClick={onClose}>
       <form className="modal-card" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 className="modal-title" style={{ margin: 0, fontSize: 18, color: '#804022' }}>
+          <h3 className="modal-title" style={{ margin: 0, fontSize: 18, color: 'var(--t-804022)' }}>
             Create New User
           </h3>
           <X size={20} style={{ cursor: 'pointer' }} onClick={onClose} />
@@ -999,7 +999,7 @@ function EditUserModal({
     <div className="modal-overlay" onClick={onClose}>
       <form className="modal-card" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 className="modal-title" style={{ margin: 0, fontSize: 18, color: '#804022' }}>
+          <h3 className="modal-title" style={{ margin: 0, fontSize: 18, color: 'var(--t-804022)' }}>
             Edit User Details
           </h3>
           <X size={20} style={{ cursor: 'pointer' }} onClick={onClose} />

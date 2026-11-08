@@ -4,6 +4,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
   RefreshControl, StyleSheet, Alert,
 } from 'react-native';
+import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,12 +18,12 @@ import { FullUser } from '../../../src/types/accounts';
 import { QuestProgressDetail } from '../../../src/types/assignments';
 import SubmitOutputCard from '../../../src/components/SubmitOutputCard';
 
-const GOLD = '#F5B921';
-const CREAM = '#F5EDD8';
-const BROWN = '#5C2C16';
-const CARD_BROWN = '#4A2E1D';
+const GOLD = T('#F5B921');
+const CREAM = T('#F5EDD8');
+const BROWN = T('#5C2C16');
+const CARD_BROWN = activeTheme === 'school' ? '#15366B' : '#4A2E1D';
 const GREEN = '#22C55E';
-const ORANGE = '#EA580C';
+const ORANGE = T('#EA580C');
 
 export default function StudentProgress() {
   const router = useRouter();
@@ -313,20 +314,20 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: CREAM },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  header: { backgroundColor: GOLD, paddingTop: 50, paddingBottom: 16, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
+  header: { backgroundColor: HEADER_BG, paddingTop: 50, paddingBottom: 16, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   avatarCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  welcomeSmall: { fontSize: 12, color: BROWN, opacity: 0.8 },
-  welcomeName: { fontSize: 16, fontWeight: '800', color: BROWN },
-  dateText: { fontSize: 11, color: BROWN, fontWeight: '600' },
-  classText: { fontSize: 11, color: BROWN, fontWeight: '700', marginTop: 2 },
+  welcomeSmall: { fontSize: 12, color: HEADER_TEXT, opacity: 0.8 },
+  welcomeName: { fontSize: 16, fontWeight: '800', color: HEADER_TEXT },
+  dateText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '600' },
+  classText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '700', marginTop: 2 },
   bellDot: { position: 'absolute', top: -1, right: -1, width: 8, height: 8, borderRadius: 4, backgroundColor: '#DC2626' },
 
-  currentQuestCard: { backgroundColor: CARD_BROWN, borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center' },
-  imagePlaceholder: { width: 56, height: 56, borderRadius: 12, backgroundColor: '#8a5a3a', alignItems: 'center', justifyContent: 'center' },
+    currentQuestCard: { backgroundColor: CARD_BROWN, borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center' },
+  imagePlaceholder: { width: 56, height: 56, borderRadius: 12, backgroundColor: activeTheme === 'school' ? '#2F6FD0' : '#8a5a3a', alignItems: 'center', justifyContent: 'center' },
   currentLabel: { color: '#fff', opacity: 0.8, fontSize: 10, marginBottom: 2 },
-  questTitle: { color: ORANGE, fontSize: 15, fontWeight: '800' },
-  questMode: { color: '#fbbf24', fontSize: 11, fontStyle: 'italic', marginBottom: 6 },
+  questTitle: { color: activeTheme === 'school' ? '#FFFFFF' : ORANGE, fontSize: 15, fontWeight: '800' },
+  questMode: { color: activeTheme === 'school' ? '#FFFFFF' : '#fbbf24', fontSize: 11, fontStyle: 'italic', marginBottom: 6 },
   progressTrack: { height: 6, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: 6, backgroundColor: GREEN, borderRadius: 3 },
   percentText: { color: '#fff', fontSize: 10, marginTop: 3, fontStyle: 'italic' },
@@ -336,14 +337,14 @@ const styles = StyleSheet.create({
 
   emptyCard: { backgroundColor: '#fff', borderRadius: 20, padding: 28, alignItems: 'center', gap: 8 },
   emptyTitle: { fontSize: 16, fontWeight: '800', color: BROWN },
-  emptyText: { color: '#8A6A2A', fontSize: 13, textAlign: 'center', lineHeight: 19 },
+  emptyText: { color: T('#8A6A2A'), fontSize: 13, textAlign: 'center', lineHeight: 19 },
 
   stepCard: { backgroundColor: '#FFFBEB', borderRadius: 20, borderWidth: 2, borderColor: ORANGE, padding: 18 },
   stepHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14 },
-  stepLabel: { fontSize: 13, fontWeight: '700', color: '#8A6A2A' },
+  stepLabel: { fontSize: 13, fontWeight: '700', color: T('#8A6A2A') },
 
   stepBodyRow: { flexDirection: 'row', marginBottom: 18 },
-  stepImagePlaceholder: { width: 64, height: 64, borderRadius: 12, backgroundColor: '#EADEC9', alignItems: 'center', justifyContent: 'center' },
+  stepImagePlaceholder: { width: 64, height: 64, borderRadius: 12, backgroundColor: T('#EADEC9'), alignItems: 'center', justifyContent: 'center' },
   stepTitle: { fontSize: 16, fontWeight: '800', color: ORANGE, marginBottom: 4 },
   stepDescription: { fontSize: 12, color: '#666', lineHeight: 17 },
 

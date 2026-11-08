@@ -17,7 +17,13 @@ class SystemSettings(models.Model):
     to fetch it, never .objects.create() directly."""
     school_name = models.CharField(max_length=150, blank=True)
     school_year = models.CharField(max_length=20, blank=True)  # e.g. "2026-2027"
-    primary_color = models.CharField(max_length=7, default="#ea580c")  # hex, for branding
+    THEME_DEFAULT = "default"   # the current TLEQuest look (gold / brown / orange)
+    THEME_SCHOOL = "school"     # blue / white / cream, matching the school colors
+    THEME_CHOICES = [
+        (THEME_DEFAULT, "TLEQuest Default"),
+        (THEME_SCHOOL, "School Blue"),
+    ]
+    theme = models.CharField(max_length=20, choices=THEME_CHOICES, default=THEME_DEFAULT)
 
     min_password_length = models.PositiveIntegerField(default=8)
 

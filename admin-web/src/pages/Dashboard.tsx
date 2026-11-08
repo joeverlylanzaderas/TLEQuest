@@ -19,8 +19,8 @@ import bannerImage from '../assets/admin-header.webp';
 const BANNER_IMAGE_URL = bannerImage;
 
 const ACTIVITY_ICONS: Record<RecentActivityEvent['type'], React.ReactNode> = {
-  quest_started: <Flag size={18} color="#C37800" />,
-  quest_finished: <Trophy size={18} color="#FDC200" />,
+  quest_started: <Flag size={18} color="var(--t-c37800)" />,
+  quest_finished: <Trophy size={18} color="var(--t-fdc200)" />,
   submission_made: <Upload size={18} color="#24A956" />,
 };
 
@@ -201,119 +201,119 @@ export default function Dashboard() {
     <div className="layout">
       <style>{`
         *, *::before, *::after { box-sizing: border-box; }
-        body { margin: 0; background-color: #F8EFE6; color: #804022; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        body { margin: 0; background-color: var(--t-f8efe6); color: var(--t-804022); font-family: 'Inter', sans-serif; overflow-x: hidden; }
         h1, h2, h3, .card-title, .logo, .stat-value { font-family: 'Plus Jakarta Sans', sans-serif; }
         a { text-decoration: none; color: inherit; }
         .layout { display: flex; height: 100vh; width: 100vw; overflow: hidden; position: relative; }
 
-        .mobile-header { display: none; height: 60px; background: #FFFFFF; border-bottom: 1px solid #D6BB83; padding: 0 16px; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 90; width: 100%; }
-        .menu-toggle-btn { background: none; border: none; color: #804022; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 6px; }
+        .mobile-header { display: none; height: 60px; background: #FFFFFF; border-bottom: 1px solid var(--t-d6bb83); padding: 0 16px; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 90; width: 100%; }
+        .menu-toggle-btn { background: none; border: none; color: var(--t-804022); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 6px; }
 
-        .sidebar { width: 260px; background: #FFFFFF; border-right: 1px solid #D6BB83; display: flex; flex-direction: column; padding: 24px 16px; flex-shrink: 0; z-index: 100; transition: transform 0.3s ease; }
-        .logo { font-size: 22px; font-weight: 800; color: #C37800; margin-bottom: 20px; padding: 0 12px; display: flex; align-items: center; justify-content: center; position: relative; }
+        .sidebar { width: 260px; background: #FFFFFF; border-right: 1px solid var(--t-d6bb83); display: flex; flex-direction: column; padding: 24px 16px; flex-shrink: 0; z-index: 100; transition: transform 0.3s ease; }
+        .logo { font-size: 22px; font-weight: 800; color: var(--t-c37800); margin-bottom: 20px; padding: 0 12px; display: flex; align-items: center; justify-content: center; position: relative; }
         .logo .menu-toggle-btn { position: absolute; top: 0; right: 0; }
         .brand-logo { height: 120px; width: auto; max-width: 100%; object-fit: contain; display: block; margin: 0 auto; }
         .brand-logo-mobile { height: 44px; margin: 0; }
         .logo-brand { display: flex; align-items: center; gap: 10px; }
-        .logo-icon { background: #FDC200; color: #804022; border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
-        .menu-label { font-size: 11px; text-transform: uppercase; color: #D6BB83; font-weight: 700; margin: 0 12px 12px; letter-spacing: 0.6px; }
-        .nav-item { padding: 10px 14px; border-radius: 10px; margin-bottom: 4px; font-size: 14px; font-weight: 500; color: #804022; display: flex; align-items: center; gap: 12px; transition: all 0.2s ease; }
-        .nav-item.active { background: #FCECD6; color: #C37800; font-weight: 700; }
-        .nav-item:hover:not(.active) { background: #F3EFD4; }
+        .logo-icon { background: var(--t-fdc200); color: var(--t-804022); border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+        .menu-label { font-size: 11px; text-transform: uppercase; color: var(--t-d6bb83); font-weight: 700; margin: 0 12px 12px; letter-spacing: 0.6px; }
+        .nav-item { padding: 10px 14px; border-radius: 10px; margin-bottom: 4px; font-size: 14px; font-weight: 500; color: var(--t-804022); display: flex; align-items: center; gap: 12px; transition: all 0.2s ease; }
+        .nav-item.active { background: var(--t-fcecd6); color: var(--t-c37800); font-weight: 700; }
+        .nav-item:hover:not(.active) { background: var(--t-f3efd4); }
         .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(40,20,10,0.4); backdrop-filter: blur(2px); z-index: 95; }
 
         .main-content { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 24px 32px; min-width: 0; }
 
-        .hero-banner { background-image: url('${BANNER_IMAGE_URL}'); background-size: cover; background-position: center; border-radius: 20px; min-height: 200px; position: relative; margin-bottom: 24px; border: 1px solid #D6BB83; display: flex; flex-direction: column; justify-content: space-between; padding: 24px; overflow: hidden; box-shadow: 0 8px 24px rgba(128,64,34,0.12); }
+        .hero-banner { background-image: url('${BANNER_IMAGE_URL}'); background-size: cover; background-position: center; border-radius: 20px; min-height: 200px; position: relative; margin-bottom: 24px; border: 1px solid var(--t-d6bb83); display: flex; flex-direction: column; justify-content: space-between; padding: 24px; overflow: hidden; box-shadow: 0 8px 24px rgba(128,64,34,0.12); }
         .hero-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(30,15,8,0.2) 0%, rgba(30,15,8,0.6) 100%); z-index: 1; }
         .hero-top-info { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; color: #FFFFFF; gap: 12px; flex-wrap: wrap; }
         .date-badge { background: rgba(89,60,60,0.4); backdrop-filter: blur(8px); padding: 8px 16px; border-radius: 12px; font-size: 13px; font-weight: 600; border: 1px solid rgba(255,255,255,0.25); display: flex; align-items: center; gap: 8px; }
-        .timer-badge { background: #FDC200; color: #804022; padding: 8px 16px; border-radius: 12px; font-weight: 800; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-variant-numeric: tabular-nums; }
+        .timer-badge { background: var(--t-fdc200); color: var(--t-804022); padding: 8px 16px; border-radius: 12px; font-weight: 800; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-variant-numeric: tabular-nums; }
         .hero-controls { position: relative; z-index: 2; display: flex; gap: 12px; width: 100%; align-items: center; margin-top: 16px; flex-wrap: wrap; }
 
         .search-wrapper { position: relative; flex: 1; min-width: 200px; display: flex; align-items: center; }
-        .search-wrapper .search-icon { position: absolute; left: 14px; color: #C37800; pointer-events: none; }
-        .search-bar { width: 100%; background: #FFFFFF; border: 1px solid #D6BB83; padding: 12px 16px 12px 42px; border-radius: 12px; font-size: 14px; color: #804022; outline: none; box-shadow: 0 4px 12px rgba(128,64,34,0.05); }
-        .search-bar::placeholder { color: #D6BB83; }
+        .search-wrapper .search-icon { position: absolute; left: 14px; color: var(--t-c37800); pointer-events: none; }
+        .search-bar { width: 100%; background: #FFFFFF; border: 1px solid var(--t-d6bb83); padding: 12px 16px 12px 42px; border-radius: 12px; font-size: 14px; color: var(--t-804022); outline: none; box-shadow: 0 4px 12px rgba(128,64,34,0.05); }
+        .search-bar::placeholder { color: var(--t-d6bb83); }
 
-        .action-btn { background: #FFFFFF; border: 1px solid #D6BB83; padding: 12px 18px; border-radius: 12px; font-weight: 600; font-size: 14px; color: #804022; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(128,64,34,0.05); transition: background 0.2s; white-space: nowrap; }
-        .action-btn:hover { background: #F8EFE6; }
-        .primary-btn { background: #FDC200; border: 1px solid #C37800; color: #804022; }
+        .action-btn { background: #FFFFFF; border: 1px solid var(--t-d6bb83); padding: 12px 18px; border-radius: 12px; font-weight: 600; font-size: 14px; color: var(--t-804022); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(128,64,34,0.05); transition: background 0.2s; white-space: nowrap; }
+        .action-btn:hover { background: var(--t-f8efe6); }
+        .primary-btn { background: var(--t-fdc200); border: 1px solid var(--t-c37800); color: var(--t-804022); }
         .primary-btn:hover { background: #ebd800; }
 
-        .card { background: #FFFFFF; border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(128,64,34,0.04); border: 1px solid #F3EFD4; display: flex; flex-direction: column; min-width: 0; overflow: hidden; width: 100%; }
+        .card { background: #FFFFFF; border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(128,64,34,0.04); border: 1px solid var(--t-f3efd4); display: flex; flex-direction: column; min-width: 0; overflow: hidden; width: 100%; }
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
-        .card-title { font-size: 16px; font-weight: 700; color: #804022; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-title { font-size: 16px; font-weight: 700; color: var(--t-804022); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
-        .stat-label { font-size: 13px; color: #C37800; font-weight: 600; margin-bottom: 6px; }
-        .stat-value { font-size: 26px; font-weight: 800; color: #804022; margin-bottom: 10px; line-height: 1.2; }
+        .stat-label { font-size: 13px; color: var(--t-c37800); font-weight: 600; margin-bottom: 6px; }
+        .stat-value { font-size: 26px; font-weight: 800; color: var(--t-804022); margin-bottom: 10px; line-height: 1.2; }
         .stat-badge { display: inline-block; background: rgba(36,169,86,0.1); color: #24A956; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; }
-        .stat-subtext { font-size: 12px; color: #D6BB83; margin-left: 6px; }
+        .stat-subtext { font-size: 12px; color: var(--t-d6bb83); margin-left: 6px; }
 
         .insights-section { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; }
         .legend { display: flex; gap: 10px; font-size: 11px; font-weight: 600; flex-wrap: wrap; }
-        .qf-chart { height: 200px; display: flex; align-items: flex-end; gap: 14px; padding-top: 12px; border-top: 1px dashed #F3EFD4; margin-top: 4px; overflow-x: auto; }
+        .qf-chart { height: 200px; display: flex; align-items: flex-end; gap: 14px; padding-top: 12px; border-top: 1px dashed var(--t-f3efd4); margin-top: 4px; overflow-x: auto; }
         .qf-col { flex: 1; min-width: 56px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
         .qf-bars { display: flex; gap: 4px; align-items: flex-end; height: 140px; }
         .qf-bar { width: 16px; border-radius: 4px 4px 0 0; }
-        .qf-label { font-size: 10px; color: #804022; margin-top: 6px; max-width: 72px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .qf-empty { height: 160px; display: flex; align-items: center; justify-content: center; color: #D6BB83; font-style: italic; font-size: 13px; text-align: center; border-top: 1px dashed #F3EFD4; margin-top: 4px; }
+        .qf-label { font-size: 10px; color: var(--t-804022); margin-top: 6px; max-width: 72px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .qf-empty { height: 160px; display: flex; align-items: center; justify-content: center; color: var(--t-d6bb83); font-style: italic; font-size: 13px; text-align: center; border-top: 1px dashed var(--t-f3efd4); margin-top: 4px; }
 
-        .mini-insight { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #F3EFD4; }
+        .mini-insight { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--t-f3efd4); }
         .mini-insight:last-child { border-bottom: none; }
-        .progress-track { height: 8px; background: #FCECD6; border-radius: 4px; margin-top: 6px; overflow: hidden; }
+        .progress-track { height: 8px; background: var(--t-fcecd6); border-radius: 4px; margin-top: 6px; overflow: hidden; }
         .progress-fill { height: 100%; border-radius: 4px; }
 
         .day-section { display: grid; grid-template-columns: minmax(300px, 1fr) 2fr; gap: 16px; margin-bottom: 24px; align-items: start; }
         .ac-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-        .ac-title { font-weight: 800; font-size: 14px; color: #804022; font-family: 'Plus Jakarta Sans', sans-serif; }
-        .ac-loading { color: #D6BB83; font-weight: 600; font-size: 11px; }
-        .ac-nav-btn { background: #F8EFE6; border: 1px solid #D6BB83; color: #804022; border-radius: 8px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .ac-nav-btn:hover { background: #FCECD6; }
+        .ac-title { font-weight: 800; font-size: 14px; color: var(--t-804022); font-family: 'Plus Jakarta Sans', sans-serif; }
+        .ac-loading { color: var(--t-d6bb83); font-weight: 600; font-size: 11px; }
+        .ac-nav-btn { background: var(--t-f8efe6); border: 1px solid var(--t-d6bb83); color: var(--t-804022); border-radius: 8px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .ac-nav-btn:hover { background: var(--t-fcecd6); }
         .ac-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; text-align: center; }
-        .ac-head { font-size: 11px; font-weight: 700; color: #C37800; padding-bottom: 4px; }
-        .ac-cell { aspect-ratio: 1 / 1; min-height: 34px; border: 2px solid transparent; border-radius: 10px; font-size: 13px; font-weight: 700; color: #804022; background: #F8EFE6; cursor: pointer; font-family: inherit; padding: 0; transition: transform .1s, box-shadow .1s; }
+        .ac-head { font-size: 11px; font-weight: 700; color: var(--t-c37800); padding-bottom: 4px; }
+        .ac-cell { aspect-ratio: 1 / 1; min-height: 34px; border: 2px solid transparent; border-radius: 10px; font-size: 13px; font-weight: 700; color: var(--t-804022); background: var(--t-f8efe6); cursor: pointer; font-family: inherit; padding: 0; transition: transform .1s, box-shadow .1s; }
         .ac-cell:hover:not(.ac-empty) { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(128,64,34,0.15); }
         .ac-empty { background: transparent; cursor: default; }
-        .ac-l0 { background: #F8EFE6; }
+        .ac-l0 { background: var(--t-f8efe6); }
         .ac-l1 { background: #FDF0C4; }
         .ac-l2 { background: #FBE08A; }
         .ac-l3 { background: #F8CC4A; }
         .ac-l4 { background: #E9A91A; color: #fff; }
-        .ac-today { border-color: #804022; }
-        .ac-selected { background: #804022 !important; color: #FDC200; border-color: #804022; box-shadow: 0 4px 10px rgba(128,64,34,0.3); }
+        .ac-today { border-color: var(--t-804022); }
+        .ac-selected { background: var(--t-804022) !important; color: var(--t-fdc200); border-color: var(--t-804022); box-shadow: 0 4px 10px rgba(128,64,34,0.3); }
         .ac-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; gap: 8px; flex-wrap: wrap; }
-        .ac-scale { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #C37800; font-weight: 600; }
+        .ac-scale { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--t-c37800); font-weight: 600; }
         .ac-swatch { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
-        .ac-today-btn { background: none; border: none; color: #C37800; font-weight: 700; font-size: 12px; cursor: pointer; text-decoration: underline; padding: 0; }
+        .ac-today-btn { background: none; border: none; color: var(--t-c37800); font-weight: 700; font-size: 12px; cursor: pointer; text-decoration: underline; padding: 0; }
 
         .di-card { min-height: 200px; }
-        .di-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #D6BB83; font-style: italic; font-size: 13px; padding: 36px 12px; }
+        .di-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--t-d6bb83); font-style: italic; font-size: 13px; padding: 36px 12px; }
         .di-stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
-        .di-stat { display: flex; align-items: center; gap: 6px; background: #F8EFE6; border-radius: 10px; padding: 8px 12px; font-size: 13px; color: #804022; }
+        .di-stat { display: flex; align-items: center; gap: 6px; background: var(--t-f8efe6); border-radius: 10px; padding: 8px 12px; font-size: 13px; color: var(--t-804022); }
         .di-stat b { font-size: 18px; font-family: 'Plus Jakarta Sans', sans-serif; }
         .di-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-        .di-section-title { font-size: 12px; font-weight: 800; color: #C37800; text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 8px; }
-        .di-quest { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #F3EFD4; }
+        .di-section-title { font-size: 12px; font-weight: 800; color: var(--t-c37800); text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 8px; }
+        .di-quest { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--t-f3efd4); }
         .di-quest:last-child { border-bottom: none; }
         .di-events { max-height: 280px; overflow-y: auto; padding-right: 2px; }
 
         .bottom-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; }
         .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
         table { width: 100%; border-collapse: collapse; min-width: 480px; }
-        th { text-align: left; padding: 10px 12px; font-size: 12px; color: #C37800; border-bottom: 1px solid #D6BB83; }
-        td { padding: 12px; border-bottom: 1px solid #F3EFD4; font-size: 13px; font-weight: 500; }
-        .status-badge { padding: 4px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; background: #FCECD6; color: #C37800; white-space: nowrap; }
-        .details-btn { background: #804022; color: #fff; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; white-space: nowrap; }
-        .details-btn:hover { background: #5C2C16; }
-        .filter-select { background: #FFFFFF; border: 1px solid #D6BB83; color: #C37800; border-radius: 9999px; padding: 5px 12px; font-size: 12px; font-weight: 700; outline: none; cursor: pointer; }
+        th { text-align: left; padding: 10px 12px; font-size: 12px; color: var(--t-c37800); border-bottom: 1px solid var(--t-d6bb83); }
+        td { padding: 12px; border-bottom: 1px solid var(--t-f3efd4); font-size: 13px; font-weight: 500; }
+        .status-badge { padding: 4px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; background: var(--t-fcecd6); color: var(--t-c37800); white-space: nowrap; }
+        .details-btn { background: var(--t-804022); color: #fff; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; white-space: nowrap; }
+        .details-btn:hover { background: var(--t-5c2c16); }
+        .filter-select { background: #FFFFFF; border: 1px solid var(--t-d6bb83); color: var(--t-c37800); border-radius: 9999px; padding: 5px 12px; font-size: 12px; font-weight: 700; outline: none; cursor: pointer; }
 
-        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid #F3EFD4; border-radius: 12px; margin-bottom: 10px; gap: 12px; }
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--t-f3efd4); border-radius: 12px; margin-bottom: 10px; gap: 12px; }
         .list-item:last-child { margin-bottom: 0; }
-        .item-icon-box { width: 38px; height: 38px; background: #FCECD6; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0; }
+        .item-icon-box { width: 38px; height: 38px; background: var(--t-fcecd6); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0; }
         .truncate-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .empty-note { color: #D6BB83; margin: 0; font-style: italic; }
+        .empty-note { color: var(--t-d6bb83); margin: 0; font-style: italic; }
 
         @media (max-width: 1200px) {
           .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -425,7 +425,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {isLoading && <p style={{ color: '#C37800', fontWeight: 600 }}>Loading realm data...</p>}
+        {isLoading && <p style={{ color: 'var(--t-c37800)', fontWeight: 600 }}>Loading realm data...</p>}
         {error && (
           <div style={{ background: '#EC7D76', color: '#fff', padding: 16, borderRadius: 8, marginBottom: 24 }}>
             {error} <button onClick={loadDashboard} style={{ marginLeft: 12 }}>Retry</button>
@@ -436,12 +436,12 @@ export default function Dashboard() {
           <>
             {/* STATS */}
             <div className="stats-grid">
-              <div className="card" style={{ background: '#804022', color: '#fff', borderColor: '#804022' }}>
-                <div className="stat-label" style={{ color: '#FCECD6' }}>Total Students</div>
-                <div className="stat-value" style={{ color: '#FDC200' }}>{summary.student_count}</div>
+              <div className="card" style={{ background: 'var(--t-804022)', color: '#fff', borderColor: 'var(--t-804022)' }}>
+                <div className="stat-label" style={{ color: 'var(--t-fcecd6)' }}>Total Students</div>
+                <div className="stat-value" style={{ color: 'var(--t-fdc200)' }}>{summary.student_count}</div>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                   <span className="stat-badge" style={{ background: 'rgba(36,169,86,0.2)' }}>{summary.class_count}</span>
-                  <span className="stat-subtext truncate-text" style={{ color: '#FCECD6' }}>
+                  <span className="stat-subtext truncate-text" style={{ color: 'var(--t-fcecd6)' }}>
                     enrolled across {summary.class_count === 1 ? 'class' : 'classes'}
                   </span>
                 </div>
@@ -451,7 +451,7 @@ export default function Dashboard() {
                 <div className="stat-label">Active Classes</div>
                 <div className="stat-value">{summary.class_count} {summary.class_count === 1 ? 'Unit' : 'Units'}</div>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <span className="stat-badge" style={{ background: '#FCECD6', color: '#C37800' }}>{classesWithQuests}</span>
+                  <span className="stat-badge" style={{ background: 'var(--t-fcecd6)', color: 'var(--t-c37800)' }}>{classesWithQuests}</span>
                   <span className="stat-subtext truncate-text">with published quests</span>
                 </div>
               </div>
@@ -460,7 +460,7 @@ export default function Dashboard() {
                 <div className="stat-label">Quests Forged</div>
                 <div className="stat-value">{summary.quest_count}</div>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <span className="stat-badge" style={{ background: '#FCECD6', color: '#C37800' }}>{rates.length}</span>
+                  <span className="stat-badge" style={{ background: 'var(--t-fcecd6)', color: 'var(--t-c37800)' }}>{rates.length}</span>
                   <span className="stat-subtext truncate-text">published</span>
                 </div>
               </div>
@@ -484,7 +484,7 @@ export default function Dashboard() {
                   <div className="card-header">
                     <h2 className="card-title">Quest Flow</h2>
                     <div className="legend">
-                      <span style={{ color: '#FDC200' }}>● Assigned</span>
+                      <span style={{ color: 'var(--t-fdc200)' }}>● Assigned</span>
                       <span style={{ color: '#EC7D76' }}>● In progress</span>
                       <span style={{ color: '#24A956' }}>● Completed</span>
                     </div>
@@ -501,7 +501,7 @@ export default function Dashboard() {
                         return (
                           <div className="qf-col" key={i} title={`${r.quest_title}: ${assigned} assigned, ${inProgress} in progress, ${completed} completed`}>
                             <div className="qf-bars">
-                              <div className="qf-bar" style={{ height: barHeight(assigned), background: '#FDC200' }} />
+                              <div className="qf-bar" style={{ height: barHeight(assigned), background: 'var(--t-fdc200)' }} />
                               <div className="qf-bar" style={{ height: barHeight(inProgress), background: '#EC7D76' }} />
                               <div className="qf-bar" style={{ height: barHeight(completed), background: '#24A956' }} />
                             </div>
@@ -522,12 +522,12 @@ export default function Dashboard() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 600 }}>
                         <span>Top Quest</span>
-                        <span style={{ color: '#C37800', marginLeft: 8 }}>{topQuest?.completion_rate ?? 0}%</span>
+                        <span style={{ color: 'var(--t-c37800)', marginLeft: 8 }}>{topQuest?.completion_rate ?? 0}%</span>
                       </div>
                       <div className="progress-track">
-                        <div className="progress-fill" style={{ width: `${topQuest?.completion_rate ?? 0}%`, background: '#FDC200' }} />
+                        <div className="progress-fill" style={{ width: `${topQuest?.completion_rate ?? 0}%`, background: 'var(--t-fdc200)' }} />
                       </div>
-                      <div className="truncate-text" style={{ fontSize: 11, color: '#D6BB83', marginTop: 4 }}>
+                      <div className="truncate-text" style={{ fontSize: 11, color: 'var(--t-d6bb83)', marginTop: 4 }}>
                         {topQuest?.quest_title || 'No quests yet'}
                       </div>
                     </div>
@@ -537,12 +537,12 @@ export default function Dashboard() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 600 }}>
                         <span>Champion</span>
-                        <span style={{ color: '#C37800', marginLeft: 8 }}>{champion?.total_points ?? 0} pts</span>
+                        <span style={{ color: 'var(--t-c37800)', marginLeft: 8 }}>{champion?.total_points ?? 0} pts</span>
                       </div>
                       <div className="progress-track">
                         <div className="progress-fill" style={{ width: champion && champion.total_points > 0 ? '100%' : '0%', background: '#EC7D76' }} />
                       </div>
-                      <div className="truncate-text" style={{ fontSize: 11, color: '#D6BB83', marginTop: 4 }}>
+                      <div className="truncate-text" style={{ fontSize: 11, color: 'var(--t-d6bb83)', marginTop: 4 }}>
                         {champion?.full_name || 'No points earned yet'}
                       </div>
                     </div>
@@ -590,7 +590,7 @@ export default function Dashboard() {
               ) : (
                 <div className="card di-card">
                   <div className="di-empty">
-                    <CalendarDays size={28} color="#D6BB83" />
+                    <CalendarDays size={28} color="var(--t-d6bb83)" />
                     <p style={{ margin: '8px 0 0' }}>Select a date on the calendar to see its activity.</p>
                   </div>
                 </div>
@@ -602,7 +602,7 @@ export default function Dashboard() {
               <div className="card">
                 <div className="card-header">
                   <h2 className="card-title">Classes</h2>
-                  <span style={{ fontSize: 12, color: '#C37800', fontWeight: 700 }}>
+                  <span style={{ fontSize: 12, color: 'var(--t-c37800)', fontWeight: 700 }}>
                     {filteredClasses.length} of {summary.classes.length}
                   </span>
                 </div>
@@ -626,7 +626,7 @@ export default function Dashboard() {
                           <tr key={c.id}>
                             <td>
                               <div style={{ fontWeight: 700 }} className="truncate-text">{c.class_name}</div>
-                              {c.section && <div style={{ fontSize: 11, color: '#D6BB83' }}>Sec: {c.section}</div>}
+                              {c.section && <div style={{ fontSize: 11, color: 'var(--t-d6bb83)' }}>Sec: {c.section}</div>}
                             </td>
                             <td>{groupsOf(c)}</td>
                             <td>{c.active_quests}</td>
@@ -667,7 +667,7 @@ export default function Dashboard() {
                           <div className="item-icon-box">{ACTIVITY_ICONS[event.type]}</div>
                           <div style={{ minWidth: 0 }}>
                             <div className="truncate-text" style={{ fontWeight: 700, fontSize: 13 }}>{event.student_full_name}</div>
-                            <div className="truncate-text" style={{ fontSize: 11, color: '#C37800', marginTop: 2 }}>{event.description}</div>
+                            <div className="truncate-text" style={{ fontSize: 11, color: 'var(--t-c37800)', marginTop: 2 }}>{event.description}</div>
                           </div>
                         </div>
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>

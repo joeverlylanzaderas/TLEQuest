@@ -4,6 +4,7 @@ import {
   View, Text, Image, TextInput, ScrollView, TouchableOpacity, StyleSheet,
   ActivityIndicator, RefreshControl, Alert, Modal, Pressable,
 } from 'react-native';
+import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,15 +17,39 @@ import { getMyRewards, getMyRewardSummary } from '../../../src/api/rewards';
 import { FullUser, ProfileUpdatePayload } from '../../../src/types/accounts';
 import { StudentReward } from '../../../src/types/rewards';
 import { getMediaUrl } from '../../../src/utils/media';
+import ThemePicker from '../../../src/components/ThemePicker';
+import ConfirmModal from '../../../src/components/ConfirmModal';
 
-const CREAM = '#F2E4C4';
+const CREAM = T('#F2E4C4');
 const FIELD_BG = '#F7EBD0';
-const GOLD = '#F9C544';
-const BROWN = '#3A2B1A';
-const BUTTON = '#5C3A2E';
-const MUTED = '#8A6A2A';
-const BORDER = '#EADEC9';
+const GOLD = T('#F9C544');
+const BROWN = T('#3A2B1A');
+const BUTTON = T('#5C3A2E');
+const MUTED = T('#8A6A2A');
+const BORDER = T('#EADEC9');
 const RED = '#B3261E';
+
+// Theme-aware colors for the redesigned view mode
+const IS_SCHOOL = activeTheme === 'school';
+const HERO_BG = IS_SCHOOL ? HEADER_BG : GOLD;
+const HERO_TEXT = IS_SCHOOL ? '#FFFFFF' : BROWN;
+const HERO_SUB = IS_SCHOOL ? '#DCE7F7' : '#6B4E1B';
+const RING = IS_SCHOOL ? '#F2B84B' : '#EA580C';
+const POINTS_BG = IS_SCHOOL ? '#8FC1F2' : '#EA580C';
+const POINTS_TEXT = IS_SCHOOL ? '#18303D' : '#FFFFFF';
+const BADGES_BG = IS_SCHOOL ? '#1E4D8F' : '#5C2C16';
+const BADGES_TEXT = '#FFFFFF';
+// Edit mode colors
+const EDIT_TOP_BG = IS_SCHOOL ? HEADER_BG : CREAM;
+const EDIT_TOP_TEXT = IS_SCHOOL ? '#FFFFFF' : BROWN;
+const EDIT_CANCEL = IS_SCHOOL ? '#DCE7F7' : MUTED;
+const EDIT_SAVE_BG = IS_SCHOOL ? '#F2B84B' : BUTTON;
+const EDIT_SAVE_TEXT = IS_SCHOOL ? '#18303D' : '#FFFFFF';
+const EDIT_FIELD_BG = IS_SCHOOL ? '#EAF1FB' : FIELD_BG;
+const EDIT_FOCUS = IS_SCHOOL ? '#1E4D8F' : BUTTON;
+const EDIT_ICON_BG = IS_SCHOOL ? '#1E4D8F' : GOLD;
+const EDIT_ICON_COLOR = IS_SCHOOL ? '#FFFFFF' : BROWN;
+const ROW_TINTS = IS_SCHOOL ? ['#1E4D8F', '#2F6FD0', '#F2B84B'] : ['#EA580C', '#8A5A3A', '#F5B921'];
 
 interface BadgeSummary {
   rewardId: number;
@@ -53,6 +78,7 @@ type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 export default function StudentProfile() {
   const { signOut } = useAuth();
+  const [showSignOut, setShowSignOut] = useState(false);
   const router = useRouter();
   const toast = useToast();
 
@@ -201,11 +227,9 @@ export default function StudentProfile() {
     }
   }
 
+
   function confirmSignOut() {
-    Alert.alert('Sign out?', 'You will need to log in again.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: signOut },
-    ]);
+    setShowSignOut(true);
   }
 
   // ---- totals + deduped badges ----
@@ -279,7 +303,7 @@ export default function StudentProfile() {
   // =========================================================================
   if (isEditing) {
     return (
-      <SafeAreaView style={styles.screen} edges={['top']}>
+      <SafeAreaView style={[styles.screen, { backgroundColor: EDIT_TOP_BG }]} edges={['top']}>
         <View style={styles.editBar}>
           <TouchableOpacity onPress={cancelEditing} disabled={isSaving} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Text style={styles.cancelText}>Cancel</Text>
@@ -290,11 +314,11 @@ export default function StudentProfile() {
             onPress={handleSave}
             disabled={!isDirty || isSaving}
           >
-            {isSaving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveButtonText}>Save</Text>}
+            {isSaving ? <ActivityIndicator size="small" color={EDIT_SAVE_TEXT} /> : <Text style={styles.saveButtonText}>Save</Text>}
           </TouchableOpacity>
         </View>
 
-        <ScrollView contentContainerStyle={styles.editContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView style={{ flex: 1, backgroundColor: CREAM }} contentContainerStyle={styles.editContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.editAvatarBlock}>
             <TouchableOpacity onPress={handlePickPhoto} activeOpacity={0.8}>{avatar}</TouchableOpacity>
             <TouchableOpacity onPress={handlePickPhoto}>
@@ -349,6 +373,8 @@ export default function StudentProfile() {
       {/* Fixed header: hero + stats stay in place while the rest scrolls */}
       <View style={styles.fixedTop}>
         <View style={styles.hero}>
+          <View style={styles.heroCircleA} />
+          <View style={styles.heroCircleB} />
           <TouchableOpacity style={styles.heroEdit} onPress={startEditing} activeOpacity={0.85}>
             <Ionicons name="pencil" size={14} color={BROWN} />
             <Text style={styles.heroEditText}>Edit</Text>
@@ -365,15 +391,15 @@ export default function StudentProfile() {
         </View>
 
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <View style={styles.statIcon}><Ionicons name="star" size={20} color={BROWN} /></View>
-            <Text style={styles.statValue}>{totalPoints}</Text>
-            <Text style={styles.statLabel}>Points</Text>
+          <View style={[styles.statCard, { backgroundColor: POINTS_BG }]}>
+            <View style={styles.statIcon}><Ionicons name="star" size={16} color={BROWN} /></View>
+            <Text style={[styles.statValue, { color: POINTS_TEXT }]}>{totalPoints}</Text>
+            <Text style={[styles.statLabel, { color: POINTS_TEXT }]}>Points</Text>
           </View>
-          <View style={styles.statCard}>
-            <View style={styles.statIcon}><Ionicons name="ribbon" size={20} color={BROWN} /></View>
-            <Text style={styles.statValue}>{badgeTotal}</Text>
-            <Text style={styles.statLabel}>Badges</Text>
+          <View style={[styles.statCard, { backgroundColor: BADGES_BG }]}>
+            <View style={styles.statIcon}><Ionicons name="ribbon" size={16} color={BROWN} /></View>
+            <Text style={[styles.statValue, { color: BADGES_TEXT }]}>{badgeTotal}</Text>
+            <Text style={[styles.statLabel, { color: BADGES_TEXT }]}>Badges</Text>
           </View>
         </View>
       </View>
@@ -385,19 +411,34 @@ export default function StudentProfile() {
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={BROWN} />}
       >
         {/* Account */}
-        <Text style={[styles.sectionTitle, { marginBottom: 10 }]}>Account</Text>
+        <Text style={styles.sectionTitle}>Account</Text>
         <View style={styles.infoCard}>
-          <InfoRow icon="school" label="School" value={p.school || '—'} />
-          <InfoRow icon="mail" label="Email" value={p.email || '—'} />
-          <InfoRow icon="at" label="Username" value={profile.username} isLast />
+          <InfoRow icon="school" label="School" value={p.school || '—'} tint={ROW_TINTS[0]} />
+          <InfoRow icon="mail" label="Email" value={p.email || '—'} tint={ROW_TINTS[1]} />
+          <InfoRow icon="at" label="Username" value={profile.username} tint={ROW_TINTS[2]} isLast />
         </View>
 
-        <ActionRow
-          icon="key-outline"
-          label="Change Password"
-          onPress={() => router.push({ pathname: '/change-password', params: { from: '/(student)/(tabs)/profile' } })}
+        <ThemePicker />
+
+        <View style={{ marginTop: 16 }}>
+          <ActionRow
+            icon="key-outline"
+            label="Change Password"
+            onPress={() => router.push({ pathname: '/change-password', params: { from: '/(student)/(tabs)/profile' } })}
+          />
+          <ActionRow icon="log-out-outline" label="Sign Out" danger onPress={confirmSignOut} />
+        </View>
+
+        <ConfirmModal
+          visible={showSignOut}
+          title="Sign out?"
+          message="You will need to log in again."
+          onCancel={() => setShowSignOut(false)}
+          onConfirm={() => {
+            setShowSignOut(false);
+            signOut();
+          }}
         />
-        <ActionRow icon="log-out-outline" label="Sign Out" danger onPress={confirmSignOut} />
       </ScrollView>
 
     </SafeAreaView>
@@ -405,10 +446,12 @@ export default function StudentProfile() {
 }
 
 // ---------------------------------------------------------------- helpers
-function InfoRow({ icon, label, value, isLast }: { icon: IconName; label: string; value: string; isLast?: boolean }) {
+function InfoRow({ icon, label, value, isLast, tint }: { icon: IconName; label: string; value: string; isLast?: boolean; tint?: string }) {
   return (
     <View style={[styles.infoRow, isLast && { borderBottomWidth: 0 }]}>
-      <Ionicons name={icon} size={16} color={BROWN} style={{ marginRight: 10 }} />
+      <View style={[styles.infoIcon, { backgroundColor: tint ?? BROWN }]}>
+        <Ionicons name={icon} size={14} color="#FFFFFF" />
+      </View>
       <Text style={styles.infoLabel}>{label}</Text>
       <Text style={styles.infoValue} numberOfLines={1}>{value}</Text>
     </View>
@@ -429,7 +472,7 @@ function SectionCard({ icon, title, children }: { icon: IconName; title: string;
   return (
     <View style={styles.sectionCard}>
       <View style={styles.sectionCardHeader}>
-        <View style={styles.sectionCardIcon}><Ionicons name={icon} size={14} color={BROWN} /></View>
+        <View style={styles.sectionCardIcon}><Ionicons name={icon} size={14} color={EDIT_ICON_COLOR} /></View>
         <Text style={styles.sectionCardTitle}>{title}</Text>
       </View>
       {children}
@@ -479,9 +522,11 @@ const styles = StyleSheet.create({
 
   // hero
   hero: {
-    backgroundColor: GOLD, borderRadius: 28, alignItems: 'center',
+    backgroundColor: HERO_BG, borderRadius: 28, alignItems: 'center', overflow: 'hidden',
     paddingTop: 30, paddingBottom: 52, paddingHorizontal: 16,
   },
+  heroCircleA: { position: 'absolute', width: 190, height: 190, borderRadius: 95, right: -60, top: -70, backgroundColor: 'rgba(255,255,255,0.16)' },
+  heroCircleB: { position: 'absolute', width: 130, height: 130, borderRadius: 65, left: -40, bottom: -40, backgroundColor: 'rgba(255,255,255,0.12)' },
   heroEdit: {
     position: 'absolute', top: 16, right: 16, flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: 'rgba(255,255,255,0.55)', borderRadius: 18, paddingHorizontal: 12, paddingVertical: 7,
@@ -489,16 +534,16 @@ const styles = StyleSheet.create({
   heroEditText: { fontSize: 12, fontWeight: '800', color: BROWN },
   avatarRing: {
     width: 108, height: 108, borderRadius: 54, backgroundColor: '#fff', alignItems: 'center',
-    justifyContent: 'center', borderWidth: 3, borderColor: BROWN, marginBottom: 12,
+    justifyContent: 'center', borderWidth: 4, borderColor: RING, marginBottom: 12,
   },
   avatarImage: { width: 98, height: 98, borderRadius: 49 },
   avatarFallback: { backgroundColor: FIELD_BG, alignItems: 'center', justifyContent: 'center' },
   avatarEditBadge: {
-    position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderRadius: 15, backgroundColor: BROWN,
+    position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderRadius: 15, backgroundColor: EDIT_FOCUS,
     alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: CREAM,
   },
-  name: { fontSize: 22, fontWeight: '800', color: BROWN, textAlign: 'center' },
-  username: { fontSize: 13, color: '#6B4E1B', marginTop: 2, fontWeight: '600' },
+  name: { fontSize: 22, fontWeight: '900', color: HERO_TEXT, textAlign: 'center' },
+  username: { fontSize: 13, color: HERO_SUB, marginTop: 2, fontWeight: '600' },
   classPill: {
     flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.55)',
     borderRadius: 14, paddingHorizontal: 10, paddingVertical: 5, marginTop: 10,
@@ -508,18 +553,20 @@ const styles = StyleSheet.create({
   // stats
   statsRow: { flexDirection: 'row', gap: 12, marginTop: -34, marginBottom: 20, paddingHorizontal: 10 },
   statCard: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 20, paddingVertical: 14, alignItems: 'center',
-    borderWidth: 1, borderColor: BORDER,
+    flex: 1, borderRadius: 20, padding: 14, minHeight: 98, justifyContent: 'flex-end',
+    borderWidth: 1.5, borderColor: '#FFFFFF',
+    elevation: 3, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 3 },
   },
   statIcon: {
-    width: 36, height: 36, borderRadius: 18, backgroundColor: GOLD, alignItems: 'center', justifyContent: 'center',
+    position: 'absolute', top: 10, right: 10, width: 30, height: 30, borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center',
   },
-  statValue: { fontSize: 24, fontWeight: '800', color: BROWN, marginTop: 6 },
-  statLabel: { fontSize: 12, color: MUTED, fontWeight: '600' },
+  statValue: { fontSize: 30, fontWeight: '900' },
+  statLabel: { fontSize: 12, fontWeight: '700', opacity: 0.9 },
 
   // badges
   sectionHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: BROWN },
+  sectionTitle: { fontSize: 13, fontWeight: '800', color: BROWN, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 },
   sectionHint: { fontSize: 11, color: MUTED },
   emptyCard: {
     backgroundColor: '#fff', borderRadius: 18, borderWidth: 1, borderColor: BORDER, padding: 18,
@@ -549,6 +596,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', paddingVertical: 13,
     borderBottomWidth: 1, borderBottomColor: 'rgba(58,43,26,0.08)',
   },
+  infoIcon: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
   infoLabel: { fontSize: 13, color: MUTED, width: 80 },
   infoValue: { flex: 1, fontSize: 13, fontWeight: '600', color: BROWN, textAlign: 'right' },
 
@@ -556,7 +604,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 18,
     borderWidth: 1, borderColor: BORDER, paddingHorizontal: 16, height: 54, marginBottom: 10,
   },
-  actionRowDanger: { backgroundColor: '#FDE4E1', borderColor: '#F7C9C4', justifyContent: 'center' },
+  actionRowDanger: { backgroundColor: '#FFFFFF', borderColor: RED, borderWidth: 2, borderRadius: 999, justifyContent: 'center' },
   actionText: { fontSize: 15, fontWeight: '700', color: BROWN },
 
   // badge modal
@@ -573,28 +621,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 10,
   },
-  editTitle: { fontSize: 17, fontWeight: '800', color: BROWN },
-  cancelText: { fontSize: 14, color: MUTED, fontWeight: '700' },
-  saveButton: { backgroundColor: BUTTON, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, minWidth: 68, alignItems: 'center' },
-  saveButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  editTitle: { fontSize: 17, fontWeight: '800', color: EDIT_TOP_TEXT },
+  cancelText: { fontSize: 14, color: EDIT_CANCEL, fontWeight: '700' },
+  saveButton: { backgroundColor: EDIT_SAVE_BG, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, minWidth: 68, alignItems: 'center' },
+  saveButtonText: { color: EDIT_SAVE_TEXT, fontSize: 14, fontWeight: '800' },
   editContent: { paddingHorizontal: 20, paddingBottom: 120 },
   editAvatarBlock: { alignItems: 'center', marginTop: 6, marginBottom: 12 },
-  changePhotoText: { color: BUTTON, fontWeight: '800', fontSize: 13 },
+  changePhotoText: { color: EDIT_FOCUS, fontWeight: '800', fontSize: 13 },
 
   sectionCard: {
     backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: BORDER, padding: 16, marginBottom: 14,
   },
   sectionCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  sectionCardIcon: { width: 26, height: 26, borderRadius: 13, backgroundColor: GOLD, alignItems: 'center', justifyContent: 'center' },
+  sectionCardIcon: { width: 26, height: 26, borderRadius: 13, backgroundColor: EDIT_ICON_BG, alignItems: 'center', justifyContent: 'center' },
   sectionCardTitle: { fontSize: 14, fontWeight: '800', color: BROWN },
 
   fieldLabel: { fontSize: 11, fontWeight: '700', color: BROWN, letterSpacing: 0.5, marginBottom: 6, marginTop: 4 },
   fieldOptional: { fontSize: 10, fontWeight: '600', color: '#B8A671', letterSpacing: 0 },
   fieldInput: {
-    backgroundColor: FIELD_BG, borderRadius: 26, paddingHorizontal: 16, height: 46, fontSize: 15,
+    backgroundColor: EDIT_FIELD_BG, borderRadius: 26, paddingHorizontal: 16, height: 46, fontSize: 15,
     fontWeight: '600', color: BROWN, borderWidth: 2, borderColor: 'transparent',
   },
-  fieldInputFocused: { borderColor: BUTTON },
+  fieldInputFocused: { borderColor: EDIT_FOCUS },
   fieldInputError: { borderColor: RED },
   fieldError: { color: RED, fontSize: 12, marginTop: 4, marginLeft: 8 },
 

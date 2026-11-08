@@ -4,6 +4,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
   RefreshControl, StyleSheet,
 } from 'react-native';
+import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,11 +17,11 @@ import { getUnreadNotifications } from '../../../src/api/notifications';
 import { FullUser } from '../../../src/types/accounts';
 import { QuestProgress } from '../../../src/types/assignments';
 
-const GOLD = '#F5B921';
-const CREAM = '#F5EDD8';
-const BROWN = '#5C2C16';
+const GOLD = T('#F5B921');
+const CREAM = T('#F5EDD8');
+const BROWN = T('#5C2C16');
 const GREEN = '#22C55E';
-const ORANGE = '#EA580C';
+const ORANGE = T('#EA580C');
 
 type StatusKey = 'in_progress' | 'completed' | 'not_started';
 type FilterKey = 'all' | StatusKey;
@@ -188,18 +189,18 @@ export default function StudentQuests() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: CREAM },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { backgroundColor: GOLD, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
+  header: { backgroundColor: HEADER_BG, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
   headerRow: { flexDirection: 'row', alignItems: 'center' },
   avatarCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  welcomeSmall: { fontSize: 12, color: BROWN, opacity: 0.8 },
-  welcomeName: { fontSize: 16, fontWeight: '800', color: BROWN },
-  dateText: { fontSize: 11, color: BROWN, fontWeight: '600' },
-  classText: { fontSize: 11, color: BROWN, fontWeight: '700', marginTop: 2 },
+  welcomeSmall: { fontSize: 12, color: HEADER_TEXT, opacity: 0.8 },
+  welcomeName: { fontSize: 16, fontWeight: '800', color: HEADER_TEXT },
+  dateText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '600' },
+  classText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '700', marginTop: 2 },
   bellDot: { position: 'absolute', top: -1, right: -1, width: 8, height: 8, borderRadius: 4, backgroundColor: '#DC2626' },
 
   scrollContent: { padding: 20, paddingBottom: 60 },
   errorText: { color: '#B3261E', marginBottom: 12, fontSize: 13 },
-  emptyText: { color: '#8A6A2A', fontStyle: 'italic', textAlign: 'center', marginTop: 20 },
+  emptyText: { color: T('#8A6A2A'), fontStyle: 'italic', textAlign: 'center', marginTop: 20 },
 
   filterRow: { flexDirection: 'row', marginBottom: 16 },
   filterPill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginRight: 8, backgroundColor: 'transparent' },
@@ -209,10 +210,10 @@ const styles = StyleSheet.create({
 
   pageTitle: { fontSize: 28, fontWeight: '900', color: GREEN, textAlign: 'center', marginBottom: 16, letterSpacing: 1 },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   card: { width: '48%', backgroundColor: '#fff', borderRadius: 16, padding: 10, marginBottom: 14 },
-  imagePlaceholder: { height: 90, borderRadius: 12, backgroundColor: '#B8895C', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  cardTitle: { fontSize: 12, fontWeight: '700', color: '#7c2d12', minHeight: 30 },
+  imagePlaceholder: { height: 90, borderRadius: 12, backgroundColor: T('#B8895C'), alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  cardTitle: { fontSize: 12, fontWeight: '700', color: T('#7c2d12'), minHeight: 30 },
   cardDivider: { height: 1, backgroundColor: '#eee', marginVertical: 8 },
   statusButton: { borderRadius: 20, paddingVertical: 8, alignItems: 'center' },
   statusButtonText: { fontSize: 12, fontWeight: '700' },

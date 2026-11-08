@@ -2,6 +2,7 @@
 // The gold "Welcome back" header shared by every main student and teacher tab.
 // It loads what it needs itself (profile, unread count, class name), so a screen
 // only has to render <AppHeader role="student" /> or <AppHeader role="teacher" />.
+import { HEADER_BG, HEADER_TEXT, activeTheme } from '../theme/theme';
 import React, { useCallback, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -13,8 +14,9 @@ import { getUnreadNotifications } from '../api/notifications';
 import { FullUser } from '../types/accounts';
 import { useClassScope, selectedClassName } from '../utils/selectedClass';
 
-const GOLD = '#F5B921';
-const DARK = '#3A2B1A';
+
+const GOLD = HEADER_BG;      // header background: gold, or blue in the School theme
+const DARK = HEADER_TEXT;    // text and icons on the header: dark, or white in the School theme
 const RED = '#DC2626';
 
 // Profile + class name rarely change: reuse them for a minute across tabs so
@@ -77,7 +79,7 @@ export default function AppHeader({ role, subtitle, children }: Props) {
           <Image source={{ uri: profile.profile.profile_picture }} style={styles.avatarImg} />
         ) : (
           <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={22} color={DARK} />
+            <Ionicons name="person" size={22} color="#3A2B1A" />
           </View>
         )}
         <View style={{ flex: 1 }}>
@@ -109,8 +111,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderTopWidth: 0, borderColor: DARK,
   },
   row: { flexDirection: 'row', alignItems: 'center' },
-  avatarCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFE08A', borderWidth: 1.5, borderColor: DARK, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  avatarImg: { width: 44, height: 44, borderRadius: 22, marginRight: 12, borderWidth: 1.5, borderColor: DARK },
+    avatarCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: activeTheme === 'school' ? '#FFFFFF' : '#FFE08A', borderWidth: 1.5, borderColor: DARK, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    avatarImg: { width: 44, height: 44, borderRadius: 22, marginRight: 12, borderWidth: 1.5, borderColor: DARK },
   welcomeSmall: { fontSize: 12, color: DARK },
   welcomeName: { fontSize: 18, fontWeight: '900', color: DARK },
   dateText: { fontSize: 11, color: DARK, fontWeight: '600' },

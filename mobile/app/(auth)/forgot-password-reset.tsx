@@ -3,6 +3,7 @@
 // (Both happen on this screen; the answers and the new password are sent together.)
 import React, { useRef, useState } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../src/theme/theme';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { resetForgottenPassword } from '../../src/api/accounts';
 import {

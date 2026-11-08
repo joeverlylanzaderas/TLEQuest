@@ -106,27 +106,27 @@ export default function Profile() {
     <div className="page-wrapper">
       <style>{`
         .pf-layout { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; max-width: 1000px; margin: 0 auto; }
-        .pf-card { background: #FFFFFF; border: 1px solid #D6BB83; border-radius: 16px; box-shadow: 0 4px 20px rgba(128,64,34,0.05); padding: 24px; }
+        .pf-card { background: #FFFFFF; border: 1px solid var(--t-d6bb83); border-radius: 16px; box-shadow: 0 4px 20px rgba(128,64,34,0.05); padding: 24px; }
         .pf-side { text-align: center; }
-        .pf-avatar { width: 112px; height: 112px; border-radius: 50%; object-fit: cover; border: 3px solid #D6BB83; margin: 0 auto 14px; display: block; }
-        .pf-avatar-fallback { width: 112px; height: 112px; border-radius: 50%; background: #FCECD6; border: 3px solid #D6BB83; color: #5C2C16; display: flex; align-items: center; justify-content: center; font-size: 44px; font-weight: 800; margin: 0 auto 14px; font-family: 'Plus Jakarta Sans', sans-serif; }
-        .pf-photo-btn { display: inline-flex; align-items: center; gap: 8px; background: #FFFFFF; border: 1px solid #D6BB83; color: #804022; padding: 8px 16px; border-radius: 9999px; font-size: 13px; font-weight: 700; cursor: pointer; }
-        .pf-photo-btn:hover { background: #FCECD6; }
-        .pf-name { margin: 16px 0 2px; font-size: 20px; font-weight: 800; color: #5C2C16; font-family: 'Plus Jakarta Sans', sans-serif; }
-        .pf-username { font-size: 14px; color: #804022; margin-bottom: 10px; }
-        .pf-role { display: inline-block; background: #FCECD6; border: 1px solid #D6BB83; color: #5C2C16; border-radius: 9999px; padding: 4px 14px; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; }
-        .pf-meta { margin-top: 16px; padding-top: 16px; border-top: 1px solid #F3EFD4; font-size: 13px; color: #804022; }
-        .pf-title { margin: 0 0 16px; font-size: 16px; font-weight: 800; color: #5C2C16; font-family: 'Plus Jakarta Sans', sans-serif; display: flex; align-items: center; gap: 8px; }
+        .pf-avatar { width: 112px; height: 112px; border-radius: 50%; object-fit: cover; border: 3px solid var(--t-d6bb83); margin: 0 auto 14px; display: block; }
+        .pf-avatar-fallback { width: 112px; height: 112px; border-radius: 50%; background: var(--t-fcecd6); border: 3px solid var(--t-d6bb83); color: var(--t-5c2c16); display: flex; align-items: center; justify-content: center; font-size: 44px; font-weight: 800; margin: 0 auto 14px; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .pf-photo-btn { display: inline-flex; align-items: center; gap: 8px; background: #FFFFFF; border: 1px solid var(--t-d6bb83); color: var(--t-804022); padding: 8px 16px; border-radius: 9999px; font-size: 13px; font-weight: 700; cursor: pointer; }
+        .pf-photo-btn:hover { background: var(--t-fcecd6); }
+        .pf-name { margin: 16px 0 2px; font-size: 20px; font-weight: 800; color: var(--t-5c2c16); font-family: 'Plus Jakarta Sans', sans-serif; }
+        .pf-username { font-size: 14px; color: var(--t-804022); margin-bottom: 10px; }
+        .pf-role { display: inline-block; background: var(--t-fcecd6); border: 1px solid var(--t-d6bb83); color: var(--t-5c2c16); border-radius: 9999px; padding: 4px 14px; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; }
+        .pf-meta { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--t-f3efd4); font-size: 13px; color: var(--t-804022); }
+        .pf-title { margin: 0 0 16px; font-size: 16px; font-weight: 800; color: var(--t-5c2c16); font-family: 'Plus Jakarta Sans', sans-serif; display: flex; align-items: center; gap: 8px; }
         .pf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
-        .pf-field label { display: block; font-size: 11px; font-weight: 700; color: #C37800; text-transform: uppercase; margin-bottom: 5px; }
-        .pf-field input { width: 100%; background: #F8EFE6; border: 1px solid #D6BB83; padding: 11px 14px; border-radius: 10px; font-size: 14px; color: #5C2C16; outline: none; }
-        .pf-field input:focus { border-color: #C37800; background: #FFFFFF; }
+        .pf-field label { display: block; font-size: 11px; font-weight: 700; color: var(--t-c37800); text-transform: uppercase; margin-bottom: 5px; }
+        .pf-field input { width: 100%; background: var(--t-f8efe6); border: 1px solid var(--t-d6bb83); padding: 11px 14px; border-radius: 10px; font-size: 14px; color: var(--t-5c2c16); outline: none; }
+        .pf-field input:focus { border-color: var(--t-c37800); background: #FFFFFF; }
         .pf-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
         .pf-security { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
-        .pf-security p { margin: 0; font-size: 13px; color: #804022; max-width: 420px; line-height: 1.5; }
+        .pf-security p { margin: 0; font-size: 13px; color: var(--t-804022); max-width: 420px; line-height: 1.5; }
         .pf-link-btn { text-decoration: none; }
         .pf-error { background: #FDF2F2; border: 1px solid #F8B4B4; color: #DF1B39; padding: 12px 16px; border-radius: 10px; margin: 0 auto 16px; max-width: 1000px; font-size: 14px; white-space: pre-line; }
-        .pf-loading { text-align: center; color: #804022; font-weight: 600; padding: 40px; }
+        .pf-loading { text-align: center; color: var(--t-804022); font-weight: 600; padding: 40px; }
         @media (max-width: 800px) { .pf-layout { grid-template-columns: 1fr; } }
         @media (max-width: 520px) { .pf-grid { grid-template-columns: 1fr; } }
       `}</style>

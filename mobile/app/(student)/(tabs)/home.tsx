@@ -1,5 +1,5 @@
 // mobile/app/(student)/(tabs)/home.tsx
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
+import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { getClassEnrollments, getClassGroups, joinClass } from '../../../src/api/classrooms';
@@ -31,13 +32,13 @@ import ClassSwitcher from '../../../src/components/ClassSwitcher';
 import { useAuth } from '../../../src/context/AuthContext';
 import { refreshClasses, inSelectedClass, useClassScope } from '../../../src/utils/selectedClass';
 
-const GOLD = '#F5B921';
-const CREAM = '#F5EDD8';
-const BROWN = '#5C2C16';
+const GOLD = T('#F5B921');
+const CREAM = T('#F5EDD8');
+const BROWN = T('#5C2C16');
 const GREEN = '#22C55E';
-const ORANGE = '#EA580C';
+const ORANGE = T('#EA580C');
 
-const AVATAR_COLORS = ['#f87171', '#4ade80', '#fbbf24', '#60a5fa', '#f472b6', '#fb923c', '#34d399', '#38bdf8'];
+const AVATAR_COLORS = ['#f87171', '#4ade80', T('#fbbf24'), '#60a5fa', '#f472b6', '#fb923c', '#34d399', '#38bdf8'];
 
 export default function StudentHome() {
   const router = useRouter();
@@ -52,7 +53,11 @@ export default function StudentHome() {
   const [totals, setTotals] = useState<{ points: number; badges: number } | null>(null);
   const [selectedClassmate, setSelectedClassmate] = useState<ClassEnrollment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
+  // Remember what was loaded so we do not re-download the same thing twice
+  const lastLoadAt = useRef(0);
+  const classDataFor = useRef<number | null>(null);
 
   // ---- Join class modal ----
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -60,7 +65,25 @@ export default function StudentHome() {
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState('');
 
-  const loadEverything = useCallback(async () => {
+  // Classmates + groups of ONE class. Skipped if that class is already loaded.
+  const loadClassData = useCallback(async (classId: number | null, force = false) => {
+    if (classId === null) {
+      setClassmates([]);
+      setGroups([]);
+      classDataFor.current = null;
+      return;
+    }
+    if (!force && classDataFor.current === classId) return;
+    const [enrollments, groupsData] = await Promise.all([
+      getClassEnrollments(classId),
+      getClassGroups(classId),
+    ]);
+    classDataFor.current = classId;
+    setClassmates(enrollments);
+    setGroups(groupsData);
+  }, []);
+
+  const loadEverything = useCallback(async (force = false) => {
     setError('');
     try {
       const [snap, progressData, summary] = await Promise.all([
@@ -70,30 +93,35 @@ export default function StudentHome() {
       ]);
       setProgress(progressData);
       setTotals(summary ? { points: summary.total_points, badges: summary.total_badges } : null);
-
-      if (snap.selectedId !== null) {
-        const [enrollments, groupsData] = await Promise.all([
-          getClassEnrollments(snap.selectedId),
-          getClassGroups(snap.selectedId),
-        ]);
-        setClassmates(enrollments);
-        setGroups(groupsData);
-      } else {
-        setClassmates([]);
-        setGroups([]);
-      }
+      lastLoadAt.current = Date.now();
+      // Show the main screen right away; classmates/groups fill in after
+      setIsLoading(false);
+      await loadClassData(snap.selectedId, force);
     } catch (e: any) {
       setError(e?.response?.data?.detail || 'Failed to load dashboard data.');
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id, scope.selectedId]);
+  }, [user?.id, loadClassData]);
 
+  // Refresh when the tab is focused, but not more than once every 20 seconds
   useFocusEffect(
     useCallback(() => {
+      if (Date.now() - lastLoadAt.current < 20000) return;
       loadEverything();
     }, [loadEverything])
   );
+
+  // When the student switches class, only reload that class's classmates/groups
+  useEffect(() => {
+    if (!isLoading) loadClassData(scope.selectedId).catch(() => {});
+  }, [scope.selectedId]);
+
+  async function handleRefresh() {
+    setIsRefreshing(true);
+    await loadEverything(true);
+    setIsRefreshing(false);
+  }
 
   function openQuest(item: QuestProgress) {
     router.push(`/(student)/quest/${item.id}/overview` as any);
@@ -120,7 +148,7 @@ export default function StudentHome() {
       await joinClass(code);
       setInviteCodeInput('');
       setShowJoinModal(false);
-      await loadEverything(); // refresh classes, progress, classmates with the newly joined class
+      await loadEverything(true); // refresh classes, progress, classmates with the newly joined class
     } catch (e: any) {
       setJoinError(e?.response?.data?.detail || e?.response?.data?.non_field_errors?.[0] || 'Could not join class. Check the code and try again.');
     } finally {
@@ -164,7 +192,7 @@ export default function StudentHome() {
     <ScrollView
       style={styles.container}
       contentContainerStyle={{ paddingBottom: 80 }}
-      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={loadEverything} tintColor={BROWN} />}
+      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={BROWN} />}
     >
       {/* Quick stats */}
       <View style={styles.statsRow}>
@@ -204,7 +232,7 @@ export default function StudentHome() {
         </TouchableOpacity>
       )}
 
-      {classes.length > 0 && <MyGroupCard groups={groups} />}
+      {scope.classes.length > 0 && <MyGroupCard groups={groups} />}
 
       {carouselQuests.length > 0 ? (
         <View style={styles.questCarouselWrap}>
@@ -419,22 +447,22 @@ const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20, paddingTop: 16 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: CREAM },
   error: { color: '#B3261E', marginBottom: 12, fontSize: 13 },
-  emptyText: { color: '#8A6A2A', fontStyle: 'italic', marginBottom: 12 },
+  emptyText: { color: T('#8A6A2A'), fontStyle: 'italic', marginBottom: 12 },
 
-  header: { backgroundColor: GOLD, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
+  header: { backgroundColor: HEADER_BG, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
   headerRow: { flexDirection: 'row', alignItems: 'center' },
   avatarCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
   headerAvatarImg: { width: 40, height: 40, borderRadius: 20, marginRight: 10, backgroundColor: '#fff' },
-  welcomeSmall: { fontSize: 12, color: BROWN, opacity: 0.8 },
-  welcomeName: { fontSize: 16, fontWeight: '800', color: BROWN },
-  dateText: { fontSize: 11, color: BROWN, fontWeight: '600' },
-  classText: { fontSize: 11, color: BROWN, fontWeight: '700', marginTop: 2 },
+  welcomeSmall: { fontSize: 12, color: HEADER_TEXT, opacity: 0.8 },
+  welcomeName: { fontSize: 16, fontWeight: '800', color: HEADER_TEXT },
+  dateText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '600' },
+  classText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '700', marginTop: 2 },
   bellDot: { position: 'absolute', top: -1, right: -1, width: 8, height: 8, borderRadius: 4, backgroundColor: '#DC2626' },
 
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   statCard: { flex: 1, backgroundColor: '#fff', borderRadius: 16, paddingVertical: 12, alignItems: 'center' },
   statValue: { fontSize: 20, fontWeight: '900', color: BROWN, marginTop: 4 },
-  statLabel: { fontSize: 11, color: '#8A6A2A', fontWeight: '600' },
+  statLabel: { fontSize: 11, color: T('#8A6A2A'), fontWeight: '600' },
 
   joinLinkRow: { marginBottom: 4 },
   joinLinkText: { color: ORANGE, fontSize: 13, fontWeight: '700' },
@@ -444,7 +472,7 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed', padding: 20, alignItems: 'center', marginTop: 12, marginBottom: 8,
   },
   joinClassCardTitle: { fontSize: 15, fontWeight: '800', color: BROWN },
-  joinClassCardSubtitle: { fontSize: 12, color: '#8A6A2A', textAlign: 'center', marginTop: 4, marginBottom: 12 },
+  joinClassCardSubtitle: { fontSize: 12, color: T('#8A6A2A'), textAlign: 'center', marginTop: 4, marginBottom: 12 },
   joinClassCardButton: { backgroundColor: ORANGE, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10 },
   joinClassCardButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
@@ -480,11 +508,11 @@ const styles = StyleSheet.create({
 
   questCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 12 },
   questCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  questTitle: { fontSize: 15, fontWeight: '800', color: '#7c2d12', flex: 1 },
-  questMode: { fontSize: 12, color: '#8A6A2A', marginTop: 2, marginBottom: 10 },
+  questTitle: { fontSize: 15, fontWeight: '800', color: T('#7c2d12'), flex: 1 },
+  questMode: { fontSize: 12, color: T('#8A6A2A'), marginTop: 2, marginBottom: 10 },
   questTrack: { height: 8, backgroundColor: '#F1E6CC', borderRadius: 4, overflow: 'hidden' },
   questFill: { height: 8, backgroundColor: GREEN, borderRadius: 4 },
-  questPercent: { color: '#8A6A2A', marginTop: 4, fontSize: 12, fontWeight: '600' },
+  questPercent: { color: T('#8A6A2A'), marginTop: 4, fontSize: 12, fontWeight: '600' },
   doneChip: { backgroundColor: GREEN, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3 },
   doneChipText: { color: '#fff', fontSize: 10, fontWeight: '800' },
 
@@ -492,18 +520,18 @@ const styles = StyleSheet.create({
   modalCard: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', width: 280 },
   modalAvatar: { width: 80, height: 80, borderRadius: 40, marginBottom: 12 },
   modalAvatarPlaceholder: {
-    width: 80, height: 80, borderRadius: 40, backgroundColor: '#ea580c',
+    width: 80, height: 80, borderRadius: 40, backgroundColor: T('#ea580c'),
     justifyContent: 'center', alignItems: 'center', marginBottom: 12,
   },
   modalAvatarPlaceholderText: { color: '#fff', fontSize: 32, fontWeight: 'bold' },
   modalName: { fontSize: 18, fontWeight: 'bold' },
   modalSection: { fontSize: 14, color: '#666', marginTop: 4, textAlign: 'center' },
-  modalGroup: { fontSize: 13, color: '#ea580c', fontWeight: '600', marginTop: 4 },
+  modalGroup: { fontSize: 13, color: T('#ea580c'), fontWeight: '600', marginTop: 4 },
 
   joinInput: {
     width: '100%', borderWidth: 1, borderColor: '#ddd', borderRadius: 10,
     padding: 12, fontSize: 16, textAlign: 'center', letterSpacing: 2,
-    marginTop: 16, fontWeight: '700', color: '#7c2d12',
+    marginTop: 16, fontWeight: '700', color: T('#7c2d12'),
   },
   joinErrorText: { color: '#dc2626', fontSize: 12, marginTop: 10, textAlign: 'center' },
   joinSubmitButton: {
@@ -511,5 +539,5 @@ const styles = StyleSheet.create({
     paddingVertical: 12, alignItems: 'center', marginTop: 16,
   },
   joinSubmitButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  joinCancelText: { color: '#8A6A2A', fontSize: 13 },
+  joinCancelText: { color: T('#8A6A2A'), fontSize: 13 },
 });
