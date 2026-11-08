@@ -23,14 +23,34 @@ import { getMyProfile, updateMyProfile } from '../../../src/api/accounts';
 import { FullUser, ProfileUpdatePayload } from '../../../src/types/accounts';
 import { getMediaUrl } from '../../../src/utils/media';
 import { useToast } from '../../../src/components/Toast';
+import ThemePicker from '../../../src/components/ThemePicker';
+import ConfirmModal from '../../../src/components/ConfirmModal';
 
 // ============================================================================
 // COLOR PALETTE — same as login/student profile, so the app feels consistent.
 // ============================================================================
 const CREAM = T('#F2E4C4');
-const FIELD_BG = T('#F5B921');
 const CARD_BG = T('#F9C544');
 const BROWN = T('#3A2B1A');
+const BUTTON = T('#5C3A2E');
+const MUTED = T('#8A6A2A');
+const BORDER = T('#EADEC9');
+const RED = '#B3261E';
+
+// Theme-aware colors (Default theme keeps the original gold/brown look)
+const IS_SCHOOL = activeTheme === 'school';
+const HERO_BG = IS_SCHOOL ? HEADER_BG : CARD_BG;
+const HERO_TEXT = IS_SCHOOL ? '#FFFFFF' : BROWN;
+const HERO_SUB = IS_SCHOOL ? '#DCE7F7' : '#6B4E1B';
+const RING = IS_SCHOOL ? '#F2B84B' : '#EA580C';
+const ICON_MAIN = IS_SCHOOL ? '#1E4D8F' : '#5C2C16';
+const ROW_TINTS = IS_SCHOOL ? ['#1E4D8F', '#2F6FD0', '#F2B84B'] : ['#EA580C', '#8A5A3A', '#F5B921'];
+const EDIT_TOP_BG = IS_SCHOOL ? HEADER_BG : CREAM;
+const EDIT_TOP_TEXT = IS_SCHOOL ? '#FFFFFF' : BROWN;
+const EDIT_CANCEL = IS_SCHOOL ? '#DCE7F7' : MUTED;
+const EDIT_SAVE_BG = IS_SCHOOL ? '#F2B84B' : BUTTON;
+const EDIT_SAVE_TEXT = IS_SCHOOL ? '#18303D' : '#FFFFFF';
+const EDIT_FOCUS = IS_SCHOOL ? '#1E4D8F' : BUTTON;
 
 interface EditableFields {
   first_name: string;
@@ -64,12 +84,10 @@ export default function TeacherSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [fields, setFields] = useState<EditableFields>(EMPTY_FIELDS);
   const [pendingImage, setPendingImage] = useState<{ uri: string; name: string; type: string } | null>(null);
+  const [showSignOut, setShowSignOut] = useState(false);
 
   function confirmSignOut() {
-    Alert.alert('Sign out?', 'You will need to log in again.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: signOut },
-    ]);
+    setShowSignOut(true);
   }
 
   async function loadData() {
@@ -202,86 +220,60 @@ export default function TeacherSettings() {
   const p = profile.profile;
   const fullName = [p.first_name, p.last_name].filter(Boolean).join(' ') || profile.username;
   const avatarUrl = pendingImage?.uri || getMediaUrl(p.profile_picture);
+  const joinedShort = new Date(profile.date_joined).toLocaleDateString(undefined, {
+    month: 'short', year: 'numeric',
+  });
 
-  return (
-    <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            tintColor={BROWN}
-            enabled={!isEditing}
-          />
-        }
-      >
-        {/* ---------------- Top bar: title + edit toggle ---------------- */}
-        <View style={styles.topBar}>
-          <Text style={styles.screenTitle}>Settings</Text>
-          {isEditing ? (
-            <View style={styles.editActionsRow}>
-              <TouchableOpacity onPress={cancelEditing} disabled={isSaving} style={styles.topBarButton}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleSave} disabled={isSaving} style={styles.saveButton}>
-                {isSaving ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.saveButtonText}>Save</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity onPress={startEditing} style={styles.editIconButton}>
-              <Ionicons name="pencil" size={16} color={BROWN} />
-              <Text style={styles.editIconText}>Edit</Text>
-            </TouchableOpacity>
-          )}
+  const avatar = (
+    <View style={styles.avatarRing}>
+      {avatarUrl ? (
+        <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+      ) : (
+        <View style={[styles.avatarImage, styles.avatarFallback]}>
+          <Ionicons name="person" size={44} color={BROWN} />
         </View>
+      )}
+      {isEditing && (
+        <View style={styles.avatarEditBadge}>
+          <Ionicons name="camera" size={14} color="#fff" />
+        </View>
+      )}
+    </View>
+  );
 
-        {/* ---------------- Profile overview card ---------------- */}
-        <View style={styles.overviewCard}>
-          <TouchableOpacity
-            style={styles.avatarWrapper}
-            onPress={isEditing ? handlePickPhoto : undefined}
-            activeOpacity={isEditing ? 0.7 : 1}
-          >
-            {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+  // =========================================================================
+  // EDIT MODE
+  // =========================================================================
+  if (isEditing) {
+    return (
+      <SafeAreaView style={[styles.screen, { backgroundColor: EDIT_TOP_BG }]} edges={['top']}>
+        <View style={styles.editBar}>
+          <TouchableOpacity onPress={cancelEditing} disabled={isSaving} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={styles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={styles.editTitle}>Edit Profile</Text>
+          <TouchableOpacity onPress={handleSave} disabled={isSaving} style={styles.saveButton}>
+            {isSaving ? (
+              <ActivityIndicator size="small" color={EDIT_SAVE_TEXT} />
             ) : (
-              <View style={styles.avatarFallback}>
-                <Ionicons name="person" size={36} color={BROWN} />
-              </View>
-            )}
-            {isEditing && (
-              <View style={styles.avatarEditBadge}>
-                <Ionicons name="camera" size={13} color="#fff" />
-              </View>
+              <Text style={styles.saveButtonText}>Save</Text>
             )}
           </TouchableOpacity>
-
-          {!isEditing && (
-            <View style={{ flex: 1 }}>
-              <View style={styles.nameRow}>
-                <Text style={styles.name}>{fullName}</Text>
-                <View style={styles.roleBadge}>
-                  <Text style={styles.roleBadgeText}>TEACHER</Text>
-                </View>
-              </View>
-              <Text style={styles.subInfo}>@{profile.username}</Text>
-              <Text style={styles.subInfo}>
-                Joined {new Date(profile.date_joined).toLocaleDateString(undefined, {
-                  year: 'numeric', month: 'long', day: 'numeric',
-                })}
-              </Text>
-            </View>
-          )}
         </View>
 
-        {/* ---------------- Account info: read view OR edit form ---------------- */}
-        {isEditing ? (
+        <ScrollView
+          style={{ flex: 1, backgroundColor: CREAM }}
+          contentContainerStyle={styles.editContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.editAvatarBlock}>
+            <TouchableOpacity onPress={handlePickPhoto} activeOpacity={0.8}>{avatar}</TouchableOpacity>
+            <TouchableOpacity onPress={handlePickPhoto}>
+              <Text style={styles.changePhotoText}>{pendingImage ? 'Choose a different photo' : 'Change photo'}</Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.formCard}>
             <FormField label="First Name" value={fields.first_name} onChangeText={(v) => updateField('first_name', v)} />
             <FormField label="Middle Name" value={fields.middle_name} onChangeText={(v) => updateField('middle_name', v)} />
@@ -296,46 +288,95 @@ export default function TeacherSettings() {
             <FormField label="School" value={fields.school} onChangeText={(v) => updateField('school', v)} />
             <FormField label="Occupation / Subject" value={fields.occupation} onChangeText={(v) => updateField('occupation', v)} isLast />
           </View>
-        ) : (
-          <View style={styles.infoCard}>
-            <InfoRow icon="school" label="School" value={p.school || '—'} />
-            <InfoRow icon="briefcase" label="Subject" value={p.occupation || '—'} />
-            <InfoRow icon="mail" label="Email" value={p.email || '—'} />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // =========================================================================
+  // VIEW MODE
+  // =========================================================================
+  return (
+    <SafeAreaView style={[styles.screen, { backgroundColor: HERO_BG }]} edges={['top']}>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: CREAM }}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={BROWN} />}
+      >
+        {/* Curved top banner */}
+        <View style={styles.top}>
+          <View style={styles.shapeA} />
+          <View style={styles.shapeB} />
+          {avatar}
+          <Text style={styles.name} numberOfLines={2}>{fullName}</Text>
+          <Text style={styles.username}>@{profile.username}</Text>
+          <View style={styles.chipsRow}>
+            <View style={styles.chip}><Text style={styles.chipText}>TEACHER</Text></View>
+            <View style={styles.chip}><Text style={styles.chipText}>Joined {joinedShort}</Text></View>
           </View>
-        )}
+        </View>
 
-        {/* ---------------- Settings actions ---------------- */}
-        {!isEditing && (
-          <>
-            <Text style={styles.sectionLabel}>ACCOUNT</Text>
-            <View style={styles.actionsCard}>
-              <TouchableOpacity
-                style={styles.actionRow}
-                onPress={() => router.push({ pathname: '/change-password', params: { from: '/(teacher)/(tabs)/settings' } })}
-              >
-                <Ionicons name="key-outline" size={18} color={BROWN} />
-                <Text style={styles.actionRowText}>Change Password</Text>
-                <Ionicons name="chevron-forward" size={18} color="#B8A671" />
-              </TouchableOpacity>
-            </View>
+        {/* Round shortcut buttons (overlap the banner) */}
+        <View style={styles.circleRow}>
+          <TouchableOpacity style={styles.circleItem} onPress={startEditing} activeOpacity={0.85}>
+            <View style={styles.circleBtn}><Ionicons name="pencil" size={22} color={ICON_MAIN} /></View>
+            <Text style={styles.circleLabel}>Edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.circleItem}
+            onPress={() => router.push({ pathname: '/change-password', params: { from: '/(teacher)/(tabs)/settings' } })}
+            activeOpacity={0.85}
+          >
+            <View style={styles.circleBtn}><Ionicons name="key" size={22} color={ICON_MAIN} /></View>
+            <Text style={styles.circleLabel}>Password</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.circleItem} onPress={confirmSignOut} activeOpacity={0.85}>
+            <View style={styles.circleBtn}><Ionicons name="log-out-outline" size={24} color={RED} /></View>
+            <Text style={styles.circleLabel}>Sign Out</Text>
+          </TouchableOpacity>
+        </View>
 
-            <TouchableOpacity style={styles.signOutButton} onPress={confirmSignOut}>
-              <Ionicons name="log-out-outline" size={18} color="#B3261E" />
-              <Text style={styles.signOutText}>Sign Out</Text>
-            </TouchableOpacity>
-          </>
-        )}
+        <View style={styles.body}>
+          {/* Details */}
+          <Text style={styles.sectionLabel}>Details</Text>
+          <View style={styles.infoCard}>
+            <InfoRow icon="school" label="School" value={p.school || '—'} tint={ROW_TINTS[0]} />
+            <InfoRow icon="briefcase" label="Subject" value={p.occupation || '—'} tint={ROW_TINTS[1]} />
+            <InfoRow icon="mail" label="Email" value={p.email || '—'} tint={ROW_TINTS[2]} isLast />
+          </View>
+
+          {/* Appearance */}
+          <ThemePicker />
+        </View>
+
+        <ConfirmModal
+          visible={showSignOut}
+          title="Sign out?"
+          message="You will need to log in again."
+          onCancel={() => setShowSignOut(false)}
+          onConfirm={() => {
+            setShowSignOut(false);
+            signOut();
+          }}
+        />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function InfoRow({ icon, label, value }: { icon: any; label: string; value: string }) {
+function InfoRow({ icon, label, value, isLast, tint }: { icon: any; label: string; value: string; isLast?: boolean; tint?: string }) {
   return (
-    <View style={styles.infoRow}>
-      <Ionicons name={icon} size={16} color={BROWN} style={styles.infoIcon} />
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue} numberOfLines={1}>{value}</Text>
+    <View style={[styles.infoRow, isLast && { borderBottomWidth: 0 }]}>
+      <View style={[styles.infoIcon, { backgroundColor: tint ?? BROWN }]}>
+        <Ionicons name={icon} size={15} color="#FFFFFF" />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.infoLabel}>{label}</Text>
+        <Text style={styles.infoValue} numberOfLines={1}>{value}</Text>
+      </View>
     </View>
   );
 }
@@ -374,102 +415,89 @@ function FormField({
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: CREAM },
   centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40 },
+  scrollContent: { paddingBottom: 40 },
 
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    minHeight: 36,
+  // top banner
+  top: {
+    backgroundColor: HERO_BG, alignItems: 'center', overflow: 'hidden',
+    borderBottomLeftRadius: 46, borderBottomRightRadius: 46,
+    paddingTop: 26, paddingBottom: 58, paddingHorizontal: 20,
   },
-  screenTitle: { fontSize: 22, fontWeight: '800', color: BROWN },
-  editIconButton: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: CARD_BG,
+  shapeA: { position: 'absolute', width: 140, height: 140, borderRadius: 30, right: -40, top: -30, backgroundColor: 'rgba(255,255,255,0.13)', transform: [{ rotate: '25deg' }] },
+  shapeB: { position: 'absolute', width: 100, height: 100, borderRadius: 26, left: -30, bottom: 30, backgroundColor: 'rgba(255,255,255,0.13)', transform: [{ rotate: '25deg' }] },
+  avatarRing: {
+    width: 104, height: 104, borderRadius: 52, backgroundColor: '#fff', alignItems: 'center',
+    justifyContent: 'center', borderWidth: 4, borderColor: RING, marginBottom: 10,
   },
-  editIconText: { fontSize: 13, fontWeight: '700', color: BROWN },
-  editActionsRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  topBarButton: { paddingHorizontal: 8, paddingVertical: 8 },
-  cancelText: { fontSize: 14, color: T('#8A6A2A'), fontWeight: '600' },
-  saveButton: {
-    backgroundColor: T('#5C3A2E'), borderRadius: 20, paddingHorizontal: 20,
-    paddingVertical: 8, minWidth: 64, alignItems: 'center',
-  },
-  saveButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
-
-  overviewCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: T('#EADEC9'),
-    padding: 16,
-    marginBottom: 20,
-  },
-  avatarWrapper: { position: 'relative' },
-  avatarImage: { width: 72, height: 72, borderRadius: 36, backgroundColor: FIELD_BG },
-  avatarFallback: {
-    width: 72, height: 72, borderRadius: 36, backgroundColor: FIELD_BG,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  avatarImage: { width: 94, height: 94, borderRadius: 47 },
+  avatarFallback: { backgroundColor: '#F7EBD0', alignItems: 'center', justifyContent: 'center' },
   avatarEditBadge: {
-    position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12,
-    backgroundColor: BROWN, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: '#fff',
+    position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderRadius: 15, backgroundColor: EDIT_FOCUS,
+    alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: CREAM,
   },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  name: { fontSize: 17, fontWeight: '800', color: BROWN },
-  roleBadge: {
-    backgroundColor: '#FCECD6', borderWidth: 1, borderColor: T('#EADEC9'),
-    borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2,
-  },
-  roleBadgeText: { fontSize: 10, fontWeight: '800', color: BROWN, letterSpacing: 0.5 },
-  subInfo: { fontSize: 12, color: T('#8A6A2A'), marginTop: 2 },
+  name: { fontSize: 22, fontWeight: '900', color: HERO_TEXT, textAlign: 'center' },
+  username: { fontSize: 13, color: HERO_SUB, marginTop: 2, fontWeight: '600' },
+  chipsRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  chip: { backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 99, paddingHorizontal: 12, paddingVertical: 5 },
+  chipText: { fontSize: 10.5, fontWeight: '900', color: HERO_TEXT, letterSpacing: 0.4 },
 
+  // round shortcut buttons
+  circleRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: -34, paddingHorizontal: 24 },
+  circleItem: { alignItems: 'center', width: 80 },
+  circleBtn: {
+    width: 58, height: 58, borderRadius: 29, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center',
+    elevation: 4, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 3 },
+    borderWidth: 1, borderColor: BORDER,
+  },
+  circleLabel: { fontSize: 11.5, fontWeight: '800', color: BROWN, marginTop: 7 },
+
+  body: { paddingHorizontal: 16, paddingTop: 22 },
+  sectionLabel: {
+    fontSize: 13, fontWeight: '800', color: BROWN, letterSpacing: 0.8,
+    textTransform: 'uppercase', marginBottom: 10, marginLeft: 4,
+  },
+
+  // details list
   infoCard: {
-    backgroundColor: CARD_BG, borderRadius: 20,
-    paddingHorizontal: 16, paddingVertical: 8, marginBottom: 20,
+    backgroundColor: '#fff', borderRadius: 22, borderWidth: 1, borderColor: BORDER,
+    paddingHorizontal: 16, paddingVertical: 4, marginBottom: 6,
   },
   infoRow: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(58,43,26,0.1)',
+    flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(58,43,26,0.1)', borderStyle: 'dashed',
   },
-  infoIcon: { marginRight: 10 },
-  infoLabel: { fontSize: 13, color: T('#8A6A2A'), width: 90 },
-  infoValue: { flex: 1, fontSize: 13, fontWeight: '600', color: BROWN, textAlign: 'right' },
+  infoIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  infoLabel: { fontSize: 10, fontWeight: '800', color: MUTED, letterSpacing: 0.6, textTransform: 'uppercase' },
+  infoValue: { fontSize: 14, fontWeight: '700', color: BROWN, marginTop: 1 },
 
-  formCard: { backgroundColor: CARD_BG, borderRadius: 20, paddingHorizontal: 16, marginBottom: 20 },
+  // edit mode
+  editBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 10,
+  },
+  editTitle: { fontSize: 17, fontWeight: '800', color: EDIT_TOP_TEXT },
+  cancelText: { fontSize: 14, color: EDIT_CANCEL, fontWeight: '700' },
+  saveButton: {
+    backgroundColor: EDIT_SAVE_BG, borderRadius: 20, paddingHorizontal: 20,
+    paddingVertical: 8, minWidth: 68, alignItems: 'center',
+  },
+  saveButtonText: { color: EDIT_SAVE_TEXT, fontSize: 14, fontWeight: '800' },
+  editContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 120 },
+  editAvatarBlock: { alignItems: 'center', marginTop: 6, marginBottom: 12 },
+  changePhotoText: { color: EDIT_FOCUS, fontWeight: '800', fontSize: 13 },
+
+  formCard: {
+    backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: BORDER,
+    paddingHorizontal: 16, marginBottom: 20,
+  },
   formFieldRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(58,43,26,0.1)' },
   formLabel: {
-    fontSize: 11, fontWeight: '700', color: T('#8A6A2A'),
+    fontSize: 11, fontWeight: '700', color: MUTED,
     letterSpacing: 0.4, marginBottom: 4, textTransform: 'uppercase',
   },
   formInput: { fontSize: 15, fontWeight: '600', color: BROWN, padding: 0 },
 
-  sectionLabel: {
-    fontSize: 11, fontWeight: '700', color: T('#8A6A2A'),
-    letterSpacing: 0.5, marginBottom: 8, marginLeft: 4,
-  },
-  actionsCard: {
-    backgroundColor: '#fff', borderRadius: 20, borderWidth: 1,
-    borderColor: T('#EADEC9'), marginBottom: 16, overflow: 'hidden',
-  },
-  actionRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 16, paddingVertical: 14,
-  },
-  actionRowText: { flex: 1, fontSize: 14, fontWeight: '600', color: BROWN },
-
-  signOutButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, paddingVertical: 14, borderRadius: 30, backgroundColor: '#FDE4E1',
-  },
-  signOutText: { color: '#B3261E', fontSize: 15, fontWeight: '700' },
-
-  errorText: { fontSize: 14, color: T('#8A6A2A'), textAlign: 'center', marginBottom: 16 },
+  errorText: { fontSize: 14, color: MUTED, textAlign: 'center', marginBottom: 16 },
   retryButton: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, backgroundColor: CARD_BG },
   retryButtonText: { color: BROWN, fontWeight: '700' },
 });

@@ -19,6 +19,17 @@ const ORANGE = T('#EA580C');
 const GREEN = '#22A455';
 const RED = '#DC2626';
 
+// School Blue colors for the Home boxes (Default theme keeps the original colors)
+const IS_SCHOOL = activeTheme === 'school';
+const STATS_WRAP_BG = IS_SCHOOL ? '#EAF2FC' : '#FBF3DC';
+const STAT_TILE_BG = IS_SCHOOL ? '#BCD6F5' : '#F7E2A0';
+const STAT_LABEL = IS_SCHOOL ? '#18303D' : '#5A4630';
+const CLASS_CARD_BG = IS_SCHOOL ? '#EAF3FE' : '#F8EDCB';
+const CLASS_TILE_1 = IS_SCHOOL ? '#5B9BE0' : '#7A6540';
+const CLASS_TILE_2 = IS_SCHOOL ? '#2F6FD0' : '#4A3418';
+const CLASS_TILE_3 = IS_SCHOOL ? '#15366B' : '#2B1D0C';
+const CLASS_TILE_LABEL = IS_SCHOOL ? '#EAF3FE' : '#F3E6C4';
+
 function timeAgo(iso: string): string {
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
   if (mins < 1) return 'Just now';
@@ -145,15 +156,15 @@ export default function TeacherDashboard() {
                 {c.section ? <Text style={styles.classSection}>{c.section}</Text> : null}
               </View>
               <View style={styles.classTiles}>
-                <View style={[styles.classTile, { backgroundColor: '#7A6540' }]}>
+                <View style={[styles.classTile, { backgroundColor: CLASS_TILE_1 }]}>
                   <Text style={styles.classTileNumber}>{c.active_quests}</Text>
                   <Text style={styles.classTileLabel}>Active{'\n'}Quests</Text>
                 </View>
-                <View style={[styles.classTile, { backgroundColor: '#4A3418' }]}>
+                <View style={[styles.classTile, { backgroundColor: CLASS_TILE_2 }]}>
                   <Text style={styles.classTileNumber}>{c.total_groups}</Text>
                   <Text style={styles.classTileLabel}>Total{'\n'}Groups</Text>
                 </View>
-                <View style={[styles.classTile, { backgroundColor: '#2B1D0C' }]}>
+                <View style={[styles.classTile, { backgroundColor: CLASS_TILE_3 }]}>
                   <Text style={styles.classTileNumber}>{c.total_students}</Text>
                   <Text style={styles.classTileLabel}>Total{'\n'}Students</Text>
                 </View>
@@ -221,11 +232,11 @@ const styles = StyleSheet.create({
 
   statsWrap: {
     flexDirection: 'row', gap: 8, padding: 8, marginTop: 4, marginBottom: 20,
-    backgroundColor: '#FBF3DC', borderRadius: 24, borderWidth: 1.5, borderColor: DARK,
+    backgroundColor: STATS_WRAP_BG, borderRadius: 24, borderWidth: 1.5, borderColor: DARK,
   },
-  statTile: { flex: 1, backgroundColor: '#F7E2A0', borderRadius: 18, paddingVertical: 18, alignItems: 'center' },
+  statTile: { flex: 1, backgroundColor: STAT_TILE_BG, borderRadius: 18, paddingVertical: 18, alignItems: 'center' },
   statNumber: { fontSize: 26, fontWeight: '900', color: DARK },
-  statLabel: { fontSize: 11, fontWeight: '700', color: '#5A4630', marginTop: 2 },
+  statLabel: { fontSize: 11, fontWeight: '700', color: STAT_LABEL, marginTop: 2 },
 
   sectionHeader: { fontSize: 16, fontWeight: '900', color: DARK, marginBottom: 10 },
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 10 },
@@ -237,7 +248,7 @@ const styles = StyleSheet.create({
   actionLabel: { color: '#fff', fontSize: 11, fontWeight: '800', textAlign: 'center' },
 
   classCard: {
-    flexDirection: 'row', alignItems: 'stretch', backgroundColor: '#F8EDCB',
+    flexDirection: 'row', alignItems: 'stretch', backgroundColor: CLASS_CARD_BG,
     borderRadius: 10, borderWidth: 1.5, borderColor: DARK, marginBottom: 12, overflow: 'hidden',
   },
   classNameBox: { width: '32%', padding: 10, justifyContent: 'center', alignItems: 'center', borderRightWidth: 1.5, borderRightColor: DARK },
@@ -246,7 +257,7 @@ const styles = StyleSheet.create({
   classTiles: { flex: 1, flexDirection: 'row', gap: 8, padding: 10 },
   classTile: { flex: 1, borderRadius: 8, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
   classTileNumber: { fontSize: 20, fontWeight: '900', color: '#fff' },
-  classTileLabel: { fontSize: 10, color: '#F3E6C4', textAlign: 'center', marginTop: 2 },
+  classTileLabel: { fontSize: 10, color: CLASS_TILE_LABEL, textAlign: 'center', marginTop: 2 },
 
   activityCard: { backgroundColor: '#fff', borderRadius: 20, paddingHorizontal: 14, borderWidth: 1, borderColor: T('#EADEC9') },
   activityRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(58,43,26,0.08)' },

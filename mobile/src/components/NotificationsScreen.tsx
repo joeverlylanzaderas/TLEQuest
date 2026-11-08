@@ -8,7 +8,7 @@ import {
   RefreshControl,
   StyleSheet,
 } from 'react-native';
-import { T } from '../theme/theme';
+import { T, activeTheme } from '../theme/theme';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +18,11 @@ import {
   markAllNotificationsRead,
 } from '../api/notifications';
 import { Notification } from '../types/notifications';
+
+// School Blue: light blue bubbles (Default theme keeps the original colors)
+const IS_SCHOOL = activeTheme === 'school';
+const CARD_BG = IS_SCHOOL ? '#EAF3FE' : '#fef3e2';
+const CARD_UNREAD_BG = IS_SCHOOL ? '#BCD6F5' : '#fde68a';
 
 export default function NotificationsScreen() {
   const router = useRouter();
@@ -142,10 +147,10 @@ const styles = StyleSheet.create({
   emptyText: { color: '#999', fontStyle: 'italic', textAlign: 'center', marginTop: 40 },
 
   notifCard: {
-    flexDirection: 'row', backgroundColor: '#fef3e2', borderRadius: 12,
+    flexDirection: 'row', backgroundColor: CARD_BG, borderRadius: 12,
     padding: 14, marginBottom: 10, alignItems: 'flex-start',
   },
-  notifCardUnread: { backgroundColor: '#fde68a' },
+  notifCardUnread: { backgroundColor: CARD_UNREAD_BG },
   notifTitle: { fontSize: 14, fontWeight: '600', color: T('#7c2d12'), marginBottom: 2 },
   notifTitleUnread: { fontWeight: 'bold' },
   notifMessage: { fontSize: 13, color: '#555', marginBottom: 4 },
