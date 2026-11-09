@@ -46,8 +46,11 @@ export default function SystemSettingsPage() {
   const { showToast } = useToast();
 
   const [settings, setSettings] = useState<SystemSettingsType | null>(null);
+  // Last version that the server actually has (used to auto-save the theme alone).
+  const [saved, setSaved] = useState<SystemSettingsType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingTheme, setIsSavingTheme] = useState(false);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
@@ -55,6 +58,7 @@ export default function SystemSettingsPage() {
     try {
       const data = await getSystemSettings();
       setSettings(data);
+      setSaved(data);
       applyTheme(data.theme);
     } catch (e: any) {
       setError(formatApiError(e?.response?.data));
@@ -84,12 +88,45 @@ export default function SystemSettingsPage() {
         self_service_password_reset_enabled: settings.self_service_password_reset_enabled,
       });
       setSettings(updated);
+      setSaved(updated);
       applyTheme(updated.theme);
       showToast('System settings saved.', 'success');
     } catch (e: any) {
       showToast(formatApiError(e?.response?.data), 'error');
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  // Picking a theme saves it to the server right away (only the theme changes;
+  // other fields you have typed but not saved yet are left alone).
+  async function pickTheme(key: ThemeKey) {
+    if (!settings || !saved || isSavingTheme || settings.theme === key) return;
+
+    const previous = settings.theme;
+    updateField('theme', key);
+    applyTheme(key);
+    setIsSavingTheme(true);
+    try {
+      const updated = await updateSystemSettings({
+        school_name: saved.school_name,
+        school_year: saved.school_year,
+        theme: key,
+        min_password_length: saved.min_password_length,
+        bulk_upload_enabled: saved.bulk_upload_enabled,
+        self_service_password_reset_enabled: saved.self_service_password_reset_enabled,
+      });
+      setSaved(updated);
+      updateField('theme', updated.theme);
+      applyTheme(updated.theme);
+      showToast('Theme applied.', 'success');
+    } catch (e: any) {
+      // Put it back so the screen matches what the server has.
+      updateField('theme', previous);
+      applyTheme(previous);
+      showToast(formatApiError(e?.response?.data), 'error');
+    } finally {
+      setIsSavingTheme(false);
     }
   }
 
@@ -221,6 +258,7 @@ export default function SystemSettingsPage() {
           transition: border-color 0.2s, box-shadow 0.2s;
         }
         .theme-card:hover { border-color: var(--t-c37800); }
+        .theme-card:disabled { cursor: wait; opacity: 0.8; }
         .theme-card.selected { border-color: #22C55E; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2); }
         .theme-preview { border-radius: 12px; overflow: hidden; border: 1px solid rgba(0,0,0,0.08); height: 120px; display: flex; flex-direction: column; }
         .theme-preview-header { height: 38px; flex-shrink: 0; }
@@ -365,7 +403,7 @@ export default function SystemSettingsPage() {
           <div className="section-icon"><Palette size={18} /></div>
           <div>
             <h2 className="section-title">Theme</h2>
-            <p className="section-subtitle">Choose the color look of the mobile app. Click Save Settings to apply.</p>
+            <p className="section-subtitle">Choose the color look of the mobile app. It is applied and saved as soon as you pick one.</p>
           </div>
         </div>
 
@@ -377,7 +415,8 @@ export default function SystemSettingsPage() {
                 type="button"
                 key={t.key}
                 className={`theme-card${selected ? ' selected' : ''}`}
-                onClick={() => { updateField('theme', t.key); applyTheme(t.key); }}
+                onClick={() => pickTheme(t.key)}
+                disabled={isSavingTheme}
                 aria-pressed={selected}
               >
                 <div className="theme-preview" style={{ background: t.page }}>
