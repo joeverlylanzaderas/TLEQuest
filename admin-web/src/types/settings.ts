@@ -1,7 +1,9 @@
+export type ThemeKey = 'default' | 'school';
+
 export interface SystemSettings {
   school_name: string;
   school_year: string;
-  primary_color: string;
+  theme: ThemeKey;
   min_password_length: number;
   bulk_upload_enabled: boolean;
   self_service_password_reset_enabled: boolean;

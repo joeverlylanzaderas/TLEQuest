@@ -1,6 +1,7 @@
 // mobile/src/components/ReviewStatusNote.tsx
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { T } from '../theme/theme';
 import { Ionicons } from '@expo/vector-icons';
 
 export type ReviewStatus = 'none' | 'waiting' | 'reviewed';
@@ -16,10 +17,10 @@ export default function ReviewStatusNote({ status }: { status?: ReviewStatus }) 
       <Ionicons
         name={waiting ? 'time' : 'checkmark-circle'}
         size={18}
-        color={waiting ? '#EA580C' : '#22C55E'}
+        color={waiting ? T('#EA580C') : '#22C55E'}
       />
       <View style={{ flex: 1 }}>
-        <Text style={[styles.title, { color: waiting ? '#EA580C' : '#15803D' }]}>
+        <Text style={[styles.title, { color: waiting ? T('#EA580C') : '#15803D' }]}>
           {waiting ? 'Waiting for teacher review' : 'Reviewed by your teacher'}
         </Text>
         <Text style={styles.sub}>

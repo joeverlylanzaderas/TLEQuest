@@ -3,6 +3,7 @@ import React, { useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, Image, ActivityIndicator, StyleSheet,
 } from 'react-native';
+import { T } from '../theme/theme';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { classifyImage, ClassificationResult } from '../ml/classifier';
@@ -10,9 +11,9 @@ import { useAuth } from '../context/AuthContext';
 import { enqueueSubmission, flushQueue, getItemStatus, discardSubmission } from '../utils/submissionQueue';
 import { QuestProgressDetail } from '../types/assignments';
 
-const BROWN = '#5C2C16';
+const BROWN = T('#5C2C16');
 const GREEN = '#22C55E';
-const ORANGE = '#EA580C';
+const ORANGE = T('#EA580C');
 
 // When the model can't run (e.g. Expo Go, no dev build), send the photo to the
 // teacher as FOR REVIEW instead of failing. Set to false before the defense so a
@@ -253,13 +254,13 @@ const styles = StyleSheet.create({
   body: { fontSize: 12, color: '#666', textAlign: 'center', lineHeight: 18, marginBottom: 14 },
 
   dashedBox: { width: '100%', borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#B8A671', borderRadius: 14, padding: 14, alignItems: 'center', marginBottom: 12 },
-  dashedText: { fontSize: 11, color: '#8A6A2A', textAlign: 'center', marginVertical: 8 },
+  dashedText: { fontSize: 11, color: T('#8A6A2A'), textAlign: 'center', marginVertical: 8 },
   preview: { width: 150, height: 150, borderRadius: 12 },
 
   submitBox: { width: '100%', borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#B8A671', borderRadius: 14, padding: 14, alignItems: 'center', backgroundColor: '#FFF7D6' },
   submitTitle: { fontSize: 14, fontWeight: '800', color: BROWN, marginBottom: 4 },
-  submitSub: { fontSize: 11, color: '#8A6A2A', textAlign: 'center', marginBottom: 10 },
-  stageText: { fontSize: 11, color: '#8A6A2A', marginTop: 8, fontStyle: 'italic' },
+  submitSub: { fontSize: 11, color: T('#8A6A2A'), textAlign: 'center', marginBottom: 10 },
+  stageText: { fontSize: 11, color: T('#8A6A2A'), marginTop: 8, fontStyle: 'italic' },
 
   orangeButton: { backgroundColor: ORANGE, borderRadius: 10, paddingHorizontal: 22, paddingVertical: 10, minWidth: 120, alignItems: 'center' },
   orangeButtonText: { color: '#fff', fontWeight: '800', fontSize: 13 },

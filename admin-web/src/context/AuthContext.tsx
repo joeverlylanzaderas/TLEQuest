@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { AdminUser, LoginPayload } from '../types/accounts';
 import { login as loginApi } from '../api/accounts';
+import SignOutConfirm from '../components/SignOutConfirm';
 
 interface AuthContextType {
   user: AdminUser | null;
   isLoading: boolean;
   signIn: (payload: LoginPayload) => Promise<void>;
+  // Shows the "Sign Out?" confirmation first. Every Sign Out button calls this.
   signOut: () => void;
 }
 
@@ -14,6 +16,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -45,16 +48,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(loggedInUser);
   }
 
-  function signOut() {
+  function performSignOut() {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
     setUser(null);
   }
 
+  function signOut() {
+    setConfirmOpen(true);
+  }
+
   return (
     <AuthContext.Provider value={{ user, isLoading, signIn, signOut }}>
       {children}
+      <SignOutConfirm
+        open={confirmOpen}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          performSignOut();
+        }}
+      />
     </AuthContext.Provider>
   );
 }

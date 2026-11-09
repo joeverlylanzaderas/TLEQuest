@@ -13,6 +13,7 @@ import {
   Alert,
   Image,
 } from 'react-native';
+import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../src/theme/theme';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,10 +25,20 @@ import { ClassSummary, ClassEnrollment, ClassCreatePayload, ClassUpdatePayload }
 import KeyboardSafe from '../../src/components/KeyboardSafe';
 import { useToast } from '../../src/components/Toast';
 
-const CREAM = '#F2E4C4';
-const CARD_BG = '#F9C544';
-const BROWN = '#3A2B1A';
+const CREAM = T('#F2E4C4');
+const CARD_BG = T('#F9C544');
+const BROWN = T('#3A2B1A');
 const GREEN = '#2FA85B';
+
+// School Blue colors (Default theme keeps the original colors)
+const IS_SCHOOL = activeTheme === 'school';
+const BLUE = '#1E4D8F';
+const LIGHT_BLUE = '#EAF3FE';
+const HEADER_AREA_BG = IS_SCHOOL ? HEADER_BG : CREAM;
+const TITLE_COLOR = IS_SCHOOL ? '#FFFFFF' : BROWN;
+const BACK_BG = IS_SCHOOL ? '#FFFFFF' : CARD_BG;
+const BACK_ICON = IS_SCHOOL ? BLUE : BROWN;
+const CREATE_BG = IS_SCHOOL ? BLUE : GREEN;
 
 export default function ManageClasses() {
   const router = useRouter();
@@ -175,18 +186,20 @@ export default function ManageClasses() {
   }
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top']}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: HEADER_AREA_BG }]} edges={['top']}>
+      {/* ---------------- Header ---------------- */}
+      <View style={styles.headerRow}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={22} color={BACK_ICON} />
+        </TouchableOpacity>
+        <Text style={styles.title}>Class Management</Text>
+      </View>
+
       <ScrollView
+        style={{ flex: 1, backgroundColor: CREAM }}
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={BROWN} />}
       >
-        {/* ---------------- Header ---------------- */}
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={22} color={BROWN} />
-          </TouchableOpacity>
-          <Text style={styles.title}>Class Management</Text>
-        </View>
 
         {/* ---------------- Create button ---------------- */}
         <TouchableOpacity style={styles.createButton} onPress={openCreateModal}>
@@ -220,7 +233,7 @@ export default function ManageClasses() {
                     onPress={() => openEditModal(c)}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <Ionicons name="ellipsis-vertical" size={18} color="#8A6A2A" />
+                    <Ionicons name="ellipsis-vertical" size={18} color={T('#8A6A2A')} />
                   </TouchableOpacity>
                 </View>
 
@@ -233,7 +246,7 @@ export default function ManageClasses() {
                   <Ionicons
                     name={justCopied ? 'checkmark' : 'copy-outline'}
                     size={14}
-                    color={justCopied ? GREEN : '#8A6A2A'}
+                    color={justCopied ? GREEN : T('#8A6A2A')}
                   />
                   {justCopied && <Text style={styles.copiedText}>Copied!</Text>}
                 </TouchableOpacity>
@@ -360,42 +373,42 @@ export default function ManageClasses() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: CREAM },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 60 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 60 },
 
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, gap: 10 },
-  backButton: { padding: 6, borderRadius: 20, backgroundColor: CARD_BG },
-  title: { fontSize: 20, fontWeight: '800', color: BROWN },
+  headerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 14, gap: 10 },
+  backButton: { padding: 6, borderRadius: 20, backgroundColor: BACK_BG },
+  title: { fontSize: 20, fontWeight: '800', color: TITLE_COLOR },
 
   createButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    backgroundColor: GREEN, borderRadius: 16, paddingVertical: 14, marginBottom: 24,
+    backgroundColor: CREATE_BG, borderRadius: 16, paddingVertical: 14, marginBottom: 24,
   },
   createButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 
   errorText: { color: '#B3261E', marginBottom: 12, fontSize: 13 },
 
   sectionLabel: {
-    fontSize: 12, fontWeight: '700', color: '#8A6A2A',
+    fontSize: 12, fontWeight: '700', color: T('#8A6A2A'),
     letterSpacing: 0.5, marginBottom: 10, marginTop: 4,
   },
-  emptyText: { fontSize: 13, color: '#8A6A2A', marginBottom: 20 },
+  emptyText: { fontSize: 13, color: T('#8A6A2A'), marginBottom: 20 },
 
   classCard: {
-    backgroundColor: '#fff', borderRadius: 16, borderWidth: 1.5, borderColor: '#EADEC9',
+    backgroundColor: IS_SCHOOL ? LIGHT_BLUE : '#fff', borderRadius: 16, borderWidth: 1.5, borderColor: IS_SCHOOL ? '#BCD6F5' : T('#EADEC9'),
     padding: 16, marginBottom: 12,
   },
-  classCardSelected: { borderColor: GREEN },
+  classCardSelected: { borderColor: IS_SCHOOL ? BLUE : GREEN },
   classCardTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   className: { fontSize: 16, fontWeight: '800', color: BROWN, flex: 1 },
   codeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2, marginBottom: 10 },
-  classCode: { fontSize: 12, color: '#8A6A2A' },
+  classCode: { fontSize: 12, color: T('#8A6A2A') },
   copiedText: { fontSize: 11, color: GREEN, fontWeight: '700', marginLeft: 2 },
   classStatsRow: { flexDirection: 'row', gap: 10 },
-  classStatPill: { backgroundColor: CREAM, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
-  classStatText: { fontSize: 12, fontWeight: '700', color: BROWN },
+  classStatPill: { backgroundColor: IS_SCHOOL ? BLUE : CREAM, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
+  classStatText: { fontSize: 12, fontWeight: '700', color: IS_SCHOOL ? '#FFFFFF' : BROWN },
 
   rosterCard: {
-    backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#EADEC9',
+    backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: T('#EADEC9'),
     marginBottom: 20, overflow: 'hidden',
   },
   rosterRow: {
@@ -404,25 +417,25 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: 'rgba(58,43,26,0.08)',
   },
   rosterAvatar: {
-    width: 30, height: 30, borderRadius: 15, backgroundColor: CARD_BG,
+    width: 30, height: 30, borderRadius: 15, backgroundColor: IS_SCHOOL ? BLUE : CARD_BG,
     alignItems: 'center', justifyContent: 'center',
   },
   rosterAvatarImage: { width: 30, height: 30, borderRadius: 15 },
-  rosterAvatarText: { fontSize: 12, fontWeight: '800', color: BROWN },
-  rosterName: { fontSize: 14, fontWeight: '700', color: '#C2551A' },
-  rosterSub: { fontSize: 11, color: '#8A6A2A', marginTop: 1 },
+  rosterAvatarText: { fontSize: 12, fontWeight: '800', color: IS_SCHOOL ? '#FFFFFF' : BROWN },
+  rosterName: { fontSize: 14, fontWeight: '700', color: IS_SCHOOL ? BLUE : '#C2551A' },
+  rosterSub: { fontSize: 11, color: T('#8A6A2A'), marginTop: 1 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 24 },
   modalCard: { backgroundColor: '#fff', borderRadius: 20, padding: 20 },
   modalTitle: { fontSize: 18, fontWeight: '800', color: BROWN, marginBottom: 16 },
-  modalLabel: { fontSize: 11, fontWeight: '700', color: '#8A6A2A', letterSpacing: 0.5, marginBottom: 6, marginTop: 10 },
+  modalLabel: { fontSize: 11, fontWeight: '700', color: T('#8A6A2A'), letterSpacing: 0.5, marginBottom: 6, marginTop: 10 },
   modalInput: {
-    borderWidth: 1, borderColor: '#EADEC9', borderRadius: 10,
+    borderWidth: 1, borderColor: T('#EADEC9'), borderRadius: 10,
     padding: 10, fontSize: 14, color: BROWN,
   },
   modalActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
-  modalCancelButton: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: '#F5F0E6' },
-  modalCancelText: { color: '#8A6A2A', fontWeight: '700' },
-  modalCreateButton: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: '#5C3A2E' },
+  modalCancelButton: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: IS_SCHOOL ? LIGHT_BLUE : '#F5F0E6' },
+  modalCancelText: { color: T('#8A6A2A'), fontWeight: '700' },
+  modalCreateButton: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: IS_SCHOOL ? BLUE : T('#5C3A2E') },
   modalCreateText: { color: '#fff', fontWeight: '700' },
 });

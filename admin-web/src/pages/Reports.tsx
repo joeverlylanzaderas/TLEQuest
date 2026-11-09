@@ -27,11 +27,11 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 // Established Warm Project Theme Colors
-const COLOR_PRIMARY = '#5C2C16';   // Deep Warm Brown
-const COLOR_SECONDARY = '#C37800'; // Amber Gold
-const COLOR_TERTIARY = '#804022';  // Terracotta
-const COLOR_BORDER = '#D6BB83';    // Muted Gold
-const COLOR_BG = '#F8EFE6';        // Soft Cream Background
+const COLOR_PRIMARY = 'var(--t-5c2c16)';   // Deep Warm Brown
+const COLOR_SECONDARY = 'var(--t-c37800)'; // Amber Gold
+const COLOR_TERTIARY = 'var(--t-804022)';  // Terracotta
+const COLOR_BORDER = 'var(--t-d6bb83)';    // Muted Gold
+const COLOR_BG = 'var(--t-f8efe6)';        // Soft Cream Background
 const COLOR_DANGER = '#DF1B39';    // Crimson Red
 
 // Custom Recharts Tooltip Styling
@@ -201,7 +201,7 @@ function CompletionSection({ data }: { data: AdminReports['completion_rates'] })
     <>
       <ChartCard height={chartHeight}>
         <BarChart data={data} layout="vertical" margin={{ left: 20, right: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#EADEC9" />
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--t-eadec9)" />
           <XAxis type="number" domain={[0, 100]} unit="%" stroke={COLOR_TERTIARY} />
           <YAxis type="category" dataKey="quest_title" width={160} tick={{ fontSize: 12, fill: COLOR_PRIMARY }} />
           <Tooltip contentStyle={tooltipStyle} formatter={(value: any) => [`${value}%`, 'Completion Rate']} />
@@ -247,7 +247,7 @@ function LeaderboardSection({ data }: { data: AdminReports['leaderboard'] }) {
     <>
       <ChartCard height={320}>
         <BarChart data={top10} margin={{ bottom: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EADEC9" />
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--t-eadec9)" />
           <XAxis dataKey="username" tick={{ fontSize: 11, fill: COLOR_PRIMARY }} angle={-30} textAnchor="end" interval={0} height={50} />
           <YAxis stroke={COLOR_TERTIARY} />
           <Tooltip contentStyle={tooltipStyle} labelFormatter={(_, payload: readonly any[]) => payload?.[0]?.payload?.full_name ?? ''} />
@@ -298,7 +298,7 @@ function ClassPerformanceSection({ data }: { data: AdminReports['class_performan
     <>
       <ChartCard height={chartHeight}>
         <BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#EADEC9" />
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--t-eadec9)" />
           <XAxis type="number" domain={[0, 100]} unit="%" stroke={COLOR_TERTIARY} />
           <YAxis type="category" dataKey="label" width={160} tick={{ fontSize: 12, fill: COLOR_PRIMARY }} />
           <Tooltip contentStyle={tooltipStyle} formatter={(value: any) => [`${value}%`, 'Completion Rate']} />
@@ -342,7 +342,7 @@ function ActivitySection({ data }: { data: AdminReports['activity_over_time'] })
     <>
       <ChartCard height={320}>
         <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#EADEC9" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--t-eadec9)" />
           <XAxis dataKey="date" tick={{ fontSize: 11, fill: COLOR_PRIMARY }} stroke={COLOR_TERTIARY} />
           <YAxis allowDecimals={false} stroke={COLOR_TERTIARY} />
           <Tooltip contentStyle={tooltipStyle} />
@@ -384,7 +384,7 @@ function TeacherEngagementSection({ data }: { data: AdminReports['teacher_engage
     <>
       <ChartCard height={320}>
         <BarChart data={data} margin={{ bottom: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EADEC9" />
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--t-eadec9)" />
           <XAxis dataKey="username" tick={{ fontSize: 11, fill: COLOR_PRIMARY }} angle={-30} textAnchor="end" interval={0} height={50} />
           <YAxis allowDecimals={false} stroke={COLOR_TERTIARY} />
           <Tooltip contentStyle={tooltipStyle} labelFormatter={(_, payload: readonly any[]) => payload?.[0]?.payload?.full_name ?? ''} />
@@ -495,7 +495,7 @@ function Td({ children, style }: { children: React.ReactNode; style?: React.CSSP
     <td
       style={{
         padding: '12px 14px',
-        borderBottom: '1px solid #EADEC9',
+        borderBottom: '1px solid var(--t-eadec9)',
         fontSize: 14,
         color: COLOR_PRIMARY,
         ...style,

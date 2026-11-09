@@ -3,9 +3,13 @@
 import React from 'react';
 import { ScrollView, TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import { useClassScope, selectClass } from '../utils/selectedClass';
+import { T, activeTheme } from '../theme/theme';
 
-const GOLD = '#F5B921';
-const BROWN = '#5C2C16';
+const GOLD = T('#F5B921');
+const BROWN = T('#5C2C16');
+// School theme: blue chip with white text. Default theme: gold chip with brown text.
+const ACTIVE_BG = activeTheme === 'school' ? '#1E4D8F' : GOLD;
+const ACTIVE_TEXT = activeTheme === 'school' ? '#FFFFFF' : BROWN;
 
 export default function ClassSwitcher() {
   const { classes, selectedId } = useClassScope();
@@ -40,7 +44,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16,
     backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2D5B5', maxWidth: 200,
   },
-  chipActive: { backgroundColor: GOLD, borderColor: GOLD },
+  chipActive: { backgroundColor: ACTIVE_BG, borderColor: ACTIVE_BG },
   chipText: { fontSize: 13, fontWeight: '600', color: BROWN },
-  chipTextActive: { color: BROWN, fontWeight: '800' },
+  chipTextActive: { color: ACTIVE_TEXT, fontWeight: '800' },
 });

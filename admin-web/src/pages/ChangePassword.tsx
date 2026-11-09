@@ -7,11 +7,11 @@ import { useToast } from '../context/ToastContext';
 import type { SecurityQuestion } from '../types/security';
 
 // Established Warm Project Theme Colors
-const COLOR_PRIMARY = '#5C2C16';   // Deep Warm Brown
-const COLOR_SECONDARY = '#C37800'; // Amber Gold
-const COLOR_TERTIARY = '#804022';  // Terracotta
-const COLOR_ACCENT_BG = '#FCECD6'; // Warm Soft Cream
-const COLOR_BORDER = '#D6BB83';    // Muted Gold Border
+const COLOR_PRIMARY = 'var(--t-5c2c16)';   // Deep Warm Brown
+const COLOR_SECONDARY = 'var(--t-c37800)'; // Amber Gold
+const COLOR_TERTIARY = 'var(--t-804022)';  // Terracotta
+const COLOR_ACCENT_BG = 'var(--t-fcecd6)'; // Warm Soft Cream
+const COLOR_BORDER = 'var(--t-d6bb83)';    // Muted Gold Border
 
 function formatApiError(data: any): string {
   if (!data || typeof data !== 'object') return 'Something went wrong.';
@@ -372,7 +372,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   divider: {
     height: '1px',
-    backgroundColor: '#EADEC9',
+    backgroundColor: 'var(--t-eadec9)',
     margin: '8px 0',
   },
   toggleButton: {

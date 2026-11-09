@@ -1,4 +1,5 @@
 // mobile/src/ml/classifier.ts
+import { Image } from 'react-native';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { decode } from 'jpeg-js';
 
@@ -97,23 +98,27 @@ export async function classifyImage(imageUri: string): Promise<ClassificationRes
   const SIZE = getModelInputSize(model);
   console.log('CLASSIFY: model input size', SIZE);
 
-  // 0b. Find out how the photo is oriented (needed to decide on rotation)
-  const info = await ImageManipulator.manipulateAsync(imageUri, [], { compress: 1 });
-  const originalWidth = info.width;
-  const originalHeight = info.height;
-  console.log('CLASSIFY: original photo size', originalWidth, 'x', originalHeight);
-
-  // 1. Rotate if landscape, then resize (stretch, same as Roboflow) and get the JPEG as base64
+  // 0b. Only look up the photo size when we actually need it (rotation).
+  // Image.getSize reads just the file header, so it is nearly instant. The old
+  // code decoded and re-encoded the full 12 MP photo here, which cost seconds.
+  let originalWidth: number | undefined;
+  let originalHeight: number | undefined;
   const actions: any[] = [];
-  if (LANDSCAPE_ROTATE_DEGREES && originalWidth > originalHeight) {
-    actions.push({ rotate: LANDSCAPE_ROTATE_DEGREES });
-    console.log('CLASSIFY: landscape photo, rotating', LANDSCAPE_ROTATE_DEGREES);
+  if (LANDSCAPE_ROTATE_DEGREES) {
+    const size = await new Promise<{ w: number; h: number }>((resolve, reject) =>
+      Image.getSize(imageUri, (w, h) => resolve({ w, h }), reject)
+    );
+    originalWidth = size.w;
+    originalHeight = size.h;
+    if (size.w > size.h) actions.push({ rotate: LANDSCAPE_ROTATE_DEGREES });
   }
+
+  // 1. Resize once (stretch, same as Roboflow) and get the JPEG as base64
   actions.push({ resize: { width: SIZE, height: SIZE } });
   const resized = await ImageManipulator.manipulateAsync(
     imageUri,
     actions,
-    { compress: 1, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+    { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG, base64: true }
   );
   if (!resized.base64) throw new Error('Could not read the photo.');
   console.log('CLASSIFY: resized');

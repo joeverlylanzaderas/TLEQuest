@@ -1,6 +1,7 @@
 //mobile/src/components/DashboardHeader.tsx
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { T } from '../theme/theme';
 import { Ionicons } from '@expo/vector-icons';
 
 interface Props {
@@ -63,7 +64,7 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   avatar: { width: 48, height: 48, borderRadius: 24 },
   avatarPlaceholder: {
-    width: 48, height: 48, borderRadius: 24, backgroundColor: '#fbbf24',
+    width: 48, height: 48, borderRadius: 24, backgroundColor: T('#fbbf24'),
     justifyContent: 'center', alignItems: 'center',
   },
   avatarInitial: { color: '#fff', fontSize: 18, fontWeight: 'bold' },

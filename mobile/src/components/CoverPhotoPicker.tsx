@@ -3,6 +3,7 @@
 // the Cloudinary URL is handed back through onChange. '' means "no cover".
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { T } from '../theme/theme';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { uploadCoverPhoto } from '../api/cloudinary';

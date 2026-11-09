@@ -3,6 +3,7 @@ import React, { useCallback, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, StyleSheet,
 } from 'react-native';
+import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,13 +11,24 @@ import { getTeacherDashboardSummary } from '../../../src/api/dashboard';
 import { TeacherDashboardSummary, RecentActivityEvent } from '../../../src/types/dashboard';
 import AppHeader from '../../../src/components/AppHeader';
 
-const GOLD = '#F5B921';
-const CREAM = '#F5EDD8';
-const BROWN = '#5C2C16';
-const DARK = '#3A2B1A';
-const ORANGE = '#EA580C';
+const GOLD = T('#F5B921');
+const CREAM = T('#F5EDD8');
+const BROWN = T('#5C2C16');
+const DARK = T('#3A2B1A');
+const ORANGE = T('#EA580C');
 const GREEN = '#22A455';
 const RED = '#DC2626';
+
+// School Blue colors for the Home boxes (Default theme keeps the original colors)
+const IS_SCHOOL = activeTheme === 'school';
+const STATS_WRAP_BG = IS_SCHOOL ? '#EAF2FC' : '#FBF3DC';
+const STAT_TILE_BG = IS_SCHOOL ? '#BCD6F5' : '#F7E2A0';
+const STAT_LABEL = IS_SCHOOL ? '#18303D' : '#5A4630';
+const CLASS_CARD_BG = IS_SCHOOL ? '#EAF3FE' : '#F8EDCB';
+const CLASS_TILE_1 = IS_SCHOOL ? '#5B9BE0' : '#7A6540';
+const CLASS_TILE_2 = IS_SCHOOL ? '#2F6FD0' : '#4A3418';
+const CLASS_TILE_3 = IS_SCHOOL ? '#15366B' : '#2B1D0C';
+const CLASS_TILE_LABEL = IS_SCHOOL ? '#EAF3FE' : '#F3E6C4';
 
 function timeAgo(iso: string): string {
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
@@ -144,15 +156,15 @@ export default function TeacherDashboard() {
                 {c.section ? <Text style={styles.classSection}>{c.section}</Text> : null}
               </View>
               <View style={styles.classTiles}>
-                <View style={[styles.classTile, { backgroundColor: '#7A6540' }]}>
+                <View style={[styles.classTile, { backgroundColor: CLASS_TILE_1 }]}>
                   <Text style={styles.classTileNumber}>{c.active_quests}</Text>
                   <Text style={styles.classTileLabel}>Active{'\n'}Quests</Text>
                 </View>
-                <View style={[styles.classTile, { backgroundColor: '#4A3418' }]}>
+                <View style={[styles.classTile, { backgroundColor: CLASS_TILE_2 }]}>
                   <Text style={styles.classTileNumber}>{c.total_groups}</Text>
                   <Text style={styles.classTileLabel}>Total{'\n'}Groups</Text>
                 </View>
-                <View style={[styles.classTile, { backgroundColor: '#2B1D0C' }]}>
+                <View style={[styles.classTile, { backgroundColor: CLASS_TILE_3 }]}>
                   <Text style={styles.classTileNumber}>{c.total_students}</Text>
                   <Text style={styles.classTileLabel}>Total{'\n'}Students</Text>
                 </View>
@@ -202,29 +214,29 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: CREAM },
   scrollContent: { padding: 16, paddingBottom: 60 },
   error: { color: '#B3261E', marginBottom: 12, fontSize: 13 },
-  emptyText: { color: '#8A6A2A', fontStyle: 'italic', marginBottom: 12 },
+  emptyText: { color: T('#8A6A2A'), fontStyle: 'italic', marginBottom: 12 },
 
   header: {
-    backgroundColor: GOLD, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20,
+    backgroundColor: HEADER_BG, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20,
     borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
     borderWidth: 1.5, borderTopWidth: 0, borderColor: DARK,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center' },
   avatarCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFE08A', borderWidth: 1.5, borderColor: DARK, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   avatarImg: { width: 44, height: 44, borderRadius: 22, marginRight: 12, borderWidth: 1.5, borderColor: DARK },
-  welcomeSmall: { fontSize: 12, color: DARK },
-  welcomeName: { fontSize: 18, fontWeight: '900', color: DARK },
-  dateText: { fontSize: 11, color: DARK, fontWeight: '600' },
-  portalText: { fontSize: 11, color: DARK, fontWeight: '800', marginTop: 2 },
+  welcomeSmall: { fontSize: 12, color: HEADER_TEXT },
+  welcomeName: { fontSize: 18, fontWeight: '900', color: HEADER_TEXT },
+  dateText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '600' },
+  portalText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '800', marginTop: 2 },
   bellDot: { position: 'absolute', top: -2, right: -2, width: 10, height: 10, borderRadius: 5, backgroundColor: RED, borderWidth: 1, borderColor: DARK },
 
   statsWrap: {
     flexDirection: 'row', gap: 8, padding: 8, marginTop: 4, marginBottom: 20,
-    backgroundColor: '#FBF3DC', borderRadius: 24, borderWidth: 1.5, borderColor: DARK,
+    backgroundColor: STATS_WRAP_BG, borderRadius: 24, borderWidth: 1.5, borderColor: DARK,
   },
-  statTile: { flex: 1, backgroundColor: '#F7E2A0', borderRadius: 18, paddingVertical: 18, alignItems: 'center' },
+  statTile: { flex: 1, backgroundColor: STAT_TILE_BG, borderRadius: 18, paddingVertical: 18, alignItems: 'center' },
   statNumber: { fontSize: 26, fontWeight: '900', color: DARK },
-  statLabel: { fontSize: 11, fontWeight: '700', color: '#5A4630', marginTop: 2 },
+  statLabel: { fontSize: 11, fontWeight: '700', color: STAT_LABEL, marginTop: 2 },
 
   sectionHeader: { fontSize: 16, fontWeight: '900', color: DARK, marginBottom: 10 },
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 10 },
@@ -236,18 +248,18 @@ const styles = StyleSheet.create({
   actionLabel: { color: '#fff', fontSize: 11, fontWeight: '800', textAlign: 'center' },
 
   classCard: {
-    flexDirection: 'row', alignItems: 'stretch', backgroundColor: '#F8EDCB',
+    flexDirection: 'row', alignItems: 'stretch', backgroundColor: CLASS_CARD_BG,
     borderRadius: 10, borderWidth: 1.5, borderColor: DARK, marginBottom: 12, overflow: 'hidden',
   },
   classNameBox: { width: '32%', padding: 10, justifyContent: 'center', alignItems: 'center', borderRightWidth: 1.5, borderRightColor: DARK },
   className: { fontSize: 15, fontWeight: '900', color: DARK, textAlign: 'center' },
-  classSection: { fontSize: 11, color: '#8A6A2A', marginTop: 2, fontWeight: '700' },
+  classSection: { fontSize: 11, color: T('#8A6A2A'), marginTop: 2, fontWeight: '700' },
   classTiles: { flex: 1, flexDirection: 'row', gap: 8, padding: 10 },
   classTile: { flex: 1, borderRadius: 8, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
   classTileNumber: { fontSize: 20, fontWeight: '900', color: '#fff' },
-  classTileLabel: { fontSize: 10, color: '#F3E6C4', textAlign: 'center', marginTop: 2 },
+  classTileLabel: { fontSize: 10, color: CLASS_TILE_LABEL, textAlign: 'center', marginTop: 2 },
 
-  activityCard: { backgroundColor: '#fff', borderRadius: 20, paddingHorizontal: 14, borderWidth: 1, borderColor: '#EADEC9' },
+  activityCard: { backgroundColor: '#fff', borderRadius: 20, paddingHorizontal: 14, borderWidth: 1, borderColor: T('#EADEC9') },
   activityRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(58,43,26,0.08)' },
   activityIcon: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
   activityStudent: { fontWeight: '800', color: ORANGE, fontSize: 14 },

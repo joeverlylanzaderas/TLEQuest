@@ -1,6 +1,7 @@
 // mobile/app/change-password.tsx
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../src/theme/theme';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { changePassword, getSecurityQuestionList } from '../src/api/accounts';

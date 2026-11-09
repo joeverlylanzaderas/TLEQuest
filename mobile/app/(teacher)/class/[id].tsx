@@ -4,6 +4,7 @@ import {
   View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet,
   ActivityIndicator, RefreshControl, Modal, Alert, Image, Switch,
 } from 'react-native';
+import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,9 +22,9 @@ import { Quest } from '../../../src/types/quests';
 import KeyboardSafe from '../../../src/components/KeyboardSafe';
 import { useToast } from '../../../src/components/Toast';
 
-const CREAM = '#F2E4C4';
-const CARD_BG = '#F9C544';
-const BROWN = '#3A2B1A';
+const CREAM = T('#F2E4C4');
+const CARD_BG = T('#F9C544');
+const BROWN = T('#3A2B1A');
 const GREEN = '#2FA85B';
 const RED = '#B3261E';
 
@@ -328,7 +329,7 @@ export default function ClassOverview() {
                     <Switch
                       value={quest.is_published}
                       onValueChange={() => handleTogglePublish(quest)}
-                      trackColor={{ false: '#EADEC9', true: GREEN }}
+                      trackColor={{ false: T('#EADEC9'), true: GREEN }}
                       thumbColor="#fff"
                     />
                   </View>
@@ -403,18 +404,18 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingTop: 8 },
   backButton: { padding: 6, borderRadius: 20, backgroundColor: CARD_BG },
   title: { fontSize: 18, fontWeight: '800', color: BROWN },
-  subtitle: { fontSize: 12, color: '#8A6A2A', marginTop: 2 },
+  subtitle: { fontSize: 12, color: T('#8A6A2A'), marginTop: 2 },
 
   tabRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginTop: 16 },
-  tabButton: { flex: 1, paddingVertical: 10, borderRadius: 14, alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#EADEC9' },
+  tabButton: { flex: 1, paddingVertical: 10, borderRadius: 14, alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: T('#EADEC9') },
   tabButtonActive: { backgroundColor: BROWN, borderColor: BROWN },
   tabText: { fontSize: 13, fontWeight: '700', color: BROWN },
   tabTextActive: { color: '#fff' },
 
   errorText: { color: RED, marginBottom: 12, fontSize: 13 },
-  emptyText: { fontSize: 13, color: '#8A6A2A', marginTop: 16 },
+  emptyText: { fontSize: 13, color: T('#8A6A2A'), marginTop: 16 },
 
-  card: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#EADEC9', overflow: 'hidden' },
+  card: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: T('#EADEC9'), overflow: 'hidden' },
   rosterRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(58,43,26,0.08)',
@@ -423,7 +424,7 @@ const styles = StyleSheet.create({
   avatarFallback: { width: 32, height: 32, borderRadius: 16, backgroundColor: CARD_BG, alignItems: 'center', justifyContent: 'center' },
   avatarFallbackText: { fontSize: 12, fontWeight: '800', color: BROWN },
   rosterName: { fontSize: 14, fontWeight: '700', color: '#C2551A' },
-  rosterSub: { fontSize: 11, color: '#8A6A2A', marginTop: 1 },
+  rosterSub: { fontSize: 11, color: T('#8A6A2A'), marginTop: 1 },
 
   addButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -431,31 +432,31 @@ const styles = StyleSheet.create({
   },
   addButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 
-  groupCard: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#EADEC9', padding: 14, marginBottom: 12 },
+  groupCard: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: T('#EADEC9'), padding: 14, marginBottom: 12 },
   groupCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   groupTitle: { fontSize: 15, fontWeight: '800', color: BROWN },
-  groupEmptyText: { fontSize: 12, color: '#8A6A2A', marginBottom: 8 },
+  groupEmptyText: { fontSize: 12, color: T('#8A6A2A'), marginBottom: 8 },
   memberRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
   memberName: { flex: 1, fontSize: 13, color: BROWN, fontWeight: '600' },
   leaderTag: { fontSize: 10, fontWeight: '800', color: GREEN, backgroundColor: '#E9F7EE', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
   addMemberButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
   addMemberText: { fontSize: 12, fontWeight: '700', color: BROWN },
 
-  questCard: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#EADEC9', padding: 14, marginBottom: 12 },
+  questCard: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: T('#EADEC9'), padding: 14, marginBottom: 12 },
   questCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   questTitle: { fontSize: 15, fontWeight: '800', color: BROWN, flex: 1, marginRight: 10 },
-  questDesc: { fontSize: 12, color: '#8A6A2A', marginTop: 6 },
+  questDesc: { fontSize: 12, color: T('#8A6A2A'), marginTop: 6 },
   questMeta: { fontSize: 11, color: '#B8A671', marginTop: 8, fontWeight: '600' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 24 },
   modalCard: { backgroundColor: '#fff', borderRadius: 20, padding: 20 },
   modalTitle: { fontSize: 18, fontWeight: '800', color: BROWN, marginBottom: 16 },
-  modalLabel: { fontSize: 11, fontWeight: '700', color: '#8A6A2A', letterSpacing: 0.5, marginBottom: 6, marginTop: 10 },
-  modalInput: { borderWidth: 1, borderColor: '#EADEC9', borderRadius: 10, padding: 10, fontSize: 14, color: BROWN },
+  modalLabel: { fontSize: 11, fontWeight: '700', color: T('#8A6A2A'), letterSpacing: 0.5, marginBottom: 6, marginTop: 10 },
+  modalInput: { borderWidth: 1, borderColor: T('#EADEC9'), borderRadius: 10, padding: 10, fontSize: 14, color: BROWN },
   modalActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
   modalCancelButton: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: '#F5F0E6' },
-  modalCancelText: { color: '#8A6A2A', fontWeight: '700' },
-  modalConfirmButton: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: '#5C3A2E' },
+  modalCancelText: { color: T('#8A6A2A'), fontWeight: '700' },
+  modalConfirmButton: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: T('#5C3A2E') },
   modalConfirmText: { color: '#fff', fontWeight: '700' },
   pickerRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(58,43,26,0.08)' },
   pickerRowText: { fontSize: 14, color: BROWN, fontWeight: '600' },

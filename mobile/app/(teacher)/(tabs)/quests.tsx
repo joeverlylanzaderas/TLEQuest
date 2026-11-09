@@ -1,6 +1,7 @@
 // mobile/app/(teacher)/(tabs)/quests.tsx
 import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,10 +13,10 @@ import { ClassSummary } from '../../../src/types/classrooms';
 import AppHeader from '../../../src/components/AppHeader';
 import QuestCover from '../../../src/components/QuestCover';
 
-const CREAM = '#F5EDD8';
-const BROWN = '#5C2C16';
+const CREAM = T('#F5EDD8');
+const BROWN = T('#5C2C16');
 const GREEN = '#22C55E';
-const ORANGE = '#EA580C';
+const ORANGE = T('#EA580C');
 
 const CLASS_BADGE_COLORS = ['#93C5FD', '#86EFAC', '#FDE68A', '#FCA5A5', '#C4B5FD'];
 
@@ -194,11 +195,11 @@ export default function TeacherQuestLibrary() {
                 </View>
 
                 <View style={styles.dateRow}>
-                  <Ionicons name="calendar-outline" size={13} color="#8A6A2A" />
+                  <Ionicons name="calendar-outline" size={13} color={T('#8A6A2A')} />
                   <Text style={styles.dateLabel}>Assigned: {formatDate(dates.assigned)}</Text>
                 </View>
                 <View style={styles.dateRow}>
-                  <Ionicons name="time-outline" size={13} color="#8A6A2A" />
+                  <Ionicons name="time-outline" size={13} color={T('#8A6A2A')} />
                   <Text style={styles.dateLabel}>Due: {formatDate(dates.due)}</Text>
                 </View>
               </TouchableOpacity>
@@ -216,21 +217,21 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
   pageTitle: { fontSize: 18, fontWeight: '800', color: BROWN },
   errorText: { color: '#B3261E', marginBottom: 12, fontSize: 13 },
-  emptyText: { fontSize: 13, color: '#8A6A2A', marginTop: 16, textAlign: 'center' },
+  emptyText: { fontSize: 13, color: T('#8A6A2A'), marginTop: 16, textAlign: 'center' },
 
   createButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: GREEN, borderRadius: 14, paddingVertical: 14, marginBottom: 16 },
   createButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 
   filterScroll: { marginBottom: 16 },
   filterRow: { gap: 8, paddingRight: 8 },
-  filterPill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#EADEC9' },
+  filterPill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: T('#EADEC9') },
   filterPillActive: { backgroundColor: ORANGE, borderColor: ORANGE },
   filterPillText: { fontSize: 12, fontWeight: '700', color: BROWN },
   filterPillTextActive: { color: '#fff' },
 
   questCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12 },
   cover: { width: '100%', aspectRatio: 16 / 7, borderRadius: 12, marginBottom: 12 },
-  questTitle: { fontSize: 15, fontWeight: '800', color: '#ea580c', marginBottom: 4 },
+  questTitle: { fontSize: 15, fontWeight: '800', color: T('#ea580c'), marginBottom: 4 },
   questDescription: { fontSize: 12, color: '#666', marginBottom: 10, lineHeight: 17 },
   classBadgeRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
   classBadge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
@@ -240,5 +241,5 @@ const styles = StyleSheet.create({
   statusDraft: { backgroundColor: '#F3F4F6' },
   statusBadgeText: { fontSize: 11, fontWeight: '700', color: BROWN },
   dateRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
-  dateLabel: { fontSize: 11, color: '#8A6A2A', marginLeft: 4 },
+  dateLabel: { fontSize: 11, color: T('#8A6A2A'), marginLeft: 4 },
 });

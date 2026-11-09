@@ -1,0 +1,48 @@
+/* admin-web/src/theme/theme.css
+   Every color the admin pages use is a variable named after its ORIGINAL hex.
+   Default theme = the original colors. School theme = blue / white / cream / yellow. */
+:root {
+  --t-804022: #804022;
+  --t-5c2c16: #5C2C16;
+  --t-2e180b: #2E180B;
+  --t-d6bb83: #D6BB83;
+  --t-c37800: #C37800;
+  --t-fcecd6: #FCECD6;
+  --t-f3efd4: #F3EFD4;
+  --t-f8efe6: #F8EFE6;
+  --t-fdc200: #FDC200;
+  --t-eadec9: #EADEC9;
+
+  /* Dashboard accents (clock, Manage Users button, Quest Flow, Top Performers) */
+  --dash-timer-bg: #FDC200;
+  --dash-timer-text: #804022;
+  --dash-btn-bg: #FDC200;
+  --dash-btn-border: #C37800;
+  --dash-btn-text: #804022;
+  --dash-btn-hover: #EBD800;
+  --dash-assigned: #FDC200;
+  --dash-progress: #EC7D76;
+  --dash-completed: #24A956;
+}
+:root[data-theme='school'] {
+  --t-804022: #18303D;
+  --t-5c2c16: #18303D;
+  --t-2e180b: #0F2230;
+  --t-d6bb83: #C9C2A6;
+  --t-c37800: #1E4D8F;
+  --t-fcecd6: #E8EFF8;
+  --t-f3efd4: #EAF0F8;
+  --t-f8efe6: #FAF6E8;
+  --t-fdc200: #F2B84B;
+  --t-eadec9: #E3DCC6;
+
+  --dash-timer-bg: #1E4D8F;
+  --dash-timer-text: #FFFFFF;
+  --dash-btn-bg: #1E4D8F;
+  --dash-btn-border: #18303D;
+  --dash-btn-text: #FFFFFF;
+  --dash-btn-hover: #18407A;
+  --dash-assigned: #8FC1F2;
+  --dash-progress: #3F7FD0;
+  --dash-completed: #1E4D8F;
+}

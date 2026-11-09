@@ -7,19 +7,20 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator,
   StyleProp, ViewStyle, TextInputProps,
 } from 'react-native';
+import { T } from '../theme/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import KeyboardSafe from './KeyboardSafe';
 
 export const AUTH = {
-  CREAM: '#F2E4C4',
+  CREAM: T('#F2E4C4'),
   FIELD_BG: '#F7EBD0',
-  GOLD: '#F9C544',
-  BROWN: '#3A2B1A',
-  BUTTON: '#5C3A2E',
-  MUTED: '#8A6A2A',
+  GOLD: T('#F9C544'),
+  BROWN: T('#3A2B1A'),
+  BUTTON: T('#5C3A2E'),
+  MUTED: T('#8A6A2A'),
   GREEN: '#2FA85B',
-  BORDER: '#EADEC9',
+  BORDER: T('#EADEC9'),
   RED: '#B3261E',
 };
 

@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from rest_framework import generics
 from rest_framework.exceptions import PermissionDenied, ValidationError
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -19,7 +19,7 @@ from apps.rewards.models import StudentReward
 from apps.submissions.models import Submission
 
 from .models import SystemSettings
-from .serializers import SystemSettingsSerializer
+from .serializers import PublicThemeSerializer, SystemSettingsSerializer
 
 
 class SystemSettingsView(generics.RetrieveUpdateAPIView):
@@ -29,6 +29,14 @@ class SystemSettingsView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         return SystemSettings.get_solo()
 
+class PublicThemeView(generics.RetrieveAPIView):
+    """Read-only, no login needed, so the login screen can already use the school theme."""
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    serializer_class = PublicThemeSerializer
+
+    def get_object(self):
+        return SystemSettings.get_solo()
 
 class TeacherDashboardSummaryView(APIView):
     permission_classes = [IsAuthenticated]

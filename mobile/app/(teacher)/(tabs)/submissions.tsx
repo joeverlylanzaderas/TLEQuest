@@ -4,6 +4,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl,
   StyleSheet, Image, TextInput, Modal,
 } from 'react-native';
+import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,10 +14,10 @@ import { ClassSummary } from '../../../src/types/classrooms';
 import { Submission } from '../../../src/types/submissions';
 import AppHeader from '../../../src/components/AppHeader';
 
-const GOLD = '#F5B921';
-const CREAM = '#F5EDD8';
-const BROWN = '#5C2C16';
-const ORANGE = '#EA580C';
+const GOLD = T('#F5B921');
+const CREAM = T('#F5EDD8');
+const BROWN = T('#5C2C16');
+const ORANGE = T('#EA580C');
 
 type Status = 'all' | 'pending' | 'reviewed';
 type PickerKind = 'class' | 'group' | 'status' | null;
@@ -306,13 +307,13 @@ export default function TeacherSubmissions() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: CREAM },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { backgroundColor: GOLD, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
+  header: { backgroundColor: HEADER_BG, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
   headerRow: { flexDirection: 'row', alignItems: 'center' },
   avatarCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  welcomeSmall: { fontSize: 12, color: BROWN, opacity: 0.8 },
-  welcomeName: { fontSize: 16, fontWeight: '800', color: BROWN },
-  dateText: { fontSize: 11, color: BROWN, fontWeight: '600' },
-  classText: { fontSize: 11, color: BROWN, fontWeight: '700', marginTop: 2 },
+  welcomeSmall: { fontSize: 12, color: HEADER_TEXT, opacity: 0.8 },
+  welcomeName: { fontSize: 16, fontWeight: '800', color: HEADER_TEXT },
+  dateText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '600' },
+  classText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '700', marginTop: 2 },
 
   scrollContent: { padding: 20, paddingBottom: 60 },
   errorText: { color: '#B3261E', marginBottom: 12, fontSize: 13 },
@@ -320,24 +321,24 @@ const styles = StyleSheet.create({
   pageTitle: { fontSize: 18, fontWeight: '800', color: BROWN },
   countText: { fontSize: 12, fontWeight: '700', color: ORANGE },
 
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: '#EADEC9', borderRadius: 14, paddingHorizontal: 12, marginBottom: 10 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: T('#EADEC9'), borderRadius: 14, paddingHorizontal: 12, marginBottom: 10 },
   searchInput: { flex: 1, paddingVertical: 10, fontSize: 14, color: BROWN },
 
   filterRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-  dropdown: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6, backgroundColor: '#fff', borderWidth: 1, borderColor: '#EADEC9', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
+  dropdown: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6, backgroundColor: '#fff', borderWidth: 1, borderColor: T('#EADEC9'), borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
   dropdownActive: { backgroundColor: ORANGE, borderColor: ORANGE },
   dropdownText: { flex: 1, fontSize: 12, fontWeight: '700', color: BROWN },
   dropdownTextActive: { color: '#fff' },
   clearBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: ORANGE, borderRadius: 12, paddingVertical: 10 },
   clearText: { fontSize: 12, fontWeight: '800', color: ORANGE },
 
-  resultText: { fontSize: 11, color: '#8A6A2A', marginVertical: 6 },
-  emptyText: { color: '#8A6A2A', fontStyle: 'italic', textAlign: 'center', marginTop: 24, lineHeight: 20 },
+  resultText: { fontSize: 11, color: T('#8A6A2A'), marginVertical: 6 },
+  emptyText: { color: T('#8A6A2A'), fontStyle: 'italic', textAlign: 'center', marginTop: 24, lineHeight: 20 },
 
   card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 12, marginBottom: 12 },
-  thumb: { width: 78, height: 78, borderRadius: 12, backgroundColor: '#EADEC9' },
-  questTitle: { fontSize: 14, fontWeight: '800', color: '#7c2d12' },
-  meta: { fontSize: 11, color: '#8A6A2A', marginTop: 2 },
+  thumb: { width: 78, height: 78, borderRadius: 12, backgroundColor: T('#EADEC9') },
+  questTitle: { fontSize: 14, fontWeight: '800', color: T('#7c2d12') },
+  meta: { fontSize: 11, color: T('#8A6A2A'), marginTop: 2 },
   badgeRow: { flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' },
   badge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
   badgeText: { fontSize: 10, fontWeight: '800' },
