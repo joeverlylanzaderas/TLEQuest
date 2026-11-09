@@ -12,6 +12,17 @@
   --t-f8efe6: #F8EFE6;
   --t-fdc200: #FDC200;
   --t-eadec9: #EADEC9;
+
+  /* Dashboard accents (clock, Manage Users button, Quest Flow, Top Performers) */
+  --dash-timer-bg: #FDC200;
+  --dash-timer-text: #804022;
+  --dash-btn-bg: #FDC200;
+  --dash-btn-border: #C37800;
+  --dash-btn-text: #804022;
+  --dash-btn-hover: #EBD800;
+  --dash-assigned: #FDC200;
+  --dash-progress: #EC7D76;
+  --dash-completed: #24A956;
 }
 :root[data-theme='school'] {
   --t-804022: #18303D;
@@ -24,4 +35,14 @@
   --t-f8efe6: #FAF6E8;
   --t-fdc200: #F2B84B;
   --t-eadec9: #E3DCC6;
+
+  --dash-timer-bg: #1E4D8F;
+  --dash-timer-text: #FFFFFF;
+  --dash-btn-bg: #1E4D8F;
+  --dash-btn-border: #18303D;
+  --dash-btn-text: #FFFFFF;
+  --dash-btn-hover: #18407A;
+  --dash-assigned: #8FC1F2;
+  --dash-progress: #3F7FD0;
+  --dash-completed: #1E4D8F;
 }

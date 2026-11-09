@@ -228,7 +228,7 @@ export default function Dashboard() {
         .hero-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(30,15,8,0.2) 0%, rgba(30,15,8,0.6) 100%); z-index: 1; }
         .hero-top-info { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; color: #FFFFFF; gap: 12px; flex-wrap: wrap; }
         .date-badge { background: rgba(89,60,60,0.4); backdrop-filter: blur(8px); padding: 8px 16px; border-radius: 12px; font-size: 13px; font-weight: 600; border: 1px solid rgba(255,255,255,0.25); display: flex; align-items: center; gap: 8px; }
-        .timer-badge { background: var(--t-fdc200); color: var(--t-804022); padding: 8px 16px; border-radius: 12px; font-weight: 800; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-variant-numeric: tabular-nums; }
+        .timer-badge { background: var(--dash-timer-bg); color: var(--dash-timer-text); padding: 8px 16px; border-radius: 12px; font-weight: 800; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-variant-numeric: tabular-nums; }
         .hero-controls { position: relative; z-index: 2; display: flex; gap: 12px; width: 100%; align-items: center; margin-top: 16px; flex-wrap: wrap; }
 
         .search-wrapper { position: relative; flex: 1; min-width: 200px; display: flex; align-items: center; }
@@ -238,8 +238,8 @@ export default function Dashboard() {
 
         .action-btn { background: #FFFFFF; border: 1px solid var(--t-d6bb83); padding: 12px 18px; border-radius: 12px; font-weight: 600; font-size: 14px; color: var(--t-804022); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(128,64,34,0.05); transition: background 0.2s; white-space: nowrap; }
         .action-btn:hover { background: var(--t-f8efe6); }
-        .primary-btn { background: var(--t-fdc200); border: 1px solid var(--t-c37800); color: var(--t-804022); }
-        .primary-btn:hover { background: #ebd800; }
+        .primary-btn { background: var(--dash-btn-bg); border: 1px solid var(--dash-btn-border); color: var(--dash-btn-text); }
+        .primary-btn:hover { background: var(--dash-btn-hover); }
 
         .card { background: #FFFFFF; border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(128,64,34,0.04); border: 1px solid var(--t-f3efd4); display: flex; flex-direction: column; min-width: 0; overflow: hidden; width: 100%; }
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
@@ -484,9 +484,9 @@ export default function Dashboard() {
                   <div className="card-header">
                     <h2 className="card-title">Quest Flow</h2>
                     <div className="legend">
-                      <span style={{ color: 'var(--t-fdc200)' }}>● Assigned</span>
-                      <span style={{ color: '#EC7D76' }}>● In progress</span>
-                      <span style={{ color: '#24A956' }}>● Completed</span>
+                      <span style={{ color: 'var(--dash-assigned)' }}>● Assigned</span>
+                      <span style={{ color: 'var(--dash-progress)' }}>● In progress</span>
+                      <span style={{ color: 'var(--dash-completed)' }}>● Completed</span>
                     </div>
                   </div>
 
@@ -501,9 +501,9 @@ export default function Dashboard() {
                         return (
                           <div className="qf-col" key={i} title={`${r.quest_title}: ${assigned} assigned, ${inProgress} in progress, ${completed} completed`}>
                             <div className="qf-bars">
-                              <div className="qf-bar" style={{ height: barHeight(assigned), background: 'var(--t-fdc200)' }} />
-                              <div className="qf-bar" style={{ height: barHeight(inProgress), background: '#EC7D76' }} />
-                              <div className="qf-bar" style={{ height: barHeight(completed), background: '#24A956' }} />
+                              <div className="qf-bar" style={{ height: barHeight(assigned), background: 'var(--dash-assigned)' }} />
+                              <div className="qf-bar" style={{ height: barHeight(inProgress), background: 'var(--dash-progress)' }} />
+                              <div className="qf-bar" style={{ height: barHeight(completed), background: 'var(--dash-completed)' }} />
                             </div>
                             <div className="qf-label">{r.quest_title}</div>
                           </div>
@@ -525,7 +525,7 @@ export default function Dashboard() {
                         <span style={{ color: 'var(--t-c37800)', marginLeft: 8 }}>{topQuest?.completion_rate ?? 0}%</span>
                       </div>
                       <div className="progress-track">
-                        <div className="progress-fill" style={{ width: `${topQuest?.completion_rate ?? 0}%`, background: 'var(--t-fdc200)' }} />
+                        <div className="progress-fill" style={{ width: `${topQuest?.completion_rate ?? 0}%`, background: 'var(--dash-assigned)' }} />
                       </div>
                       <div className="truncate-text" style={{ fontSize: 11, color: 'var(--t-d6bb83)', marginTop: 4 }}>
                         {topQuest?.quest_title || 'No quests yet'}
@@ -540,7 +540,7 @@ export default function Dashboard() {
                         <span style={{ color: 'var(--t-c37800)', marginLeft: 8 }}>{champion?.total_points ?? 0} pts</span>
                       </div>
                       <div className="progress-track">
-                        <div className="progress-fill" style={{ width: champion && champion.total_points > 0 ? '100%' : '0%', background: '#EC7D76' }} />
+                        <div className="progress-fill" style={{ width: champion && champion.total_points > 0 ? '100%' : '0%', background: 'var(--dash-progress)' }} />
                       </div>
                       <div className="truncate-text" style={{ fontSize: 11, color: 'var(--t-d6bb83)', marginTop: 4 }}>
                         {champion?.full_name || 'No points earned yet'}
