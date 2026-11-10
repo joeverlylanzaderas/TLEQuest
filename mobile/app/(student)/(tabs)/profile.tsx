@@ -19,6 +19,7 @@ import { StudentReward } from '../../../src/types/rewards';
 import { getMediaUrl } from '../../../src/utils/media';
 import ThemePicker from '../../../src/components/ThemePicker';
 import ConfirmModal from '../../../src/components/ConfirmModal';
+import { HowItWorksRow } from '../../../src/components/HowItWorks';
 
 const CREAM = T('#F2E4C4');
 const FIELD_BG = '#F7EBD0';
@@ -419,6 +420,8 @@ export default function StudentProfile() {
         </View>
 
         <ThemePicker />
+
+        <HowItWorksRow role="student" />
 
         <View style={{ marginTop: 16 }}>
           <ActionRow
