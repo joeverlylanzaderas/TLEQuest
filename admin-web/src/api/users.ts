@@ -40,7 +40,13 @@ export async function bulkUploadUsers(file: File): Promise<BulkUploadResult> {
   const { data } = await apiClient.post<BulkUploadResult>(
     '/accounts/admin/users/bulk-upload/',
     formData,
-    { headers: { 'Content-Type': 'multipart/form-data' } }
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      // Each new account hashes a password on the server, so a CSV takes much longer
+      // than the 3s default in client.ts. Without this the browser gives up early and
+      // shows "Something went wrong" even though the accounts were created.
+      timeout: 120000,
+    }
   );
   return data;
 }

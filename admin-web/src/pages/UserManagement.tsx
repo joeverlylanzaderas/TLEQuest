@@ -259,7 +259,13 @@ export default function UserManagement() {
       const result = await bulkUploadUsers(csvFile);
       setBulkResult(result);
       const summary = summarizeBulkResult(result);
-      showToast(summary.message, summary.type);
+      const createdNow = result.created_count ?? result.created?.length ?? 0;
+      showToast(
+        createdNow > 0
+          ? `${summary.message} Passwords are shown only once. Download them now and hand them out personally.`
+          : summary.message,
+        summary.type
+      );
       await load();
     } catch (e: any) {
       const data = e?.response?.data;
@@ -600,35 +606,15 @@ export default function UserManagement() {
           </div>
 
           {bulkResult && (bulkResult.created?.length ?? 0) > 0 && (
-            <div style={{ marginTop: 12, fontSize: 13, borderTop: '1px solid #FCC896', paddingTop: 8 }}>
-              {(bulkResult.created?.length ?? 0) > 0 && (
-                <div>✅ {bulkResult.created_count} account{bulkResult.created_count === 1 ? '' : 's'} created</div>
-              )}
-
-              {(bulkResult.created?.length ?? 0) > 0 && (
-                <div
-                  style={{
-                    marginTop: 10,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <button
-                    className="action-btn-primary"
-                    style={{ padding: '8px 16px', fontSize: 13 }}
-                    onClick={handleDownloadCredentials}
-                  >
-                    <Download size={14} />
-                    {credsDownloaded ? 'Download Again' : 'Download Credentials (CSV)'}
-                  </button>
-                  <span style={{ color: '#DF1B39', fontSize: 12, fontWeight: 600 }}>
-                    ⚠️ Passwords are shown only once. Download them now and hand them out personally.
-                  </span>
-                </div>
-              )}
-
+            <div style={{ marginTop: 12, borderTop: '1px solid #FCC896', paddingTop: 12 }}>
+              <button
+                className="action-btn-primary"
+                style={{ padding: '8px 16px', fontSize: 13 }}
+                onClick={handleDownloadCredentials}
+              >
+                <Download size={14} />
+                {credsDownloaded ? 'Download Again' : 'Download Credentials (CSV)'}
+              </button>
             </div>
           )}
         </div>

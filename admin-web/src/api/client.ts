@@ -5,7 +5,9 @@ const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://tlequest.duckdns.org/a
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
-  timeout: 3000,
+  // 3s was too short for the server (password hashing, cold DB, etc). Slow calls
+  // like CSV import set their own longer timeout per request.
+  timeout: 15000,
 });
 
 apiClient.interceptors.request.use((config) => {
