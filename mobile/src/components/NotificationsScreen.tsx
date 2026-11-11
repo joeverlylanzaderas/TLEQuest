@@ -1,14 +1,19 @@
-import React, { useCallback, useState } from 'react';
+// mobile/src/components/NotificationsScreen.tsx
+// Notifications list (used by both student and teacher).
+// New look: white cards with a round icon, grouped into TODAY and EARLIER,
+// a red dot for unread, and short times like "10 min ago".
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
-  FlatList,
+  SectionList,
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
   StyleSheet,
 } from 'react-native';
-import { T, activeTheme } from '../theme/theme';
+import type { ComponentProps } from 'react';
+import { T } from '../theme/theme';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,10 +24,47 @@ import {
 } from '../api/notifications';
 import { Notification } from '../types/notifications';
 
-// School Blue: light blue bubbles (Default theme keeps the original colors)
-const IS_SCHOOL = activeTheme === 'school';
-const CARD_BG = IS_SCHOOL ? '#EAF3FE' : '#fef3e2';
-const CARD_UNREAD_BG = IS_SCHOOL ? '#BCD6F5' : '#fde68a';
+const PAGE = T('#F5EDD8');
+const INK = T('#3A2B1A');
+const BROWN = T('#5C2C16');
+const MUTED = T('#7A6455');
+const LINE = T('#EADEC9');
+const RED = '#D4442E';
+
+type IconName = ComponentProps<typeof Ionicons>['name'];
+
+// Round icon for each kind of notification
+function iconFor(n: Notification): { name: IconName; bg: string; color: string } {
+  if (n.notification_type === 'quest_assigned') {
+    return { name: 'clipboard-outline', bg: '#FFF1C7', color: '#6B4A00' };
+  }
+  if (n.notification_type === 'new_submission') {
+    return { name: 'document-text-outline', bg: '#CFE0F5', color: '#1F4D7A' };
+  }
+  if (/reward|badge|point/i.test(n.title)) {
+    return { name: 'ribbon-outline', bg: '#FDE9D2', color: '#A34A0A' };
+  }
+  return { name: 'checkmark-circle-outline', bg: '#E3F3E9', color: '#166B3A' };
+}
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+function startOfDay(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+function timeLabel(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMin = Math.floor((now.getTime() - d.getTime()) / 60000);
+  if (diffMin < 1) return 'Just now';
+  if (diffMin < 60) return `${diffMin} min ago`;
+  const todayStart = startOfDay(now);
+  if (d.getTime() >= todayStart) return `${Math.floor(diffMin / 60)} hr ago`;
+  if (d.getTime() >= todayStart - 24 * 60 * 60 * 1000) return 'Yesterday';
+  return `${WEEKDAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+}
 
 export default function NotificationsScreen() {
   const router = useRouter();
@@ -80,6 +122,17 @@ export default function NotificationsScreen() {
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
+  // Group into TODAY and EARLIER
+  const sections = useMemo(() => {
+    const todayStart = startOfDay(new Date());
+    const today = notifications.filter((n) => new Date(n.created_at).getTime() >= todayStart);
+    const earlier = notifications.filter((n) => new Date(n.created_at).getTime() < todayStart);
+    const out: { title: string; data: Notification[] }[] = [];
+    if (today.length) out.push({ title: 'TODAY', data: today });
+    if (earlier.length) out.push({ title: 'EARLIER', data: earlier });
+    return out;
+  }, [notifications]);
+
   if (isLoading) {
     return (
       <View style={styles.centered}>
@@ -91,71 +144,92 @@ export default function NotificationsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={22} color="#333" />
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <Ionicons name="chevron-back" size={22} color={BROWN} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
-        {unreadCount > 0 ? (
-          <TouchableOpacity onPress={handleMarkAllRead}>
+        {unreadCount > 0 && (
+          <TouchableOpacity onPress={handleMarkAllRead} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Text style={styles.markAllText}>Mark all read</Text>
           </TouchableOpacity>
-        ) : (
-          <View style={{ width: 90 }} />
         )}
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <FlatList
-        data={notifications}
+      <SectionList
+        sections={sections}
         keyExtractor={(item) => String(item.id)}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={load} />}
-        contentContainerStyle={{ paddingBottom: 40 }}
-        ListEmptyComponent={<Text style={styles.emptyText}>No notifications yet.</Text>}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[styles.notifCard, !item.is_read && styles.notifCardUnread]}
-            onPress={() => handleTapNotification(item)}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.notifTitle, !item.is_read && styles.notifTitleUnread]}>
-                {item.title}
-              </Text>
-              <Text style={styles.notifMessage}>{item.message}</Text>
-              <Text style={styles.notifTime}>
-                {new Date(item.created_at).toLocaleString()}
-              </Text>
-            </View>
-            {!item.is_read && <View style={styles.unreadDot} />}
-          </TouchableOpacity>
+        refreshControl={<RefreshControl refreshing={false} onRefresh={load} />}
+        contentContainerStyle={sections.length === 0 ? styles.emptyWrap : { paddingBottom: 40 }}
+        stickySectionHeadersEnabled={false}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Ionicons name="notifications-outline" size={40} color={MUTED} />
+            <Text style={styles.emptyText}>No notifications yet.</Text>
+          </View>
+        }
+        renderSectionHeader={({ section }) => (
+          <Text style={styles.sectionLabel}>{section.title}</Text>
         )}
+        renderItem={({ item }) => {
+          const icon = iconFor(item);
+          return (
+            <TouchableOpacity
+              style={styles.card}
+              activeOpacity={0.8}
+              onPress={() => handleTapNotification(item)}
+            >
+              <View style={[styles.iconCircle, { backgroundColor: icon.bg }]}>
+                <Ionicons name={icon.name} size={20} color={icon.color} />
+              </View>
+              <View style={styles.cardText}>
+                <Text style={[styles.title, !item.is_read && styles.titleUnread]}>{item.title}</Text>
+                {item.message ? <Text style={styles.message}>{item.message}</Text> : null}
+                <Text style={styles.time}>{timeLabel(item.created_at)}</Text>
+              </View>
+              {!item.is_read && <View style={styles.dot} />}
+            </TouchableOpacity>
+          );
+        }}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 60, paddingHorizontal: 16 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  headerRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16,
+  container: { flex: 1, paddingTop: 56, paddingHorizontal: 16, backgroundColor: PAGE },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: PAGE },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+  backButton: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: LINE, alignItems: 'center', justifyContent: 'center',
   },
-  backButton: { padding: 4, width: 30 },
-  headerTitle: { fontSize: 18, fontWeight: 'bold' },
-  markAllText: { color: T('#ea580c'), fontSize: 13, fontWeight: '600', width: 90, textAlign: 'right' },
+  headerTitle: { flex: 1, fontSize: 26, fontWeight: '800', color: INK },
+  markAllText: { color: BROWN, fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
   error: { color: '#dc2626', marginBottom: 12 },
-  emptyText: { color: '#999', fontStyle: 'italic', textAlign: 'center', marginTop: 40 },
 
-  notifCard: {
-    flexDirection: 'row', backgroundColor: CARD_BG, borderRadius: 12,
-    padding: 14, marginBottom: 10, alignItems: 'flex-start',
+  sectionLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1, color: MUTED, marginTop: 8, marginBottom: 10 },
+  // when there is nothing to show, fill the space and center the message
+  emptyWrap: { flexGrow: 1, justifyContent: 'center', paddingBottom: 80 },
+  empty: { alignItems: 'center', gap: 8 },
+  emptyText: { color: MUTED, fontSize: 14 },
+
+  card: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    backgroundColor: '#FFFFFF', borderRadius: 18, padding: 14, marginBottom: 10,
+    borderWidth: 1, borderColor: LINE,
   },
-  notifCardUnread: { backgroundColor: CARD_UNREAD_BG },
-  notifTitle: { fontSize: 14, fontWeight: '600', color: T('#7c2d12'), marginBottom: 2 },
-  notifTitleUnread: { fontWeight: 'bold' },
-  notifMessage: { fontSize: 13, color: '#555', marginBottom: 4 },
-  notifTime: { fontSize: 11, color: '#999' },
-  unreadDot: {
-    width: 8, height: 8, borderRadius: 4, backgroundColor: T('#ea580c'), marginTop: 4, marginLeft: 8,
-  },
+  iconCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  cardText: { flex: 1, gap: 2 },
+  title: { fontSize: 14, fontWeight: '600', color: INK },
+  titleUnread: { fontWeight: '800' },
+  message: { fontSize: 13, lineHeight: 19, color: MUTED },
+  time: { fontSize: 12, color: MUTED, marginTop: 2 },
+  dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: RED, marginTop: 6 },
 });

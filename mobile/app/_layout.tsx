@@ -4,6 +4,7 @@ import { Slot, useRouter, useSegments } from 'expo-router';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { View, ActivityIndicator, Alert } from 'react-native';
 import OfflineBanner from '../src/components/OfflineBanner';
+import AlertHost from '../src/components/AlertHost';
 
 function RootLayoutNav() {
   const { user, isLoading, signOut } = useAuth();
@@ -48,6 +49,7 @@ function RootLayoutNav() {
     <View style={{ flex: 1 }}>
       <Slot />
       <OfflineBanner />
+      <AlertHost />
     </View>
   );
 }

@@ -163,12 +163,27 @@ export default function LoginScreen() {
     try {
       await signIn({ username: cleanUsername, password });
     } catch (e: any) {
+      const status: number | undefined = e?.response?.status;
       const detail = e?.response?.data?.detail;
-      let message = 'Login failed. Check your credentials.';
-      if (typeof detail === 'string' && detail) {
+      let message = 'Login failed. Please try again.';
+      if (!e?.response) {
+        // the server never answered
+        message = e?.code === 'ECONNABORTED'
+          ? 'The server took too long to respond. Please try again.'
+          : 'Cannot reach the server. Check your internet connection and try again.';
+      } else if (status === 401 || status === 400) {
+        // wrong username or password (SimpleJWT says "No active account found…")
+        message = typeof detail === 'string' && detail && !/no active account/i.test(detail)
+          ? detail
+          : 'Incorrect username or password.';
+      } else if (status === 403) {
+        message = typeof detail === 'string' && detail ? detail : 'You do not have access to this account.';
+      } else if (status === 429) {
+        message = 'Too many attempts. Please wait a moment and try again.';
+      } else if (status && status >= 500) {
+        message = 'The server had a problem. Please try again in a moment.';
+      } else if (typeof detail === 'string' && detail) {
         message = detail;
-      } else if (!e?.response) {
-        message = 'Cannot reach the server. Check your internet connection and try again.';
       }
       if (isMounted.current) {
         setError(message);

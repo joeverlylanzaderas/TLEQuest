@@ -2,22 +2,22 @@
 import React, { useCallback, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
-  RefreshControl, StyleSheet,
+  RefreshControl, StyleSheet, Image,
 } from 'react-native';
-import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
+import { T } from '../../../src/theme/theme';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getMyProfile } from '../../../src/api/accounts';
-import { refreshClasses, inSelectedClass, selectedClassName, useClassScope } from '../../../src/utils/selectedClass';
-import ClassSwitcher from '../../../src/components/ClassSwitcher';
+import { refreshClasses, inSelectedClass, useClassScope } from '../../../src/utils/selectedClass';
 import { useAuth } from '../../../src/context/AuthContext';
+import AppHeader from '../../../src/components/AppHeader';
+import { FadeIn, PressableScale } from '../../../src/components/Motion';
 import { getMyProgress } from '../../../src/api/assignments';
-import { getUnreadNotifications } from '../../../src/api/notifications';
-import { FullUser } from '../../../src/types/accounts';
 import { QuestProgress } from '../../../src/types/assignments';
+import { NAV_CLEARANCE } from '../../../src/components/FloatingTabBar';
 
 const GOLD = T('#F5B921');
+const QUEST_BG = require('../../../assets/images/quest-bg.png');
 const CREAM = T('#F5EDD8');
 const BROWN = T('#5C2C16');
 const GREEN = '#22C55E';
@@ -37,9 +37,7 @@ export default function StudentQuests() {
   const router = useRouter();
   const { user } = useAuth();
   const scope = useClassScope();
-  const [profile, setProfile] = useState<FullUser | null>(null);
   const [progress, setProgress] = useState<QuestProgress[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [filter, setFilter] = useState<FilterKey>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -48,15 +46,11 @@ export default function StudentQuests() {
   const load = useCallback(async () => {
     setError('');
     try {
-      const [profileData, , progressData, unread] = await Promise.all([
-        getMyProfile(),
+      const [, progressData] = await Promise.all([
         refreshClasses(user!.id),
         getMyProgress(),
-        getUnreadNotifications(),
       ]);
-      setProfile(profileData);
       setProgress(progressData);
-      setUnreadCount(unread.length);
     } catch (e: any) {
       setError(e?.response?.data?.detail || 'Could not load your quests.');
     }
@@ -91,35 +85,11 @@ export default function StudentQuests() {
     return { label: 'Start Quest', bg: 'transparent', textColor: GREEN, border: GREEN };
   }
 
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  const displayName = profile?.profile.first_name || profile?.username || '';
-
   return (
     <View style={styles.screen}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={20} color={BROWN} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.welcomeSmall}>Welcome back,</Text>
-            <Text style={styles.welcomeName}>{displayName}!</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.dateText}>{today}</Text>
-            <Text style={styles.classText}>{selectedClassName(scope)}</Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => router.push('/(student)/notifications' as any)}
-            style={{ marginLeft: 8 }}
-          >
-            <Ionicons name="notifications" size={20} color={BROWN} />
-            {unreadCount > 0 && <View style={styles.bellDot} />}
-          </TouchableOpacity>
-        </View>
-      </View>
-      <ClassSwitcher />
+      <Image source={QUEST_BG} style={styles.bgImage} resizeMode="cover" />
+      {/* Same header as Home */}
+      <AppHeader role="student" />
 
       {isLoading ? (
         <View style={styles.centered}>
@@ -145,7 +115,7 @@ export default function StudentQuests() {
             ))}
           </ScrollView>
 
-          <Text style={styles.pageTitle}>QUESTS</Text>
+          <Text style={styles.pageTitle}>Quests</Text>
 
           {filtered.length === 0 ? (
             <Text style={styles.emptyText}>
@@ -153,11 +123,11 @@ export default function StudentQuests() {
             </Text>
           ) : (
             <View style={styles.grid}>
-              {filtered.map((item) => {
+              {filtered.map((item, idx) => {
                 const btn = statusButton(statusOf(item));
                 return (
-                  <TouchableOpacity
-                    key={item.id}
+                  <FadeIn key={item.id} delay={Math.min(idx, 8) * 60} style={styles.cardSlot}>
+                  <PressableScale
                     style={styles.card}
                     // item.id is the QuestProgress id, which the Overview screen expects
                     onPress={() => router.push(`/(student)/quest/${item.id}/overview` as any)}
@@ -175,7 +145,8 @@ export default function StudentQuests() {
                     >
                       <Text style={[styles.statusButtonText, { color: btn.textColor }]}>{btn.label}</Text>
                     </View>
-                  </TouchableOpacity>
+                  </PressableScale>
+                  </FadeIn>
                 );
               })}
             </View>
@@ -188,17 +159,9 @@ export default function StudentQuests() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: CREAM },
+  bgImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { backgroundColor: HEADER_BG, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
-  headerRow: { flexDirection: 'row', alignItems: 'center' },
-  avatarCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  welcomeSmall: { fontSize: 12, color: HEADER_TEXT, opacity: 0.8 },
-  welcomeName: { fontSize: 16, fontWeight: '800', color: HEADER_TEXT },
-  dateText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '600' },
-  classText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '700', marginTop: 2 },
-  bellDot: { position: 'absolute', top: -1, right: -1, width: 8, height: 8, borderRadius: 4, backgroundColor: '#DC2626' },
-
-  scrollContent: { padding: 20, paddingBottom: 60 },
+  scrollContent: { padding: 20, paddingBottom: NAV_CLEARANCE },
   errorText: { color: '#B3261E', marginBottom: 12, fontSize: 13 },
   emptyText: { color: T('#8A6A2A'), fontStyle: 'italic', textAlign: 'center', marginTop: 20 },
 
@@ -208,10 +171,11 @@ const styles = StyleSheet.create({
   filterText: { fontSize: 13, fontWeight: '600', color: BROWN },
   filterTextActive: { color: '#fff' },
 
-  pageTitle: { fontSize: 28, fontWeight: '900', color: GREEN, textAlign: 'center', marginBottom: 16, letterSpacing: 1 },
+  pageTitle: { fontSize: 26, fontWeight: '800', color: BROWN, marginBottom: 14 },
 
    grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  card: { width: '48%', backgroundColor: '#fff', borderRadius: 16, padding: 10, marginBottom: 14 },
+  cardSlot: { width: '48%' },
+  card: { backgroundColor: '#fff', borderRadius: 16, padding: 10, marginBottom: 14 },
   imagePlaceholder: { height: 90, borderRadius: 12, backgroundColor: T('#B8895C'), alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   cardTitle: { fontSize: 12, fontWeight: '700', color: T('#7c2d12'), minHeight: 30 },
   cardDivider: { height: 1, backgroundColor: '#eee', marginVertical: 8 },

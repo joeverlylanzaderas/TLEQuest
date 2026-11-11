@@ -11,11 +11,15 @@ import { getAssignmentsForQuest } from '../../../src/api/assignments';
 import { Quest } from '../../../src/types/quests';
 import { ClassSummary } from '../../../src/types/classrooms';
 import AppHeader from '../../../src/components/AppHeader';
+import { FadeIn, PressableScale } from '../../../src/components/Motion';
 import QuestCover from '../../../src/components/QuestCover';
+import { NAV_CLEARANCE } from '../../../src/components/FloatingTabBar';
 
+const GOLD = T('#F5B921');
 const CREAM = T('#F5EDD8');
 const BROWN = T('#5C2C16');
 const GREEN = '#22C55E';
+const DARKTXT = T('#3A2B1A');
 const ORANGE = T('#EA580C');
 
 const CLASS_BADGE_COLORS = ['#93C5FD', '#86EFAC', '#FDE68A', '#FCA5A5', '#C4B5FD'];
@@ -116,19 +120,21 @@ export default function TeacherQuestLibrary() {
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={BROWN} />}
       >
         <View style={styles.titleRow}>
-          <Ionicons name="arrow-back" size={20} color={BROWN} onPress={() => router.back()} />
-          <Text style={styles.pageTitle}>Quest Library</Text>
+          <View>
+            <Text style={styles.pageTitle}>Quests</Text>
+            <Text style={styles.pageSub}>{quests.length} in your library</Text>
+          </View>
+          <PressableScale
+            style={styles.createButton}
+            scaleTo={0.94}
+            onPress={() => router.push('/(teacher)/create-quest' as any)}
+          >
+            <Ionicons name="add" size={18} color={BROWN} />
+            <Text style={styles.createButtonText}>New quest</Text>
+          </PressableScale>
         </View>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={() => router.push('/(teacher)/create-quest' as any)}
-        >
-          <Ionicons name="add" size={18} color="#fff" />
-          <Text style={styles.createButtonText}>Create New Quest</Text>
-        </TouchableOpacity>
 
         {/* ---- Class filter row ---- */}
         {classes.length > 0 && (
@@ -168,20 +174,21 @@ export default function TeacherQuestLibrary() {
               : 'No quests for this class yet.'}
           </Text>
         ) : (
-          visibleQuests.map((quest) => {
+          visibleQuests.map((quest, qi) => {
             const classInfoList = classInfoFor(quest.classes);
             const dates = questDates[quest.id] || { assigned: null, due: null };
             return (
-              <TouchableOpacity
-                key={quest.id}
+              <FadeIn key={quest.id} delay={Math.min(qi, 6) * 70}>
+              <PressableScale
                 style={styles.questCard}
+                scaleTo={0.97}
                 onPress={() => router.push(`/(teacher)/quest/${quest.id}` as any)}
               >
                 {quest.cover_image_url ? (
                   <QuestCover url={quest.cover_image_url} style={styles.cover} />
                 ) : null}
                 <Text style={styles.questTitle}>{quest.title}</Text>
-                {quest.description ? <Text style={styles.questDescription}>{quest.description}</Text> : null}
+                {quest.description ? <Text style={styles.questDescription} numberOfLines={2}>{quest.description}</Text> : null}
 
                 <View style={styles.classBadgeRow}>
                   {classInfoList.map((info, idx) => (
@@ -190,19 +197,22 @@ export default function TeacherQuestLibrary() {
                     </View>
                   ))}
                   <View style={[styles.statusBadge, quest.is_published ? styles.statusPublished : styles.statusDraft]}>
-                    <Text style={styles.statusBadgeText}>{quest.is_published ? 'Published' : 'Draft'}</Text>
+                    <Text style={[styles.statusBadgeText, { color: quest.is_published ? '#166534' : '#6B7280' }]}>{quest.is_published ? '● Published' : '● Draft'}</Text>
                   </View>
                 </View>
 
-                <View style={styles.dateRow}>
-                  <Ionicons name="calendar-outline" size={13} color={T('#8A6A2A')} />
-                  <Text style={styles.dateLabel}>Assigned: {formatDate(dates.assigned)}</Text>
+                <View style={styles.datesRow}>
+                  <View style={styles.dateRow}>
+                    <Ionicons name="calendar-outline" size={13} color={T('#8A6A2A')} />
+                    <Text style={styles.dateLabel}>Assigned {formatDate(dates.assigned)}</Text>
+                  </View>
+                  <View style={styles.dateRow}>
+                    <Ionicons name="time-outline" size={13} color={T('#8A6A2A')} />
+                    <Text style={styles.dateLabel}>Due {formatDate(dates.due)}</Text>
+                  </View>
                 </View>
-                <View style={styles.dateRow}>
-                  <Ionicons name="time-outline" size={13} color={T('#8A6A2A')} />
-                  <Text style={styles.dateLabel}>Due: {formatDate(dates.due)}</Text>
-                </View>
-              </TouchableOpacity>
+              </PressableScale>
+              </FadeIn>
             );
           })
         )}
@@ -213,14 +223,15 @@ export default function TeacherQuestLibrary() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: CREAM },
-  scrollContent: { padding: 20, paddingBottom: 60 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
-  pageTitle: { fontSize: 18, fontWeight: '800', color: BROWN },
+  scrollContent: { padding: 20, paddingBottom: NAV_CLEARANCE },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  pageTitle: { fontSize: 22, fontWeight: '900', color: BROWN },
+  pageSub: { fontSize: 12, color: T('#8A6A2A'), marginTop: 2 },
   errorText: { color: '#B3261E', marginBottom: 12, fontSize: 13 },
   emptyText: { fontSize: 13, color: T('#8A6A2A'), marginTop: 16, textAlign: 'center' },
 
-  createButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: GREEN, borderRadius: 14, paddingVertical: 14, marginBottom: 16 },
-  createButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  createButton: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: GOLD, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 },
+  createButtonText: { color: BROWN, fontSize: 13, fontWeight: '800' },
 
   filterScroll: { marginBottom: 16 },
   filterRow: { gap: 8, paddingRight: 8 },
@@ -229,17 +240,18 @@ const styles = StyleSheet.create({
   filterPillText: { fontSize: 12, fontWeight: '700', color: BROWN },
   filterPillTextActive: { color: '#fff' },
 
-  questCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12 },
+  questCard: { backgroundColor: '#fff', borderRadius: 18, padding: 14, marginBottom: 12 },
   cover: { width: '100%', aspectRatio: 16 / 7, borderRadius: 12, marginBottom: 12 },
-  questTitle: { fontSize: 15, fontWeight: '800', color: T('#ea580c'), marginBottom: 4 },
+  questTitle: { fontSize: 16, fontWeight: '900', color: DARKTXT, marginBottom: 4 },
   questDescription: { fontSize: 12, color: '#666', marginBottom: 10, lineHeight: 17 },
-  classBadgeRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  classBadge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
+  classBadgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
+  classBadge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   classBadgeText: { fontSize: 11, fontWeight: '700', color: '#1e3a5f' },
-  statusBadge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
+  statusBadge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  datesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, borderTopWidth: 1, borderTopColor: 'rgba(58,43,26,0.08)', paddingTop: 10 },
   statusPublished: { backgroundColor: '#DCFCE7' },
   statusDraft: { backgroundColor: '#F3F4F6' },
   statusBadgeText: { fontSize: 11, fontWeight: '700', color: BROWN },
-  dateRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  dateRow: { flexDirection: 'row', alignItems: 'center' },
   dateLabel: { fontSize: 11, color: T('#8A6A2A'), marginLeft: 4 },
 });

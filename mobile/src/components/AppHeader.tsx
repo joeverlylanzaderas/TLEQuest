@@ -8,7 +8,8 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getMyProfile } from '../api/accounts';
+import { thumbUrl } from '../utils/media';
+import { loadProfile, getCachedProfile, peekSavedProfile } from '../utils/profileStore';
 import { getMyClasses } from '../api/classrooms';
 import { getUnreadNotifications } from '../api/notifications';
 import { FullUser } from '../types/accounts';
@@ -35,9 +36,15 @@ interface Props {
 export default function AppHeader({ role, subtitle, children }: Props) {
   const router = useRouter();
   const scope = useClassScope();
-  const [profile, setProfile] = useState<FullUser | null>(cache?.role === role ? cache.profile : null);
+  const [profile, setProfile] = useState<FullUser | null>(getCachedProfile() ?? (cache?.role === role ? cache.profile : null));
   const [className, setClassName] = useState(cache?.role === role ? cache.className : '');
   const [unread, setUnread] = useState(0);
+
+  // Cold start: show the copy saved on the phone while the server answers
+  React.useEffect(() => {
+    if (profile) return;
+    peekSavedProfile().then((p) => { if (p) setProfile((cur) => cur ?? p); });
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -46,7 +53,7 @@ export default function AppHeader({ role, subtitle, children }: Props) {
         try {
           const fresh = cache && cache.role === role && Date.now() - cache.at < TTL_MS;
           const [p, c, u] = await Promise.all([
-            fresh ? Promise.resolve(cache!.profile) : getMyProfile(),
+            loadProfile(),
             fresh || role !== 'student' ? Promise.resolve(null) : getMyClasses(),
             getUnreadNotifications(),
           ]);
@@ -75,13 +82,26 @@ export default function AppHeader({ role, subtitle, children }: Props) {
   return (
     <View style={styles.header}>
       <View style={[styles.row, children ? { marginBottom: 14 } : null]}>
-        {profile?.profile.profile_picture ? (
-          <Image source={{ uri: profile.profile.profile_picture }} style={styles.avatarImg} />
-        ) : (
-          <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={22} color="#3A2B1A" />
-          </View>
-        )}
+        {/* Students: the avatar shows their picture (or first letter) and opens Profile / Settings */}
+        <TouchableOpacity
+          disabled={role !== 'student'}
+          onPress={() => router.navigate('/(student)/(tabs)/profile' as any)}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Open profile and settings"
+        >
+          {profile?.profile.profile_picture ? (
+            <Image source={{ uri: thumbUrl(profile.profile.profile_picture, 46) ?? profile.profile.profile_picture }} style={styles.avatarImg} />
+          ) : (
+            <View style={styles.avatarCircle}>
+              {role === 'student' && displayName ? (
+                <Text style={styles.avatarInitial}>{displayName.charAt(0).toUpperCase()}</Text>
+              ) : (
+                <Ionicons name="person" size={22} color="#3A2B1A" />
+              )}
+            </View>
+          )}
+        </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.welcomeSmall}>Welcome back,</Text>
           <Text style={styles.welcomeName} numberOfLines={1}>{displayName ? `${displayName}!` : ' '}</Text>
@@ -113,6 +133,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
     avatarCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: activeTheme === 'school' ? '#FFFFFF' : '#FFE08A', borderWidth: 1.5, borderColor: DARK, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
     avatarImg: { width: 44, height: 44, borderRadius: 22, marginRight: 12, borderWidth: 1.5, borderColor: DARK },
+  avatarInitial: { fontSize: 20, fontWeight: '900', color: '#3A2B1A' },
   welcomeSmall: { fontSize: 12, color: DARK },
   welcomeName: { fontSize: 18, fontWeight: '900', color: DARK },
   dateText: { fontSize: 11, color: DARK, fontWeight: '600' },

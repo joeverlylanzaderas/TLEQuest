@@ -1,10 +1,11 @@
 // mobile/src/components/SubmitOutputCard.tsx
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, Image, ActivityIndicator, StyleSheet,
 } from 'react-native';
 import { T } from '../theme/theme';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useCameraPermissions } from 'expo-camera';
+import CameraCapture from './CameraCapture';
 import { Ionicons } from '@expo/vector-icons';
 import { classifyImage, ClassificationResult } from '../ml/classifier';
 import { useAuth } from '../context/AuthContext';
@@ -42,11 +43,9 @@ interface Props {
 }
 
 export default function SubmitOutputCard({ progress }: Props) {
-  const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraOpen, setCameraOpen] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const [isCapturing, setIsCapturing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stage, setStage] = useState('');
   const [error, setError] = useState('');
@@ -69,19 +68,12 @@ export default function SubmitOutputCard({ progress }: Props) {
     setCameraOpen(true);
   }
 
-  async function handleCapture() {
-    if (!cameraRef.current || isCapturing) return;
-    setIsCapturing(true);
-    try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
-      setPhotoUri(photo.uri);
-      setSubmitted(null);
-      setCameraOpen(false);
-    } catch {
-      setError('Could not take the photo. Please try again.');
-    } finally {
-      setIsCapturing(false);
-    }
+  // Called by the camera screen with the photo that was just taken
+  function handleCaptured(uri: string) {
+    setPhotoUri(uri);
+    setSubmitted(null);
+    setError('');
+    setCameraOpen(false);
   }
 
   async function handleSubmit() {
@@ -201,8 +193,20 @@ export default function SubmitOutputCard({ progress }: Props) {
               {photoUri ? 'Looks good? Submit it, or retake.' : 'Take a photo of your finished table setup'}
             </Text>
             <TouchableOpacity style={styles.orangeButton} onPress={openCamera} disabled={isSubmitting}>
-              <Text style={styles.orangeButtonText}>{photoUri ? 'Retake' : 'Take a Photo v2'}</Text>
+              <Text style={styles.orangeButtonText}>{photoUri ? 'Retake' : 'Take a Photo'}</Text>
             </TouchableOpacity>
+            {/* Cancel: throw the photo away and go back to the start (nothing is sent) */}
+            {photoUri ? (
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => { setPhotoUri(null); setError(''); }}
+                disabled={isSubmitting}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel and remove this photo"
+              >
+                <Text style={[styles.cancelButtonText, isSubmitting && { opacity: 0.4 }]}>Cancel</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
 
           <View style={styles.submitBox}>
@@ -227,22 +231,12 @@ export default function SubmitOutputCard({ progress }: Props) {
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       {/* In-app camera: no gallery, the photo has to be taken live */}
-      <Modal visible={cameraOpen} animationType="slide" onRequestClose={() => setCameraOpen(false)}>
-        <View style={styles.cameraScreen}>
-          {/* 3:4 frame (like a normal phone camera): what you see is what gets photographed */}
-          <View style={styles.cameraFrame}>
-            <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" ratio="4:3" />
-          </View>
-          <TouchableOpacity style={styles.closeButton} onPress={() => setCameraOpen(false)}>
-            <Ionicons name="close" size={24} color="#fff" />
-          </TouchableOpacity>
-          <View style={styles.captureBar}>
-            <TouchableOpacity style={styles.captureOuter} onPress={handleCapture} disabled={isCapturing}>
-              <View style={styles.captureInner} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      <CameraCapture
+        visible={cameraOpen}
+        title={progress.quest_title}
+        onClose={() => setCameraOpen(false)}
+        onCaptured={handleCaptured}
+      />
     </View>
   );
 }
@@ -267,6 +261,8 @@ const styles = StyleSheet.create({
   disabledButton: { backgroundColor: '#E5B999' },
   secondaryButton: { marginTop: 14, borderWidth: 1.5, borderColor: ORANGE, borderRadius: 20, paddingHorizontal: 18, paddingVertical: 8 },
   secondaryButtonText: { color: ORANGE, fontWeight: '700', fontSize: 12 },
+  cancelButton: { marginTop: 10, paddingVertical: 8, paddingHorizontal: 24 },
+  cancelButtonText: { color: T('#8A6A2A'), fontWeight: '700', fontSize: 13, textDecorationLine: 'underline' },
 
   resultBox: { width: '100%', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 18 },
   resultLabel: { fontSize: 22, fontWeight: '900', marginTop: 6 },
@@ -275,10 +271,4 @@ const styles = StyleSheet.create({
 
   errorText: { color: '#B3261E', fontSize: 12, marginTop: 12, textAlign: 'center' },
 
-  cameraScreen: { flex: 1, backgroundColor: '#000', justifyContent: 'center' },
-  cameraFrame: { width: '100%', aspectRatio: 3 / 4, overflow: 'hidden' },
-  closeButton: { position: 'absolute', top: 50, left: 16, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 20, padding: 8 },
-  captureBar: { position: 'absolute', bottom: 40, left: 0, right: 0, alignItems: 'center' },
-  captureOuter: { width: 74, height: 74, borderRadius: 37, borderWidth: 4, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  captureInner: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#fff' },
 });

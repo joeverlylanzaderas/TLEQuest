@@ -1,6 +1,7 @@
 // mobile/src/components/MyGroupCard.tsx
 // Shows the student whether they are in a group yet, and whether they are its leader.
 // Pass the groups of the class being viewed (Home already loads them).
+import { thumbUrl } from '../utils/media';
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { T } from '../theme/theme';
@@ -73,7 +74,7 @@ export default function MyGroupCard({ groups }: Props) {
           return (
             <View key={m.id} style={styles.member}>
               {m.student.profile_picture ? (
-                <Image source={{ uri: m.student.profile_picture }} style={[styles.avatar, leader && styles.avatarLeader]} />
+                <Image source={{ uri: thumbUrl(m.student.profile_picture, 48) ?? m.student.profile_picture }} style={[styles.avatar, leader && styles.avatarLeader]} />
               ) : (
                 <View style={[styles.avatar, styles.avatarPlaceholder, leader && styles.avatarLeader]}>
                   <Text style={styles.avatarInitial}>{name.charAt(0).toUpperCase()}</Text>

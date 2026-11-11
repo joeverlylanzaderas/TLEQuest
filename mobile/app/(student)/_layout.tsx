@@ -11,9 +11,11 @@ export default function StudentLayout() {
 
   return (
     <>
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', animationDuration: 280 }}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="notifications" />
+        <Stack.Screen name="notifications" options={{ animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="class-group" />
+        <Stack.Screen name="join-class" />
         <Stack.Screen name="quest/[id]/overview" />
         <Stack.Screen name="quest/[id]/step/[stepId]" />
       </Stack>

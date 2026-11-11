@@ -1,7 +1,7 @@
 // mobile/src/components/ThemePicker.tsx
 // Two theme cards. Used in the student Profile and the teacher Settings screen.
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 import { T, activeTheme, saveTheme, ThemeKey } from '../theme/theme';
 import { reloadApp } from '../theme/reload';
 
@@ -12,16 +12,34 @@ const OPTIONS: { key: ThemeKey; name: string; header: string; page: string; butt
 
 export default function ThemePicker() {
   const [selected, setSelected] = useState<ThemeKey>(activeTheme);
+  // While the app restarts to apply the theme, cover the screen with the NEW theme's
+  // colors so the student never sees a black or half-changed screen.
+  const [applying, setApplying] = useState<ThemeKey | null>(null);
 
   async function choose(key: ThemeKey) {
-    if (key === selected) return;
+    if (key === selected || applying) return;
     setSelected(key);
+    setApplying(key);
     await saveTheme(key);
-    reloadApp();
+    // Give the cover a moment to paint before the app restarts.
+    setTimeout(() => { reloadApp(); }, 450);
   }
+
+  const applyingOption = OPTIONS.find((o) => o.key === applying) || null;
 
   return (
     <View style={styles.wrap}>
+      <Modal visible={!!applyingOption} animationType="fade" transparent={false} statusBarTranslucent>
+        {applyingOption ? (
+          <View style={[styles.cover, { backgroundColor: applyingOption.page }]}>
+            <View style={[styles.coverHeader, { backgroundColor: applyingOption.header }]} />
+            <View style={styles.coverBody}>
+              <ActivityIndicator size="large" color={applyingOption.button} />
+              <Text style={[styles.coverText, { color: applyingOption.button }]}>Applying {applyingOption.name}…</Text>
+            </View>
+          </View>
+        ) : null}
+      </Modal>
       <Text style={styles.title}>Theme</Text>
       <View style={styles.row}>
         {OPTIONS.map((o) => {
@@ -50,6 +68,10 @@ export default function ThemePicker() {
 }
 
 const styles = StyleSheet.create({
+  cover: { flex: 1 },
+  coverHeader: { height: 110 },
+  coverBody: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingBottom: 110 },
+  coverText: { fontSize: 15, fontWeight: '800' },
   wrap: { marginTop: 16 },
   title: { fontSize: 13, fontWeight: '800', color: T('#5C2C16'), letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 },
   row: { flexDirection: 'row', gap: 12 },

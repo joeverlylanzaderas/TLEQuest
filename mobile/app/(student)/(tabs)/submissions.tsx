@@ -4,18 +4,17 @@ import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
   RefreshControl, StyleSheet, Image, Modal,
 } from 'react-native';
-import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
+import { T } from '../../../src/theme/theme';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getMyProfile } from '../../../src/api/accounts';
-import { refreshClasses, inSelectedClass, selectedClassName, useClassScope } from '../../../src/utils/selectedClass';
-import ClassSwitcher from '../../../src/components/ClassSwitcher';
+import { refreshClasses, inSelectedClass, useClassScope } from '../../../src/utils/selectedClass';
+import AppHeader from '../../../src/components/AppHeader';
+import { FadeIn } from '../../../src/components/Motion';
 import { useAuth } from '../../../src/context/AuthContext';
 import { getSubmissions } from '../../../src/api/submissions';
-import { getUnreadNotifications } from '../../../src/api/notifications';
-import { FullUser } from '../../../src/types/accounts';
 import { Submission } from '../../../src/types/submissions';
+import { NAV_CLEARANCE } from '../../../src/components/FloatingTabBar';
 
 const GOLD = T('#F5B921');
 const CREAM = T('#F5EDD8');
@@ -42,9 +41,7 @@ export default function StudentSubmissions() {
   const router = useRouter();
   const { user } = useAuth();
   const scope = useClassScope();
-  const [profile, setProfile] = useState<FullUser | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [zoomUri, setZoomUri] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -53,15 +50,11 @@ export default function StudentSubmissions() {
   const load = useCallback(async () => {
     setError('');
     try {
-      const [p, , s, u] = await Promise.all([
-        getMyProfile(),
+      const [, s] = await Promise.all([
         refreshClasses(user!.id),
         getSubmissions(),
-        getUnreadNotifications(),
       ]);
-      setProfile(p);
       setSubmissions(s);
-      setUnreadCount(u.length);
     } catch (e: any) {
       setError(e?.response?.data?.detail || 'Could not load your submissions.');
     }
@@ -80,31 +73,11 @@ export default function StudentSubmissions() {
   }
 
   const classSubmissions = submissions.filter((s) => inSelectedClass(scope, s.group));
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  const displayName = profile?.profile.first_name || profile?.username || '';
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={20} color={BROWN} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.welcomeSmall}>Welcome back,</Text>
-            <Text style={styles.welcomeName}>{displayName}!</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.dateText}>{today}</Text>
-            <Text style={styles.classText}>{selectedClassName(scope)}</Text>
-          </View>
-          <TouchableOpacity onPress={() => router.push('/(student)/notifications' as any)} style={{ marginLeft: 8 }}>
-            <Ionicons name="notifications" size={20} color={BROWN} />
-            {unreadCount > 0 && <View style={styles.bellDot} />}
-          </TouchableOpacity>
-        </View>
-      </View>
-      <ClassSwitcher />
+      {/* Same header as Home */}
+      <AppHeader role="student" />
 
       {isLoading ? (
         <View style={styles.centered}>
@@ -117,7 +90,7 @@ export default function StudentSubmissions() {
         >
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          <Text style={styles.pageTitle}>SUBMISSIONS</Text>
+          <Text style={styles.pageTitle}>Submissions</Text>
 
           {classSubmissions.length === 0 ? (
             <View style={styles.emptyCard}>
@@ -128,10 +101,11 @@ export default function StudentSubmissions() {
               </Text>
             </View>
           ) : (
-            classSubmissions.map((s) => {
+            classSubmissions.map((s, idx) => {
               const accepted = s.classifier_result === 'ACCEPTED';
               return (
-                <View key={s.id} style={styles.card}>
+                <FadeIn key={s.id} delay={Math.min(idx, 6) * 80}>
+                <View style={styles.card}>
                   <TouchableOpacity onPress={() => setZoomUri(s.image_url)} activeOpacity={0.85}>
                     <Image source={{ uri: s.image_url }} style={styles.photo} />
                   </TouchableOpacity>
@@ -173,6 +147,7 @@ export default function StudentSubmissions() {
                     )}
                   </View>
                 </View>
+                </FadeIn>
               );
             })
           )}
@@ -191,18 +166,9 @@ export default function StudentSubmissions() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: CREAM },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { backgroundColor: HEADER_BG, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
-  headerRow: { flexDirection: 'row', alignItems: 'center' },
-  avatarCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  welcomeSmall: { fontSize: 12, color: HEADER_TEXT, opacity: 0.8 },
-  welcomeName: { fontSize: 16, fontWeight: '800', color: HEADER_TEXT },
-  dateText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '600' },
-  classText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '700', marginTop: 2 },
-  bellDot: { position: 'absolute', top: -1, right: -1, width: 8, height: 8, borderRadius: 4, backgroundColor: '#DC2626' },
-
-  scrollContent: { padding: 20, paddingBottom: 60 },
+  scrollContent: { padding: 20, paddingBottom: NAV_CLEARANCE },
   errorText: { color: '#B3261E', marginBottom: 12, fontSize: 13 },
-  pageTitle: { fontSize: 26, fontWeight: '900', color: GREEN, textAlign: 'center', marginBottom: 16, letterSpacing: 1 },
+  pageTitle: { fontSize: 26, fontWeight: '800', color: BROWN, marginBottom: 14 },
 
   emptyCard: { backgroundColor: '#fff', borderRadius: 20, padding: 28, alignItems: 'center', gap: 8 },
   emptyTitle: { fontSize: 16, fontWeight: '800', color: BROWN },

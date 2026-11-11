@@ -1,29 +1,15 @@
 // mobile/src/components/useTabScreenOptions.ts
-// One look for the bottom tab bar of both the student and the teacher app.
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { T, activeTheme } from '../theme/theme';
+// One look for the bottom navigation of both the student and the teacher app:
+// the floating pill bar (see FloatingTabBar.tsx). NOTE: `tabBar` is a prop of <Tabs>, not a screen option,
+// so each tabs _layout passes <Tabs tabBar={(p) => <FloatingTabBar {...p} />}> itself.
+import { NAV_STRIP_BG } from './FloatingTabBar';
 
-export const TAB_BG = T('#F5EDD8');
+export const TAB_BG = NAV_STRIP_BG;
 
 export function useTabScreenOptions() {
-  // The app is edge-to-edge on Android: lift the bar above the system navigation bar.
-  const insets = useSafeAreaInsets();
   return {
     headerShown: false,
-    // Cream behind the rounded tab-bar corners instead of the default white.
+    // Cream behind the screens (and behind the floating bar), instead of the default white.
     sceneStyle: { backgroundColor: TAB_BG },
-    tabBarActiveTintColor: activeTheme === 'school' ? '#1E4D8F' : '#C2410C',
-    tabBarInactiveTintColor: T('#8A6A2A'),
-    tabBarLabelStyle: { fontSize: 11, fontWeight: '700' as const },
-    tabBarStyle: {
-      backgroundColor: TAB_BG,
-      borderTopWidth: 1.5,
-      borderTopColor: T('#3A2B1A'),
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      height: 58 + insets.bottom,
-      paddingTop: 6,
-      paddingBottom: Math.max(insets.bottom, 8),
-    },
   };
 }

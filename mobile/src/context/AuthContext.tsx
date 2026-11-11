@@ -1,4 +1,5 @@
 //mobile/src/context/AuthContext.tsx
+import { clearProfileStore, loadProfile } from '../utils/profileStore';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { User, LoginPayload } from '../types/accounts';
@@ -52,13 +53,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await SecureStore.setItemAsync('access_token', data.access);
     await SecureStore.setItemAsync('refresh_token', data.refresh);
     await SecureStore.setItemAsync('user', JSON.stringify(loggedInUser));
+    clearProfileStore();
     setUser(loggedInUser);
+    // Start loading the profile now, so it is ready by the time the home screen opens
+    void loadProfile().catch(() => {});
   }
 
   async function signOut() {
     await SecureStore.deleteItemAsync('access_token');
     await SecureStore.deleteItemAsync('refresh_token');
     await SecureStore.deleteItemAsync('user');
+    clearProfileStore();
     setUser(null);
   }
 

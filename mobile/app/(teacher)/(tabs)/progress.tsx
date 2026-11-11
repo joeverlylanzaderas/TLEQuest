@@ -13,12 +13,23 @@ import { getSubmissions } from '../../../src/api/submissions';
 import { QuestAssignment, QuestProgress } from '../../../src/types/assignments';
 import { Submission } from '../../../src/types/submissions';
 import AppHeader from '../../../src/components/AppHeader';
+import { FadeIn, AnimatedBar, CountUp } from '../../../src/components/Motion';
+import { NAV_CLEARANCE } from '../../../src/components/FloatingTabBar';
 
 const GOLD = T('#F5B921');
 const CREAM = T('#F5EDD8');
 const BROWN = T('#5C2C16');
 const GREEN = '#22C55E';
 const ORANGE = T('#EA580C');
+const HERO_BG = activeTheme === 'school' ? '#15366B' : '#4A2E1D';
+const HERO_SOFT = activeTheme === 'school' ? '#CFE0F5' : '#EBD9BF';
+const AVATAR_TINTS = [
+  { bg: '#F7C9C0', fg: '#7A2E1F' },
+  { bg: '#CFE0F5', fg: '#1F4D7A' },
+  { bg: '#FBE3A6', fg: '#6B4A00' },
+  { bg: '#CDE7D3', fg: '#1F5A35' },
+  { bg: '#E4D3F2', fg: '#4B2A70' },
+];
 
 function isDone(p: QuestProgress): boolean {
   return !!p.completed_at || p.percent_complete >= 100;
@@ -109,7 +120,7 @@ export default function TeacherProgress() {
         >
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          <Text style={styles.pageTitle}>Class Progress</Text>
+          <Text style={styles.pageTitle}>Progress</Text>
 
           {questOptions.length > 1 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
@@ -133,24 +144,32 @@ export default function TeacherProgress() {
             </ScrollView>
           )}
 
-          <View style={styles.statsRow}>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>{rows.length}</Text>
-              <Text style={styles.statLabel}>Groups</Text>
+          <FadeIn>
+            <View style={styles.hero}>
+              <Text style={styles.heroLabel}>OVERALL PROGRESS</Text>
+              <View style={styles.heroTop}>
+                <CountUp value={overallAvg} suffix="%" style={styles.heroValue} />
+                <Text style={styles.heroSub}>average across {allMembers.length} {allMembers.length === 1 ? 'student' : 'students'}</Text>
+              </View>
+              <AnimatedBar percent={overallAvg} trackStyle={styles.heroTrack} fillStyle={styles.heroFill} delay={300} />
+              <View style={styles.heroStats}>
+                <View style={styles.heroStat}>
+                  <Text style={styles.heroStatValue}>{rows.length}</Text>
+                  <Text style={styles.heroStatLabel}>Groups</Text>
+                </View>
+                <View style={styles.heroDivider} />
+                <View style={styles.heroStat}>
+                  <Text style={styles.heroStatValue}>{doneCount}</Text>
+                  <Text style={styles.heroStatLabel}>Finished</Text>
+                </View>
+                <View style={styles.heroDivider} />
+                <View style={styles.heroStat}>
+                  <Text style={styles.heroStatValue}>{allMembers.length - doneCount}</Text>
+                  <Text style={styles.heroStatLabel}>In progress</Text>
+                </View>
+              </View>
             </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>{allMembers.length}</Text>
-              <Text style={styles.statLabel}>Students</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>{overallAvg}%</Text>
-              <Text style={styles.statLabel}>Avg. progress</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>{doneCount}</Text>
-              <Text style={styles.statLabel}>Finished</Text>
-            </View>
-          </View>
+          </FadeIn>
 
           {rows.length === 0 ? (
             <Text style={styles.emptyText}>
@@ -158,11 +177,12 @@ export default function TeacherProgress() {
               will show up here.
             </Text>
           ) : (
-            rows.map(({ a, members, avg, latest }) => {
+            rows.map(({ a, members, avg, latest }, ri) => {
               const expanded = expandedId === a.id;
               const everyoneDone = members.length > 0 && members.every(isDone);
               return (
-                <View key={a.id} style={styles.groupCard}>
+                <FadeIn key={a.id} delay={Math.min(ri, 6) * 80}>
+                <View style={styles.groupCard}>
                   <TouchableOpacity
                     style={styles.groupTop}
                     onPress={() => setExpandedId(expanded ? null : a.id)}
@@ -177,9 +197,12 @@ export default function TeacherProgress() {
                     <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color="#B8A671" />
                   </TouchableOpacity>
 
-                  <View style={styles.track}>
-                    <View style={[styles.fill, { width: `${avg}%`, backgroundColor: everyoneDone ? GREEN : ORANGE }]} />
-                  </View>
+                  <AnimatedBar
+                    percent={avg}
+                    trackStyle={styles.track}
+                    fillStyle={[styles.fill, { backgroundColor: everyoneDone ? GREEN : ORANGE }]}
+                    delay={250 + Math.min(ri, 6) * 80}
+                  />
 
                   <View style={styles.statusRow}>
                     <Text style={styles.memberCount}>
@@ -208,31 +231,46 @@ export default function TeacherProgress() {
                       {members.length === 0 ? (
                         <Text style={styles.emptyMembers}>This group has no members yet.</Text>
                       ) : (
-                        members.map((m) => (
-                          <View key={m.id} style={styles.memberRow}>
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.memberName}>{m.student_username}</Text>
-                              <View style={styles.trackSmall}>
-                                <View
-                                  style={[
-                                    styles.fillSmall,
-                                    { width: `${m.percent_complete}%`, backgroundColor: isDone(m) ? GREEN : ORANGE },
-                                  ]}
-                                />
+                        members.map((m) => {
+                          const tint = AVATAR_TINTS[m.student % AVATAR_TINTS.length];
+                          const needsHelp = !isDone(m) && m.percent_complete < 25;
+                          return (
+                            <View key={m.id} style={styles.memberRow}>
+                              <View style={[styles.memberAvatar, { backgroundColor: tint.bg }]}>
+                                <Text style={[styles.memberAvatarText, { color: tint.fg }]}>
+                                  {m.student_username.charAt(0).toUpperCase()}
+                                </Text>
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <View style={styles.memberNameRow}>
+                                  <Text style={styles.memberName} numberOfLines={1}>{m.student_username}</Text>
+                                  {needsHelp ? (
+                                    <View style={styles.helpPill}><Text style={styles.helpText}>Needs help</Text></View>
+                                  ) : null}
+                                </View>
+                                <View style={styles.trackSmall}>
+                                  <View
+                                    style={[
+                                      styles.fillSmall,
+                                      { width: `${m.percent_complete}%`, backgroundColor: isDone(m) ? GREEN : ORANGE },
+                                    ]}
+                                  />
+                                </View>
+                              </View>
+                              <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
+                                <Text style={styles.memberPercent}>{m.percent_complete}%</Text>
+                                <Text style={styles.memberMeta}>
+                                  {m.points_earned} pts{m.badge_earned ? ' • badge' : ''}
+                                </Text>
                               </View>
                             </View>
-                            <View style={{ alignItems: 'flex-end', marginLeft: 12 }}>
-                              <Text style={styles.memberPercent}>{m.percent_complete}%</Text>
-                              <Text style={styles.memberMeta}>
-                                {m.points_earned} pts{m.badge_earned ? ' • badge' : ''}
-                              </Text>
-                            </View>
-                          </View>
-                        ))
+                          );
+                        })
                       )}
                     </View>
                   )}
                 </View>
+                </FadeIn>
               );
             })
           )}
@@ -253,9 +291,26 @@ const styles = StyleSheet.create({
   dateText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '600' },
   classText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '700', marginTop: 2 },
 
-  scrollContent: { padding: 20, paddingBottom: 60 },
+  scrollContent: { padding: 20, paddingBottom: NAV_CLEARANCE },
   errorText: { color: '#B3261E', marginBottom: 12, fontSize: 13 },
-  pageTitle: { fontSize: 18, fontWeight: '800', color: BROWN, marginBottom: 12 },
+  pageTitle: { fontSize: 22, fontWeight: '900', color: BROWN, marginBottom: 12 },
+  hero: { backgroundColor: HERO_BG, borderRadius: 24, padding: 18, gap: 10, marginBottom: 16 },
+  heroLabel: { color: GOLD, fontSize: 11, fontWeight: '800', letterSpacing: 1 },
+  heroTop: { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
+  heroValue: { color: '#fff', fontSize: 44, fontWeight: '900', lineHeight: 48 },
+  heroSub: { color: HERO_SOFT, fontSize: 13, flexShrink: 1 },
+  heroTrack: { height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.2)', overflow: 'hidden' },
+  heroFill: { height: 8, borderRadius: 4, backgroundColor: GOLD },
+  heroStats: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+  heroStat: { flex: 1, alignItems: 'center' },
+  heroStatValue: { color: '#fff', fontSize: 18, fontWeight: '900' },
+  heroStatLabel: { color: HERO_SOFT, fontSize: 11, marginTop: 1 },
+  heroDivider: { width: 1, height: 26, backgroundColor: 'rgba(255,255,255,0.2)' },
+  memberAvatar: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  memberAvatarText: { fontSize: 12, fontWeight: '800' },
+  memberNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  helpPill: { backgroundColor: '#FDE9D2', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 1 },
+  helpText: { color: '#A34A0A', fontSize: 10, fontWeight: '800' },
   emptyText: { color: T('#8A6A2A'), fontStyle: 'italic', textAlign: 'center', marginTop: 24, lineHeight: 20 },
 
   pill: { maxWidth: 200, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: T('#EADEC9'), marginRight: 8 },
@@ -268,7 +323,7 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 18, fontWeight: '900', color: BROWN },
   statLabel: { fontSize: 10, color: T('#8A6A2A'), fontWeight: '600', marginTop: 2 },
 
-  groupCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 12 },
+  groupCard: { backgroundColor: '#fff', borderRadius: 18, padding: 14, marginBottom: 12 },
   groupTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   groupName: { fontSize: 15, fontWeight: '800', color: T('#7c2d12') },
   questName: { fontSize: 12, color: T('#8A6A2A'), marginTop: 2 },
@@ -280,7 +335,7 @@ const styles = StyleSheet.create({
 
   statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
   memberCount: { fontSize: 11, color: T('#8A6A2A'), fontWeight: '600' },
-  statusBadge: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
+  statusBadge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   statusText: { fontSize: 11, fontWeight: '800' },
 
   membersBox: { marginTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(58,43,26,0.08)', paddingTop: 10 },

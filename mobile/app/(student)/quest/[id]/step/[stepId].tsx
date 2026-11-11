@@ -1,18 +1,18 @@
 // mobile/app/(student)/quest/[id]/step/[stepId].tsx
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet, Alert,
 } from 'react-native';
-import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../../../src/theme/theme';
+import { T, activeTheme } from '../../../../../src/theme/theme';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getMyProfile } from '../../../../../src/api/accounts';
-import { useClassScope } from '../../../../../src/utils/selectedClass';
 import { getProgressDetail, toggleChecklistItem } from '../../../../../src/api/assignments';
 import { QuestProgressDetail } from '../../../../../src/types/assignments';
-import { FullUser } from '../../../../../src/types/accounts';
 import SubmitOutputCard from '../../../../../src/components/SubmitOutputCard';
+import AppHeader from '../../../../../src/components/AppHeader';
+import { TabBarView, NAV_CLEARANCE } from '../../../../../src/components/FloatingTabBar';
+import { FadeIn, AnimatedBar, Pop } from '../../../../../src/components/Motion';
 
 
 const GOLD = T('#F5B921');
@@ -36,17 +36,11 @@ export default function QuestStepScreen() {
   const progressId = Number(id);
 
   const [progress, setProgress] = useState<QuestProgressDetail | null>(null);
-  const [profile, setProfile] = useState<FullUser | null>(null);
-  const scope = useClassScope();
   const [currentStepId, setCurrentStepId] = useState(Number(stepId));
   const [showComplete, setShowComplete] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [togglingId, setTogglingId] = useState<number | null>(null);
-
-  useEffect(() => {
-    getMyProfile().then(setProfile).catch(() => {});
-  }, []);
 
   const load = useCallback(async () => {
     setError('');
@@ -120,8 +114,6 @@ export default function QuestStepScreen() {
     }
   }
 
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-
   if (isLoading) {
     return (
       <View style={styles.centered}>
@@ -150,21 +142,7 @@ export default function QuestStepScreen() {
   return (
     <View style={styles.screen}>
       {/* ---------------- Header ---------------- */}
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={20} color={BROWN} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.welcomeSmall}>Welcome back,</Text>
-            <Text style={styles.welcomeName}>{profile?.profile.first_name || profile?.username || ''}!</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.dateText}>{today}</Text>
-            <Text style={styles.classText}>{(scope.classes.find((c) => c.id === (progress ? scope.groupClass[progress.group] : undefined)) ?? scope.classes.find((c) => c.id === scope.selectedId))?.class_name ?? ''}</Text>
-          </View>
-        </View>
-
+      <AppHeader role="student">
         <View style={styles.currentQuestCard}>
           <View style={styles.imagePlaceholder}>
             <Ionicons name="restaurant" size={26} color="#fff" />
@@ -174,13 +152,15 @@ export default function QuestStepScreen() {
             <Text style={styles.questMode}>
               {progress.quest_mode === 'group' ? 'Group Quest' : 'Individual Quest'}
             </Text>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${progress.percent_complete}%` }]} />
-            </View>
+            <AnimatedBar
+              percent={progress.percent_complete}
+              trackStyle={styles.progressTrack}
+              fillStyle={styles.progressFill}
+            />
             <Text style={styles.percentText}>{progress.percent_complete}%</Text>
           </View>
         </View>
-      </View>
+      </AppHeader>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {showComplete ? (
@@ -192,6 +172,7 @@ export default function QuestStepScreen() {
             </TouchableOpacity>
           </View>
         ) : (
+          <FadeIn>
           <View style={styles.stepCard}>
             <View style={styles.stepHeaderRow}>
               <Text style={styles.stepLabel}>Step {step.step_order}</Text>
@@ -228,7 +209,7 @@ export default function QuestStepScreen() {
                       disabled={isCompleted}
                     >
                       <View style={[styles.checkbox, item.is_checked && styles.checkboxChecked]}>
-                        {item.is_checked && <Ionicons name="checkmark" size={14} color="#fff" />}
+                        {item.is_checked && <Pop><Ionicons name="checkmark" size={14} color="#fff" /></Pop>}
                       </View>
                       <Text style={[styles.checklistText, item.is_checked && styles.checklistTextChecked]}>
                         {item.checklist_text}
@@ -274,22 +255,16 @@ export default function QuestStepScreen() {
               </View>
             )}
           </View>
+          </FadeIn>
         )}
       </ScrollView>
 
-      {/* ---------------- Bottom tab bar ---------------- */}
-      <View style={styles.tabBar}>
-        {TABS.map((t) => (
-          <TouchableOpacity
-            key={t.label}
-            style={styles.tabIconWrapper}
-            onPress={() => router.navigate(t.route as any)}
-          >
-            <Ionicons name={t.icon as any} size={20} color={t.active ? ORANGE : '#B8A671'} />
-            <Text style={[styles.tabLabel, t.active && styles.tabLabelActive]}>{t.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {/* ---------------- Bottom navigation (same floating bar as the real tabs) ---------------- */}
+      <TabBarView
+        items={TABS.map((t) => ({ key: t.label, label: t.label, icon: t.icon }))}
+        activeIndex={Math.max(0, TABS.findIndex((t) => t.active))}
+        onPress={(i) => router.navigate(TABS[i].route as any)}
+      />
     </View>
   );
 }
@@ -301,17 +276,6 @@ const styles = StyleSheet.create({
   backPill: { backgroundColor: BROWN, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10 },
   backPillText: { color: '#fff', fontWeight: '700' },
 
-  header: {
-    backgroundColor: HEADER_BG, paddingTop: 50, paddingBottom: 16, paddingHorizontal: 20,
-    borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
-  },
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
-  avatarCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  welcomeSmall: { fontSize: 12, color: HEADER_TEXT, opacity: 0.8 },
-  welcomeName: { fontSize: 16, fontWeight: '800', color: HEADER_TEXT },
-  dateText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '600' },
-  classText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '700', marginTop: 2 },
-
   currentQuestCard: { backgroundColor: CARD_BROWN, borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center' },
   imagePlaceholder: { width: 56, height: 56, borderRadius: 12, backgroundColor: activeTheme === 'school' ? '#2F6FD0' : '#8a5a3a', alignItems: 'center', justifyContent: 'center' },
   questTitle: { color: activeTheme === 'school' ? '#FFFFFF' : ORANGE, fontSize: 15, fontWeight: '800' },
@@ -320,7 +284,7 @@ const styles = StyleSheet.create({
   progressFill: { height: 6, backgroundColor: '#fff', borderRadius: 3 },
   percentText: { color: '#fff', fontSize: 10, marginTop: 3, fontStyle: 'italic' },
 
-  scrollContent: { padding: 20, paddingBottom: 20 },
+  scrollContent: { padding: 20, paddingBottom: NAV_CLEARANCE },
 
   stepCard: { backgroundColor: '#fff', borderRadius: 20, borderWidth: 2, borderColor: ORANGE, padding: 18 },
   stepHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14 },
@@ -363,11 +327,4 @@ const styles = StyleSheet.create({
   overviewButton: { alignSelf: 'center', marginTop: 14, backgroundColor: BROWN, borderRadius: 20, paddingHorizontal: 22, paddingVertical: 10 },
   overviewButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
-  tabBar: {
-    flexDirection: 'row', backgroundColor: '#F5EAD1', paddingVertical: 10,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24, justifyContent: 'space-around',
-  },
-  tabIconWrapper: { alignItems: 'center', gap: 2, paddingHorizontal: 6 },
-  tabLabel: { fontSize: 10, color: '#B8A671', fontWeight: '600' },
-  tabLabelActive: { color: ORANGE, fontWeight: '800' },
 });

@@ -2,21 +2,23 @@
 import React, { useCallback, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
-  RefreshControl, StyleSheet, Alert,
+  RefreshControl, StyleSheet, Alert, Image,
 } from 'react-native';
-import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
+import { T, activeTheme } from '../../../src/theme/theme';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getMyProfile } from '../../../src/api/accounts';
-import { refreshClasses, inSelectedClass, selectedClassName, useClassScope } from '../../../src/utils/selectedClass';
-import ClassSwitcher from '../../../src/components/ClassSwitcher';
+import { refreshClasses, inSelectedClass, useClassScope } from '../../../src/utils/selectedClass';
+import AppHeader from '../../../src/components/AppHeader';
+import { FadeIn, AnimatedBar, Pop, PressableScale, CountUp } from '../../../src/components/Motion';
 import { useAuth } from '../../../src/context/AuthContext';
 import { getMyProgress, getProgressDetail, toggleChecklistItem } from '../../../src/api/assignments';
-import { getUnreadNotifications } from '../../../src/api/notifications';
-import { FullUser } from '../../../src/types/accounts';
-import { QuestProgressDetail } from '../../../src/types/assignments';
+import { QuestProgress, QuestProgressDetail } from '../../../src/types/assignments';
+import { getMyRewards, getMyRewardSummary } from '../../../src/api/rewards';
+import { StudentReward } from '../../../src/types/rewards';
+import { getMediaUrl } from '../../../src/utils/media';
 import SubmitOutputCard from '../../../src/components/SubmitOutputCard';
+import { NAV_CLEARANCE } from '../../../src/components/FloatingTabBar';
 
 const GOLD = T('#F5B921');
 const CREAM = T('#F5EDD8');
@@ -29,30 +31,32 @@ export default function StudentProgress() {
   const router = useRouter();
   const { user } = useAuth();
   const scope = useClassScope();
-  const [profile, setProfile] = useState<FullUser | null>(null);
   const [progress, setProgress] = useState<QuestProgressDetail | null>(null);
   const [hasAnyQuest, setHasAnyQuest] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [currentStepId, setCurrentStepId] = useState<number | null>(null);
   const [showComplete, setShowComplete] = useState(false);
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [quests, setQuests] = useState<QuestProgress[]>([]);
+  const [rewards, setRewards] = useState<StudentReward[]>([]);
+  const [totals, setTotals] = useState<{ points: number; badges: number } | null>(null);
 
   const load = useCallback(async () => {
     setError('');
     try {
-      const [p, snap, allList, unread] = await Promise.all([
-        getMyProfile(),
+      const [snap, allList, rewardList, summary] = await Promise.all([
         refreshClasses(user!.id),
         getMyProgress(),
-        getUnreadNotifications(),
+        getMyRewards().catch(() => [] as StudentReward[]),
+        getMyRewardSummary().catch(() => null),
       ]);
-      setProfile(p);
-      setUnreadCount(unread.length);
       const list = allList.filter((x) => inSelectedClass(snap, x.group));
       setHasAnyQuest(list.length > 0);
+      setQuests(list);
+      setRewards(rewardList);
+      setTotals(summary ? { points: summary.total_points, badges: summary.total_badges } : null);
 
       // "Current quest" = the first one not finished yet (same rule as Home).
       // If everything is finished, fall back to the most recent one so a leader
@@ -140,57 +144,53 @@ export default function StudentProgress() {
     }
   }
 
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-  const displayName = profile?.profile.first_name || profile?.username || '';
-
   const isCompleted = step?.status === 'completed';
   const isLocked = step?.status === 'locked';
   const total = step?.checklist_items.length ?? 0;
   const checkedCount = step?.checklist_items.filter((i) => i.is_checked).length ?? 0;
   const showRewards = isCompleted && progress && (progress.points_earned > 0 || progress.badge_earned);
 
+  // ---- summary numbers ----
+  const totalPoints = totals ? totals.points : rewards.reduce((sum, r) => sum + (r.points_awarded || 0), 0);
+  const badgeMap = new Map<number, { id: number; name: string; imageUrl: string | null }>();
+  rewards
+    .filter((r) => r.reward_detail.reward_type === 'badge')
+    .forEach((r) => {
+      if (!badgeMap.has(r.reward)) {
+        badgeMap.set(r.reward, { id: r.reward, name: r.reward_detail.reward_name, imageUrl: getMediaUrl(r.reward_detail.badge_image) });
+      }
+    });
+  const badges = Array.from(badgeMap.values());
+  const badgeTotal = totals ? totals.badges : badges.length;
+  const doneQuests = quests.filter((q) => !!q.completed_at || q.percent_complete >= 100).length;
+  const donePercent = quests.length ? Math.round((doneQuests / quests.length) * 100) : 0;
+  const latestFeedback = quests
+    .filter((q) => q.teacher_feedback && q.teacher_feedback.trim())
+    .sort((a, b) => (b.reviewed_at || '').localeCompare(a.reviewed_at || ''))[0] ?? null;
+
   return (
     <View style={styles.screen}>
-      {/* ---------------- Header + current quest card ---------------- */}
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={20} color={BROWN} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.welcomeSmall}>Welcome back,</Text>
-            <Text style={styles.welcomeName}>{displayName}!</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.dateText}>{today}</Text>
-            <Text style={styles.classText}>{selectedClassName(scope)}</Text>
-          </View>
-          <TouchableOpacity onPress={() => router.push('/(student)/notifications' as any)} style={{ marginLeft: 8 }}>
-            <Ionicons name="notifications" size={20} color={BROWN} />
-            {unreadCount > 0 && <View style={styles.bellDot} />}
-          </TouchableOpacity>
-        </View>
-        <ClassSwitcher />
-
-        {progress && (
-          <View style={styles.currentQuestCard}>
-            <View style={styles.imagePlaceholder}>
-              <Ionicons name="restaurant" size={26} color="#fff" />
-            </View>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.currentLabel}>Your current quest:</Text>
-              <Text style={styles.questTitle} numberOfLines={2}>{progress.quest_title}</Text>
-              <Text style={styles.questMode}>
-                {progress.quest_mode === 'group' ? 'Group Quest' : 'Individual Quest'}
-              </Text>
-              <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { width: `${progress.percent_complete}%` }]} />
+      <AppHeader role="student">
+        <View style={styles.hero}>
+          <View style={styles.heroTop}>
+            <View>
+              <Text style={styles.heroLabel}>TOTAL POINTS</Text>
+              <View style={styles.heroPointsRow}>
+                <CountUp value={totalPoints} style={styles.heroPoints} />
+                <Text style={styles.heroPts}>pts</Text>
               </View>
-              <Text style={styles.percentText}>{progress.percent_complete}%</Text>
+            </View>
+            <View style={styles.heroBadgeChip}>
+              <Ionicons name="ribbon" size={16} color={BROWN} />
+              <Text style={styles.heroBadgeText}>{badgeTotal} {badgeTotal === 1 ? 'badge' : 'badges'}</Text>
             </View>
           </View>
-        )}
-      </View>
+          <AnimatedBar percent={donePercent} trackStyle={styles.progressTrack} fillStyle={styles.heroFill} />
+          <Text style={styles.heroSub}>
+            {quests.length === 0 ? 'No quests yet' : `${doneQuests} of ${quests.length} ${quests.length === 1 ? 'quest' : 'quests'} completed`}
+          </Text>
+        </View>
+      </AppHeader>
 
       {isLoading ? (
         <View style={styles.centered}>
@@ -202,6 +202,22 @@ export default function StudentProgress() {
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={BROWN} />}
         >
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+          {progress ? (
+            <FadeIn>
+              <Text style={styles.sectionTitle}>Current quest</Text>
+              <View style={styles.questInfo}>
+                <View style={styles.questInfoTop}>
+                  <Text style={styles.questInfoTitle} numberOfLines={2}>{progress.quest_title}</Text>
+                  <Text style={styles.questInfoPercent}>{progress.percent_complete}%</Text>
+                </View>
+                <Text style={styles.questInfoMode}>
+                  {progress.quest_mode === 'group' ? 'Group Quest' : 'Individual Quest'}
+                </Text>
+                <AnimatedBar percent={progress.percent_complete} trackStyle={styles.infoTrack} fillStyle={styles.infoFill} />
+              </View>
+            </FadeIn>
+          ) : null}
 
           {!progress ? (
             <View style={styles.emptyCard}>
@@ -221,6 +237,7 @@ export default function StudentProgress() {
           ) : !step ? (
             <Text style={styles.emptyText}>This quest has no steps yet.</Text>
           ) : (
+            <FadeIn delay={150}>
             <View style={styles.stepCard}>
               <View style={styles.stepHeaderRow}>
                 <Text style={styles.stepLabel}>Step {step.step_order}</Text>
@@ -257,7 +274,7 @@ export default function StudentProgress() {
                         disabled={isCompleted}
                       >
                         <View style={[styles.checkbox, item.is_checked && styles.checkboxChecked]}>
-                          {item.is_checked && <Ionicons name="checkmark" size={14} color="#fff" />}
+                          {item.is_checked && <Pop><Ionicons name="checkmark" size={14} color="#fff" /></Pop>}
                         </View>
                         <Text style={[styles.checklistText, item.is_checked && styles.checklistTextChecked]}>
                           {item.checklist_text}
@@ -303,7 +320,82 @@ export default function StudentProgress() {
                 </View>
               )}
             </View>
+            </FadeIn>
           )}
+
+          {/* ---------------- Badges ---------------- */}
+          <FadeIn delay={250}>
+            <View style={styles.sectionRow}>
+              <Text style={styles.sectionTitle}>Badges</Text>
+              <TouchableOpacity onPress={() => router.navigate('/(student)/(tabs)/profile' as any)} hitSlop={8}>
+                <Text style={styles.seeAll}>See all</Text>
+              </TouchableOpacity>
+            </View>
+            {badges.length === 0 ? (
+              <View style={styles.softCard}>
+                <Text style={styles.softText}>No badges yet. Finish quests to earn them!</Text>
+              </View>
+            ) : (
+              <View style={styles.badgeRow}>
+                {badges.slice(0, 4).map((b, i) => (
+                  <Pop key={b.id} delay={300 + i * 90} style={styles.badgeTile}>
+                    {b.imageUrl ? (
+                      <Image source={{ uri: b.imageUrl }} style={styles.badgeImg} />
+                    ) : (
+                      <View style={[styles.badgeImg, styles.badgeFallback]}>
+                        <Ionicons name="ribbon" size={24} color={BROWN} />
+                      </View>
+                    )}
+                    <Text style={styles.badgeName} numberOfLines={2}>{b.name}</Text>
+                  </Pop>
+                ))}
+              </View>
+            )}
+          </FadeIn>
+
+          {/* ---------------- Latest feedback ---------------- */}
+          {latestFeedback ? (
+            <FadeIn delay={350}>
+              <Text style={styles.sectionTitle}>Latest feedback</Text>
+              <View style={styles.feedbackCard}>
+                <View style={styles.feedbackIcon}>
+                  <Ionicons name="chatbubble-ellipses" size={18} color="#1F5A35" />
+                </View>
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Text style={styles.feedbackQuest} numberOfLines={1}>{latestFeedback.quest_title}</Text>
+                  <Text style={styles.feedbackText}>{latestFeedback.teacher_feedback}</Text>
+                </View>
+              </View>
+            </FadeIn>
+          ) : null}
+
+          {/* ---------------- All quests ---------------- */}
+          {quests.length > 0 ? (
+            <FadeIn delay={450}>
+              <Text style={styles.sectionTitle}>Quests</Text>
+              {quests.map((q) => {
+                const done = !!q.completed_at || q.percent_complete >= 100;
+                return (
+                  <PressableScale
+                    key={q.id}
+                    style={styles.questRow}
+                    scaleTo={0.97}
+                    onPress={() => router.push(`/(student)/quest/${q.id}/overview` as any)}
+                  >
+                    <Text style={styles.questRowTitle} numberOfLines={1}>{q.quest_title}</Text>
+                    {done ? (
+                      <View style={styles.doneChip}><Text style={styles.doneChipText}>Done</Text></View>
+                    ) : (
+                      <>
+                        <AnimatedBar percent={q.percent_complete} trackStyle={styles.rowTrack} fillStyle={styles.rowFill} />
+                        <Text style={styles.rowPercent}>{q.percent_complete}%</Text>
+                      </>
+                    )}
+                  </PressableScale>
+                );
+              })}
+            </FadeIn>
+          ) : null}
         </ScrollView>
       )}
     </View>
@@ -314,16 +406,50 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: CREAM },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  header: { backgroundColor: HEADER_BG, paddingTop: 50, paddingBottom: 16, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
-  avatarCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  welcomeSmall: { fontSize: 12, color: HEADER_TEXT, opacity: 0.8 },
-  welcomeName: { fontSize: 16, fontWeight: '800', color: HEADER_TEXT },
-  dateText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '600' },
-  classText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '700', marginTop: 2 },
-  bellDot: { position: 'absolute', top: -1, right: -1, width: 8, height: 8, borderRadius: 4, backgroundColor: '#DC2626' },
+    hero: { backgroundColor: CARD_BROWN, borderRadius: 22, padding: 16, gap: 10 },
+  heroTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  heroLabel: { color: GOLD, fontSize: 11, fontWeight: '800', letterSpacing: 1 },
+  heroPointsRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  heroPoints: { color: '#fff', fontSize: 40, fontWeight: '900', lineHeight: 46 },
+  heroPts: { color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: '600' },
+  heroBadgeChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: GOLD, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
+  heroBadgeText: { color: BROWN, fontSize: 12, fontWeight: '800' },
+  heroFill: { height: 6, backgroundColor: GOLD, borderRadius: 3 },
+  heroSub: { color: 'rgba(255,255,255,0.85)', fontSize: 12 },
 
-    currentQuestCard: { backgroundColor: CARD_BROWN, borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center' },
+  sectionTitle: { fontSize: 17, fontWeight: '800', color: BROWN, marginTop: 22, marginBottom: 10 },
+  sectionRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  seeAll: { fontSize: 12, fontWeight: '700', color: ORANGE, marginBottom: 10 },
+
+  questInfo: { backgroundColor: '#fff', borderRadius: 18, padding: 14, marginBottom: 12, gap: 6 },
+  questInfoTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  questInfoTitle: { flex: 1, fontSize: 15, fontWeight: '800', color: BROWN },
+  questInfoPercent: { fontSize: 13, fontWeight: '800', color: ORANGE },
+  questInfoMode: { fontSize: 11, color: T('#8A6A2A'), fontStyle: 'italic' },
+  infoTrack: { height: 6, backgroundColor: '#F1E6CC', borderRadius: 3, overflow: 'hidden', marginTop: 2 },
+  infoFill: { height: 6, backgroundColor: GREEN, borderRadius: 3 },
+
+  softCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16 },
+  softText: { color: T('#8A6A2A'), fontSize: 13, textAlign: 'center' },
+  badgeRow: { flexDirection: 'row', gap: 10 },
+  badgeTile: { flex: 1, backgroundColor: '#fff', borderRadius: 18, paddingVertical: 12, paddingHorizontal: 6, alignItems: 'center', gap: 8 },
+  badgeImg: { width: 48, height: 48, borderRadius: 24 },
+  badgeFallback: { backgroundColor: GOLD, alignItems: 'center', justifyContent: 'center' },
+  badgeName: { fontSize: 11, fontWeight: '700', color: BROWN, textAlign: 'center' },
+
+  feedbackCard: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: '#fff', borderRadius: 18, padding: 14 },
+  feedbackIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#CDE7D3', alignItems: 'center', justifyContent: 'center' },
+  feedbackQuest: { fontSize: 12, fontWeight: '700', color: T('#8A6A2A') },
+  feedbackText: { fontSize: 14, lineHeight: 20, color: BROWN },
+
+  questRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, paddingVertical: 12, paddingHorizontal: 14, marginBottom: 10 },
+  questRowTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: BROWN },
+  rowTrack: { width: 80, height: 6, backgroundColor: '#F1E6CC', borderRadius: 3, overflow: 'hidden' },
+  rowFill: { height: 6, backgroundColor: GOLD, borderRadius: 3 },
+  rowPercent: { width: 36, textAlign: 'right', fontSize: 12, fontWeight: '800', color: BROWN },
+  doneChip: { backgroundColor: '#E3F3E9', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
+  doneChipText: { color: '#166B3A', fontSize: 11, fontWeight: '700' },
+
   imagePlaceholder: { width: 56, height: 56, borderRadius: 12, backgroundColor: activeTheme === 'school' ? '#2F6FD0' : '#8a5a3a', alignItems: 'center', justifyContent: 'center' },
   currentLabel: { color: '#fff', opacity: 0.8, fontSize: 10, marginBottom: 2 },
   questTitle: { color: activeTheme === 'school' ? '#FFFFFF' : ORANGE, fontSize: 15, fontWeight: '800' },
@@ -332,7 +458,7 @@ const styles = StyleSheet.create({
   progressFill: { height: 6, backgroundColor: GREEN, borderRadius: 3 },
   percentText: { color: '#fff', fontSize: 10, marginTop: 3, fontStyle: 'italic' },
 
-  scrollContent: { padding: 20, paddingBottom: 60 },
+  scrollContent: { padding: 20, paddingBottom: NAV_CLEARANCE },
   errorText: { color: '#B3261E', marginBottom: 12, fontSize: 13 },
 
   emptyCard: { backgroundColor: '#fff', borderRadius: 20, padding: 28, alignItems: 'center', gap: 8 },

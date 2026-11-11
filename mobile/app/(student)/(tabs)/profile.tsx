@@ -1,5 +1,5 @@
 // mobile/app/(student)/(tabs)/profile.tsx
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, Image, TextInput, ScrollView, TouchableOpacity, StyleSheet,
   ActivityIndicator, RefreshControl, Alert, Modal, Pressable,
@@ -12,14 +12,18 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { useAuth } from '../../../src/context/AuthContext';
 import { useToast } from '../../../src/components/Toast';
-import { getMyProfile, updateMyProfile } from '../../../src/api/accounts';
+import { shrinkAvatar } from '../../../src/utils/shrinkAvatar';
+import { updateMyProfile } from '../../../src/api/accounts';
+import { loadProfile, getCachedProfile, setCachedProfile, peekSavedProfile } from '../../../src/utils/profileStore';
 import { getMyRewards, getMyRewardSummary } from '../../../src/api/rewards';
 import { FullUser, ProfileUpdatePayload } from '../../../src/types/accounts';
 import { StudentReward } from '../../../src/types/rewards';
-import { getMediaUrl } from '../../../src/utils/media';
+import { getMediaUrl, thumbUrl } from '../../../src/utils/media';
 import ThemePicker from '../../../src/components/ThemePicker';
 import ConfirmModal from '../../../src/components/ConfirmModal';
 import { HowItWorksRow } from '../../../src/components/HowItWorks';
+import { FadeIn, PressableScale, CountUp, Pop } from '../../../src/components/Motion';
+import { NAV_CLEARANCE } from '../../../src/components/FloatingTabBar';
 
 const CREAM = T('#F2E4C4');
 const FIELD_BG = '#F7EBD0';
@@ -83,7 +87,7 @@ export default function StudentProfile() {
   const router = useRouter();
   const toast = useToast();
 
-  const [profile, setProfile] = useState<FullUser | null>(null);
+  const [profile, setProfile] = useState<FullUser | null>(getCachedProfile());
   const [rewards, setRewards] = useState<StudentReward[]>([]);
   const [summary, setSummary] = useState<{ points: number; badges: number } | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -100,18 +104,26 @@ export default function StudentProfile() {
   async function loadData() {
     setError('');
     try {
-      const [profileData, rewardsData, summaryData] = await Promise.all([
-        getMyProfile(),
-        getMyRewards(),
-        getMyRewardSummary().catch(() => null),
+      // Each part shows up as soon as it arrives (the profile does not wait for the rewards)
+      const rewardsPart = Promise.all([
+        getMyRewards().then(setRewards),
+        getMyRewardSummary()
+          .then((s) => setSummary(s ? { points: s.total_points, badges: s.total_badges } : null))
+          .catch(() => {}),
       ]);
+      const profileData = await loadProfile();
       setProfile(profileData);
-      setRewards(rewardsData);
-      setSummary(summaryData ? { points: summaryData.total_points, badges: summaryData.total_badges } : null);
+      await rewardsPart;
     } catch {
-      setError('Could not load your profile. Pull down to try again.');
+      if (!getCachedProfile()) setError('Could not load your profile. Pull down to try again.');
     }
   }
+
+  // Cold start: show the copy saved on the phone right away
+  useEffect(() => {
+    if (profile) return;
+    peekSavedProfile().then((p) => { if (p) setProfile((cur) => cur ?? p); });
+  }, []);
 
   // Refetch when the tab gains focus, but never overwrite the form while editing.
   const editingRef = useRef(false);
@@ -179,13 +191,8 @@ export default function StudentProfile() {
       mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7,
     });
     if (result.canceled || !result.assets?.[0]) return;
-    const asset = result.assets[0];
-    const ext = (asset.uri.split('.').pop() || 'jpg').toLowerCase();
-    setPendingImage({
-      uri: asset.uri,
-      name: `profile_picture.${ext}`,
-      type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-    });
+    const small = await shrinkAvatar(result.assets[0].uri);
+    setPendingImage({ uri: small.uri, name: `profile_picture.${small.ext}`, type: small.type });
   }
 
   function validate(): boolean {
@@ -214,6 +221,7 @@ export default function StudentProfile() {
       if (pendingImage) payload.profile_picture = pendingImage;
 
       const updated = await updateMyProfile(payload);
+      setCachedProfile(updated);
       setProfile(updated);
       closeEditing();
       toast.success('Profile updated');
@@ -280,7 +288,7 @@ export default function StudentProfile() {
   const p = profile.profile;
   const fullName = [p.first_name, p.last_name].filter(Boolean).join(' ') || profile.username;
   const classLine = [p.grade_level, p.section].filter(Boolean).join(' • ');
-  const avatarUrl = pendingImage?.uri || getMediaUrl(p.profile_picture);
+  const avatarUrl = pendingImage?.uri || thumbUrl(p.profile_picture, 100);
 
   const avatar = (
     <View style={styles.avatarRing}>
@@ -392,16 +400,16 @@ export default function StudentProfile() {
         </View>
 
         <View style={styles.statsRow}>
-          <View style={[styles.statCard, { backgroundColor: POINTS_BG }]}>
-            <View style={styles.statIcon}><Ionicons name="star" size={16} color={BROWN} /></View>
-            <Text style={[styles.statValue, { color: POINTS_TEXT }]}>{totalPoints}</Text>
+          <FadeIn delay={150} style={[styles.statCard, { backgroundColor: POINTS_BG }]}>
+            <Pop delay={400} style={styles.statIcon}><Ionicons name="star" size={16} color={BROWN} /></Pop>
+            <CountUp value={totalPoints} style={[styles.statValue, { color: POINTS_TEXT }]} delay={350} />
             <Text style={[styles.statLabel, { color: POINTS_TEXT }]}>Points</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: BADGES_BG }]}>
-            <View style={styles.statIcon}><Ionicons name="ribbon" size={16} color={BROWN} /></View>
-            <Text style={[styles.statValue, { color: BADGES_TEXT }]}>{badgeTotal}</Text>
+          </FadeIn>
+          <FadeIn delay={280} style={[styles.statCard, { backgroundColor: BADGES_BG }]}>
+            <Pop delay={530} style={styles.statIcon}><Ionicons name="ribbon" size={16} color={BROWN} /></Pop>
+            <CountUp value={badgeTotal} style={[styles.statValue, { color: BADGES_TEXT }]} delay={480} />
             <Text style={[styles.statLabel, { color: BADGES_TEXT }]}>Badges</Text>
-          </View>
+          </FadeIn>
         </View>
       </View>
 
@@ -412,12 +420,20 @@ export default function StudentProfile() {
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={BROWN} />}
       >
         {/* Account */}
+        <FadeIn delay={200}>
         <Text style={styles.sectionTitle}>Account</Text>
         <View style={styles.infoCard}>
           <InfoRow icon="school" label="School" value={p.school || '—'} tint={ROW_TINTS[0]} />
           <InfoRow icon="mail" label="Email" value={p.email || '—'} tint={ROW_TINTS[1]} />
           <InfoRow icon="at" label="Username" value={profile.username} tint={ROW_TINTS[2]} isLast />
         </View>
+        </FadeIn>
+
+        {/* Class shortcuts */}
+        <FadeIn delay={320} style={{ marginTop: 16 }}>
+          <ActionRow icon="people-outline" label="My class and group" onPress={() => router.push('/(student)/class-group' as any)} />
+          <ActionRow icon="add-circle-outline" label="Join another class" onPress={() => router.push('/(student)/join-class' as any)} />
+        </FadeIn>
 
         <ThemePicker />
 
@@ -463,11 +479,11 @@ function InfoRow({ icon, label, value, isLast, tint }: { icon: IconName; label: 
 
 function ActionRow({ icon, label, onPress, danger }: { icon: IconName; label: string; onPress: () => void; danger?: boolean }) {
   return (
-    <TouchableOpacity style={[styles.actionRow, danger && styles.actionRowDanger]} onPress={onPress} activeOpacity={0.8}>
+    <PressableScale style={[styles.actionRow, danger && styles.actionRowDanger]} onPress={onPress} scaleTo={0.97}>
       <Ionicons name={icon} size={18} color={danger ? RED : BROWN} />
       <Text style={[styles.actionText, danger && { color: RED }]}>{label}</Text>
       {!danger && <Ionicons name="chevron-forward" size={16} color={MUTED} style={{ marginLeft: 'auto' }} />}
-    </TouchableOpacity>
+    </PressableScale>
   );
 }
 
@@ -521,7 +537,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: CREAM },
   centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 12 },
   fixedTop: { paddingHorizontal: 20, paddingTop: 20 },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 40 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: NAV_CLEARANCE },
 
   // hero
   hero: {
@@ -628,7 +644,7 @@ const styles = StyleSheet.create({
   cancelText: { fontSize: 14, color: EDIT_CANCEL, fontWeight: '700' },
   saveButton: { backgroundColor: EDIT_SAVE_BG, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, minWidth: 68, alignItems: 'center' },
   saveButtonText: { color: EDIT_SAVE_TEXT, fontSize: 14, fontWeight: '800' },
-  editContent: { paddingHorizontal: 20, paddingBottom: 120 },
+  editContent: { paddingHorizontal: 20, paddingBottom: NAV_CLEARANCE },
   editAvatarBlock: { alignItems: 'center', marginTop: 6, marginBottom: 12 },
   changePhotoText: { color: EDIT_FOCUS, fontWeight: '800', fontSize: 13 },
 

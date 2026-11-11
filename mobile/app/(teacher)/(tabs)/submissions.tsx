@@ -13,6 +13,8 @@ import { getSubmissions } from '../../../src/api/submissions';
 import { ClassSummary } from '../../../src/types/classrooms';
 import { Submission } from '../../../src/types/submissions';
 import AppHeader from '../../../src/components/AppHeader';
+import { FadeIn, PressableScale } from '../../../src/components/Motion';
+import { NAV_CLEARANCE } from '../../../src/components/FloatingTabBar';
 
 const GOLD = T('#F5B921');
 const CREAM = T('#F5EDD8');
@@ -28,11 +30,23 @@ interface GroupInfo {
   classId: number;
 }
 
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('en-US', {
-    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-  });
+function timeAgo(iso: string): string {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs} hr${hrs === 1 ? '' : 's'} ago`;
+  const days = Math.round(hrs / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
 }
+
+const AVATAR_TINTS = [
+  { bg: '#F7C9C0', fg: '#7A2E1F' },
+  { bg: '#CFE0F5', fg: '#1F4D7A' },
+  { bg: '#FBE3A6', fg: '#6B4A00' },
+  { bg: '#CDE7D3', fg: '#1F5A35' },
+  { bg: '#E4D3F2', fg: '#4B2A70' },
+];
 
 export default function TeacherSubmissions() {
   const router = useRouter();
@@ -104,6 +118,7 @@ export default function TeacherSubmissions() {
   });
 
   const pendingCount = submissions.filter((s) => !s.is_reviewed).length;
+  const reviewedCount = submissions.length - pendingCount;
   const activeFilters = (classId !== null ? 1 : 0) + (groupId !== null ? 1 : 0) + (status !== 'pending' ? 1 : 0);
 
   function clearFilters() {
@@ -115,7 +130,6 @@ export default function TeacherSubmissions() {
 
   const classLabel = classId !== null ? classById.get(classId)?.class_name ?? 'Class' : 'All classes';
   const groupLabel = groupId !== null ? groupById.get(groupId)?.name ?? 'Group' : 'All groups';
-  const statusLabel = status === 'pending' ? 'Needs review' : status === 'reviewed' ? 'Reviewed' : 'All status';
 
 
   const options: { key: string; label: string; selected: boolean; onPick: () => void }[] =
@@ -164,9 +178,26 @@ export default function TeacherSubmissions() {
         >
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          <View style={styles.titleRow}>
-            <Text style={styles.pageTitle}>Submissions</Text>
-            <Text style={styles.countText}>{pendingCount} need review</Text>
+          <Text style={styles.pageTitle}>Review</Text>
+
+          {/* Status tabs */}
+          <View style={styles.segment}>
+            {([
+              { k: 'pending', label: 'Needs review', n: pendingCount },
+              { k: 'reviewed', label: 'Reviewed', n: reviewedCount },
+              { k: 'all', label: 'All', n: submissions.length },
+            ] as { k: Status; label: string; n: number }[]).map((t) => (
+              <TouchableOpacity
+                key={t.k}
+                style={[styles.segBtn, status === t.k && styles.segBtnOn]}
+                onPress={() => setStatus(t.k)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.segText, status === t.k && styles.segTextOn]} numberOfLines={1}>
+                  {t.label} {t.n}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
           <View style={styles.searchBox}>
@@ -204,29 +235,14 @@ export default function TeacherSubmissions() {
               </Text>
               <Ionicons name="chevron-down" size={14} color={groupId !== null ? '#fff' : BROWN} />
             </TouchableOpacity>
-          </View>
-
-          <View style={styles.filterRow}>
-            <TouchableOpacity
-              style={[styles.dropdown, status !== 'pending' && styles.dropdownActive]}
-              onPress={() => setPicker('status')}
-            >
-              <Text style={[styles.dropdownText, status !== 'pending' && styles.dropdownTextActive]} numberOfLines={1}>
-                {statusLabel}
-              </Text>
-              <Ionicons name="chevron-down" size={14} color={status !== 'pending' ? '#fff' : BROWN} />
-            </TouchableOpacity>
             {activeFilters > 0 || search ? (
               <TouchableOpacity style={styles.clearBtn} onPress={clearFilters}>
                 <Ionicons name="refresh" size={14} color={ORANGE} />
-                <Text style={styles.clearText}>Reset</Text>
               </TouchableOpacity>
-            ) : (
-              <View style={{ flex: 1 }} />
-            )}
+            ) : null}
           </View>
 
-          <Text style={styles.resultText}>{visible.length} of {submissions.length} submissions</Text>
+          <Text style={styles.resultText}>Showing {visible.length} of {submissions.length}</Text>
 
           {visible.length === 0 ? (
             <Text style={styles.emptyText}>
@@ -235,40 +251,55 @@ export default function TeacherSubmissions() {
                 : 'No submissions match these filters.'}
             </Text>
           ) : (
-            visible.map((s) => {
+            visible.map((s, si) => {
               const accepted = s.classifier_result === 'ACCEPTED';
               const cls = classById.get(groupById.get(s.group)?.classId ?? -1);
+              const tint = AVATAR_TINTS[s.student % AVATAR_TINTS.length];
               return (
-                <TouchableOpacity
-                  key={s.id}
+                <FadeIn key={s.id} delay={Math.min(si, 6) * 70}>
+                <PressableScale
                   style={styles.card}
+                  scaleTo={0.97}
                   onPress={() => router.push(`/(teacher)/submission/${s.id}` as any)}
-                  activeOpacity={0.8}
                 >
                   <Image source={{ uri: s.image_url }} style={styles.thumb} />
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, gap: 3 }}>
                     <Text style={styles.questTitle} numberOfLines={1}>{s.quest_title}</Text>
-                    <Text style={styles.meta} numberOfLines={1}>
-                      {cls ? `${cls.class_name} • ` : ''}{s.group_name}
-                    </Text>
-                    <Text style={styles.meta} numberOfLines={1}>
-                      {s.student_username} • {formatDateTime(s.submitted_at)}
-                    </Text>
-                    <View style={styles.badgeRow}>
-                      <View style={[styles.badge, { backgroundColor: accepted ? '#DCFCE7' : '#FFEDD5' }]}>
-                        <Text style={[styles.badgeText, { color: accepted ? '#166534' : '#9A3412' }]}>
-                          AI: {s.classifier_result}
+                    <View style={styles.whoRow}>
+                      <View style={[styles.miniAvatar, { backgroundColor: tint.bg }]}>
+                        <Text style={[styles.miniAvatarText, { color: tint.fg }]}>
+                          {s.student_username.charAt(0).toUpperCase()}
                         </Text>
                       </View>
-                      <View style={[styles.badge, { backgroundColor: s.is_reviewed ? '#DBEAFE' : '#FEF3C7' }]}>
-                        <Text style={[styles.badgeText, { color: s.is_reviewed ? '#1E40AF' : '#92400E' }]}>
+                      <Text style={styles.meta} numberOfLines={1}>
+                        {s.group_name}{cls ? ` · ${cls.class_name}` : ''}
+                      </Text>
+                    </View>
+                    <View style={styles.badgeRow}>
+                      <View style={[styles.badge, { backgroundColor: s.is_reviewed ? '#DCF2E3' : '#FFF1C7' }]}>
+                        <Ionicons
+                          name={s.is_reviewed ? 'checkmark-circle' : 'time'}
+                          size={11}
+                          color={s.is_reviewed ? '#166B3A' : '#92400E'}
+                        />
+                        <Text style={[styles.badgeText, { color: s.is_reviewed ? '#166B3A' : '#92400E' }]}>
                           {s.is_reviewed ? 'Reviewed' : 'Needs review'}
+                        </Text>
+                      </View>
+                      <View style={[styles.badge, { backgroundColor: accepted ? '#E3F3E9' : '#FDE9D2' }]}>
+                        <Ionicons name="sparkles" size={11} color={accepted ? '#166B3A' : '#A34A0A'} />
+                        <Text style={[styles.badgeText, { color: accepted ? '#166B3A' : '#A34A0A' }]}>
+                          {accepted ? 'AI: looks right' : 'AI: check'}
                         </Text>
                       </View>
                     </View>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#B8A671" />
-                </TouchableOpacity>
+                  <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                    <Text style={styles.timeText}>{timeAgo(s.submitted_at)}</Text>
+                    <Ionicons name="chevron-forward" size={18} color="#B8A671" />
+                  </View>
+                </PressableScale>
+                </FadeIn>
               );
             })
           )}
@@ -315,10 +346,15 @@ const styles = StyleSheet.create({
   dateText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '600' },
   classText: { fontSize: 11, color: HEADER_TEXT, fontWeight: '700', marginTop: 2 },
 
-  scrollContent: { padding: 20, paddingBottom: 60 },
+  scrollContent: { padding: 20, paddingBottom: NAV_CLEARANCE },
   errorText: { color: '#B3261E', marginBottom: 12, fontSize: 13 },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 },
-  pageTitle: { fontSize: 18, fontWeight: '800', color: BROWN },
+  pageTitle: { fontSize: 22, fontWeight: '900', color: BROWN, marginBottom: 12 },
+  segment: { flexDirection: 'row', backgroundColor: T('#EADEC9'), borderRadius: 14, padding: 4, marginBottom: 12 },
+  segBtn: { flex: 1, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  segBtnOn: { backgroundColor: '#fff' },
+  segText: { fontSize: 12, fontWeight: '600', color: T('#8A6A2A') },
+  segTextOn: { color: BROWN, fontWeight: '800' },
   countText: { fontSize: 12, fontWeight: '700', color: ORANGE },
 
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: T('#EADEC9'), borderRadius: 14, paddingHorizontal: 12, marginBottom: 10 },
@@ -329,18 +365,22 @@ const styles = StyleSheet.create({
   dropdownActive: { backgroundColor: ORANGE, borderColor: ORANGE },
   dropdownText: { flex: 1, fontSize: 12, fontWeight: '700', color: BROWN },
   dropdownTextActive: { color: '#fff' },
-  clearBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: ORANGE, borderRadius: 12, paddingVertical: 10 },
+  clearBtn: { width: 42, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: ORANGE, borderRadius: 12 },
   clearText: { fontSize: 12, fontWeight: '800', color: ORANGE },
 
   resultText: { fontSize: 11, color: T('#8A6A2A'), marginVertical: 6 },
   emptyText: { color: T('#8A6A2A'), fontStyle: 'italic', textAlign: 'center', marginTop: 24, lineHeight: 20 },
 
-  card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 12, marginBottom: 12 },
+  card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 18, padding: 12, marginBottom: 12 },
   thumb: { width: 78, height: 78, borderRadius: 12, backgroundColor: T('#EADEC9') },
   questTitle: { fontSize: 14, fontWeight: '800', color: T('#7c2d12') },
   meta: { fontSize: 11, color: T('#8A6A2A'), marginTop: 2 },
   badgeRow: { flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' },
-  badge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  whoRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  miniAvatar: { width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  miniAvatarText: { fontSize: 10, fontWeight: '800' },
+  timeText: { fontSize: 11, color: '#999' },
   badgeText: { fontSize: 10, fontWeight: '800' },
 
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },

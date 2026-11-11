@@ -13,18 +13,23 @@ import {
   Alert,
 } from 'react-native';
 import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
+import { FadeIn, Pop } from '../../../src/components/Motion';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
 import { useAuth } from '../../../src/context/AuthContext';
-import { getMyProfile, updateMyProfile } from '../../../src/api/accounts';
+import { shrinkAvatar } from '../../../src/utils/shrinkAvatar';
+import { updateMyProfile } from '../../../src/api/accounts';
+import { loadProfile, getCachedProfile, setCachedProfile, peekSavedProfile } from '../../../src/utils/profileStore';
 import { FullUser, ProfileUpdatePayload } from '../../../src/types/accounts';
-import { getMediaUrl } from '../../../src/utils/media';
+import { thumbUrl } from '../../../src/utils/media';
 import { useToast } from '../../../src/components/Toast';
 import ThemePicker from '../../../src/components/ThemePicker';
 import ConfirmModal from '../../../src/components/ConfirmModal';
+import { HowItWorksRow } from '../../../src/components/HowItWorks';
+import { NAV_CLEARANCE } from '../../../src/components/FloatingTabBar';
 
 // ============================================================================
 // COLOR PALETTE — same as login/student profile, so the app feels consistent.
@@ -75,8 +80,8 @@ export default function TeacherSettings() {
   const { signOut } = useAuth();
   const router = useRouter();
 
-  const [profile, setProfile] = useState<FullUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [profile, setProfile] = useState<FullUser | null>(getCachedProfile());
+  const [isLoading, setIsLoading] = useState(!getCachedProfile());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
 
@@ -93,16 +98,24 @@ export default function TeacherSettings() {
   async function loadData() {
     setError('');
     try {
-      const data = await getMyProfile();
+      const data = await loadProfile();
       setProfile(data);
     } catch (e) {
-      setError('Could not load your profile. Pull down to try again.');
+      if (!getCachedProfile()) setError('Could not load your profile. Pull down to try again.');
     }
   }
 
+  // Cold start: show the copy saved on the phone right away
+  React.useEffect(() => {
+    if (profile) return;
+    peekSavedProfile().then((p) => {
+      if (p) { setProfile((cur) => cur ?? p); setIsLoading(false); }
+    });
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      setIsLoading(true);
+      // No spinner when there is already a copy: it is shown at once and refreshed quietly
       loadData().finally(() => setIsLoading(false));
     }, [])
   );
@@ -153,13 +166,8 @@ export default function TeacherSettings() {
 
     if (result.canceled || !result.assets?.[0]) return;
 
-    const asset = result.assets[0];
-    const fileExtension = asset.uri.split('.').pop() || 'jpg';
-    setPendingImage({
-      uri: asset.uri,
-      name: `profile_picture.${fileExtension}`,
-      type: `image/${fileExtension === 'jpg' ? 'jpeg' : fileExtension}`,
-    });
+    const small = await shrinkAvatar(result.assets[0].uri);
+    setPendingImage({ uri: small.uri, name: `profile_picture.${small.ext}`, type: small.type });
   }
 
   async function handleSave() {
@@ -183,6 +191,7 @@ export default function TeacherSettings() {
       }
 
       const updated = await updateMyProfile(payload);
+      setCachedProfile(updated);
       setProfile(updated);
       setPendingImage(null);
       setIsEditing(false);
@@ -219,7 +228,7 @@ export default function TeacherSettings() {
 
   const p = profile.profile;
   const fullName = [p.first_name, p.last_name].filter(Boolean).join(' ') || profile.username;
-  const avatarUrl = pendingImage?.uri || getMediaUrl(p.profile_picture);
+  const avatarUrl = pendingImage?.uri || thumbUrl(p.profile_picture, 100);
   const joinedShort = new Date(profile.date_joined).toLocaleDateString(undefined, {
     month: 'short', year: 'numeric',
   });
@@ -322,7 +331,7 @@ export default function TeacherSettings() {
         {/* Round shortcut buttons (overlap the banner) */}
         <View style={styles.circleRow}>
           <TouchableOpacity style={styles.circleItem} onPress={startEditing} activeOpacity={0.85}>
-            <View style={styles.circleBtn}><Ionicons name="pencil" size={22} color={ICON_MAIN} /></View>
+            <Pop delay={250} style={styles.circleBtn}><Ionicons name="pencil" size={22} color={ICON_MAIN} /></Pop>
             <Text style={styles.circleLabel}>Edit</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -330,15 +339,16 @@ export default function TeacherSettings() {
             onPress={() => router.push({ pathname: '/change-password', params: { from: '/(teacher)/(tabs)/settings' } })}
             activeOpacity={0.85}
           >
-            <View style={styles.circleBtn}><Ionicons name="key" size={22} color={ICON_MAIN} /></View>
+            <Pop delay={350} style={styles.circleBtn}><Ionicons name="key" size={22} color={ICON_MAIN} /></Pop>
             <Text style={styles.circleLabel}>Password</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.circleItem} onPress={confirmSignOut} activeOpacity={0.85}>
-            <View style={styles.circleBtn}><Ionicons name="log-out-outline" size={24} color={RED} /></View>
+            <Pop delay={450} style={styles.circleBtn}><Ionicons name="log-out-outline" size={24} color={RED} /></Pop>
             <Text style={styles.circleLabel}>Sign Out</Text>
           </TouchableOpacity>
         </View>
 
+        <FadeIn delay={250}>
         <View style={styles.body}>
           {/* Details */}
           <Text style={styles.sectionLabel}>Details</Text>
@@ -350,7 +360,11 @@ export default function TeacherSettings() {
 
           {/* Appearance */}
           <ThemePicker />
+
+          {/* Help */}
+          <HowItWorksRow role="teacher" />
         </View>
+        </FadeIn>
 
         <ConfirmModal
           visible={showSignOut}
@@ -415,7 +429,7 @@ function FormField({
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: CREAM },
   centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  scrollContent: { paddingBottom: 40 },
+  scrollContent: { paddingBottom: NAV_CLEARANCE },
 
   // top banner
   top: {
@@ -482,7 +496,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8, minWidth: 68, alignItems: 'center',
   },
   saveButtonText: { color: EDIT_SAVE_TEXT, fontSize: 14, fontWeight: '800' },
-  editContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 120 },
+  editContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: NAV_CLEARANCE },
   editAvatarBlock: { alignItems: 'center', marginTop: 6, marginBottom: 12 },
   changePhotoText: { color: EDIT_FOCUS, fontWeight: '800', fontSize: 13 },
 
