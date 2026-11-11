@@ -31,6 +31,10 @@ export interface CreateUserPayload {
   username: string;
   password: string;
   role: UserRole;
+  // Optional profile details the admin may fill in right away
+  first_name?: string;
+  last_name?: string;
+  email?: string;
 }
 
 // Matches AdminUserUpdateSerializer — PATCH body

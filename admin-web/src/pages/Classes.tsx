@@ -1,8 +1,6 @@
 // admin-web/src/pages/Classes.tsx
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, LogOut, Search, X, Pencil } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { Search, X, Pencil } from 'lucide-react';
 import { getClasses, getClassEnrollments, getClassGroups, updateClass } from '../api/classes';
 import type { ClassSummary, ClassEnrollment, ClassGroup, ClassStudent } from '../types/classes';
 
@@ -18,9 +16,6 @@ function errorMessage(e: any, fallback: string): string {
 }
 
 export default function Classes() {
-  const navigate = useNavigate();
-  const { signOut } = useAuth();
-
   const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -96,11 +91,6 @@ export default function Classes() {
     }
   }
 
-  async function handleSignOut() {
-    await signOut();
-    navigate('/login', { replace: true });
-  }
-
   return (
     <div className="page-wrapper">
       <style>{`
@@ -141,15 +131,6 @@ export default function Classes() {
         .cls-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
         @media (max-width: 640px) { .cls-grid { grid-template-columns: 1fr; } }
       `}</style>
-
-      <div className="header-nav">
-        <button className="back-btn" onClick={() => navigate('/dashboard')}>
-          <ArrowLeft size={16} /> Back to Dashboard
-        </button>
-        <button className="signout-btn" onClick={handleSignOut}>
-          <LogOut size={16} /> Sign Out
-        </button>
-      </div>
 
       <div className="page-title-area">
         <h1>Classes</h1>

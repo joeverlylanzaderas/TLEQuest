@@ -1,7 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, LogOut, Palette, School, ShieldCheck, ToggleLeft, Save } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { Palette, School, ShieldCheck, ToggleLeft, Save } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { getSystemSettings, updateSystemSettings } from '../api/settings';
 import type { SystemSettings as SystemSettingsType, ThemeKey } from '../types/settings';
@@ -41,8 +39,6 @@ function formatApiError(data: any): string {
 }
 
 export default function SystemSettingsPage() {
-  const navigate = useNavigate();
-  const { signOut } = useAuth();
   const { showToast } = useToast();
 
   const [settings, setSettings] = useState<SystemSettingsType | null>(null);
@@ -339,17 +335,6 @@ export default function SystemSettingsPage() {
           .theme-grid { grid-template-columns: 1fr; }
         }
       `}</style>
-
-      <div className="header-nav">
-        <button className="back-btn" onClick={() => navigate('/dashboard')}>
-          <ArrowLeft size={16} />
-          <span>Go Back to Dashboard</span>
-        </button>
-        <button className="signout-btn" onClick={signOut}>
-          <LogOut size={16} />
-          <span>Sign Out</span>
-        </button>
-      </div>
 
       <div className="page-title-area">
         <h1>System Settings</h1>

@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
   ResponsiveContainer,
   BarChart,
@@ -47,7 +46,7 @@ const tooltipStyle: React.CSSProperties = {
 };
 
 export default function Reports() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [reports, setReports] = useState<AdminReports | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -96,38 +95,6 @@ export default function Reports() {
               Logged in as <strong>@{user.username}</strong> ({user.role})
             </span>
           )}
-        </div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <Link
-            to="/"
-            style={{
-              textDecoration: 'none',
-              color: COLOR_PRIMARY,
-              fontSize: '14px',
-              fontWeight: 600,
-              padding: '8px 16px',
-              border: `1px solid ${COLOR_BORDER}`,
-              borderRadius: '8px',
-              backgroundColor: '#FFFFFF',
-            }}
-          >
-            ← Back to Dashboard
-          </Link>
-          <button
-            onClick={signOut}
-            style={{
-              padding: '8px 16px',
-              fontSize: '14px',
-              fontWeight: 600,
-              color: COLOR_DANGER,
-              backgroundColor: '#FDF2F2',
-              border: '1px solid #F8B4B4',
-              borderRadius: '8px',
-              cursor: 'pointer',
-            }}
-          >
-            Sign Out
-          </button>
         </div>
       </div>
 

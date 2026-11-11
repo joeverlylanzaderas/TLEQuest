@@ -1,9 +1,8 @@
 // admin-web/src/pages/Profile.tsx
 import React, { useEffect, useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, LogOut, Camera, KeyRound, Mail, User, ShieldCheck, CalendarDays, CheckCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Camera, KeyRound, Mail, User, ShieldCheck, CalendarDays, CheckCircle } from 'lucide-react';
 import { getMyProfile, updateMyProfile, uploadMyProfilePicture } from '../api/profile';
-import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import type { FullAdminProfile, UpdateProfilePayload } from '../types/profile';
 
@@ -22,8 +21,6 @@ function formatApiError(data: any): string {
 }
 
 export default function Profile() {
-  const navigate = useNavigate();
-  const { signOut } = useAuth();
   const { showToast } = useToast();
 
   const [profile, setProfile] = useState<FullAdminProfile | null>(null);
@@ -167,15 +164,6 @@ export default function Profile() {
           .pf-id { padding-top: 8px; }
         }
       `}</style>
-
-      <div className="header-nav">
-        <button className="back-btn" onClick={() => navigate('/dashboard')}>
-          <ArrowLeft size={16} /> Back to Dashboard
-        </button>
-        <button className="signout-btn" onClick={signOut}>
-          <LogOut size={16} /> Sign Out
-        </button>
-      </div>
 
       <div className="page-title-area">
         <h1>My Profile</h1>
