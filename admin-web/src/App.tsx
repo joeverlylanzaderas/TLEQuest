@@ -3,6 +3,7 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
+import AdminLayout from './components/AdminLayout';
 
 import Login from './pages/Login';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -37,73 +38,19 @@ function AppRoutes() {
     <Suspense fallback={<div>Loading...</div>}>
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/users"
-        element={
-          <ProtectedRoute>
-            <UserManagement />
-          </ProtectedRoute>
-        }
 
-        
-      />
-      <Route
-        path="/classes"
-        element={
-          <ProtectedRoute>
-            <Classes />
-          </ProtectedRoute>
-        }
-      />
+      {/* Every signed-in page shares the sidebar (AdminLayout) */}
+      <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/users" element={<UserManagement />} />
+        <Route path="/classes" element={<Classes />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/change-password" element={<ChangePassword />} />
+        <Route path="/reports" element={<Reports />} />
+        <Route path="/system-settings" element={<SystemSettingsPage />} />
+        <Route path="/audit-log" element={<AuditLogPage />} />
+      </Route>
 
-      <Route
-        path="/profile"
-        element={
-          <ProtectedRoute>
-            <Profile />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/change-password"
-        element={
-          <ProtectedRoute>
-            <ChangePassword />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/reports"
-        element={
-          <ProtectedRoute>
-            <Reports />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/system-settings"
-        element={
-          <ProtectedRoute>
-            <SystemSettingsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/audit-log"
-        element={
-          <ProtectedRoute>
-            <AuditLogPage />
-          </ProtectedRoute>
-        }
-      />
       <Route path="*" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
     </Routes>
     </Suspense>

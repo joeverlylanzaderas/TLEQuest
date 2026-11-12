@@ -165,6 +165,7 @@ export default function Profile() {
         }
       `}</style>
 
+
       <div className="page-title-area">
         <h1>My Profile</h1>
         <p>Manage your account information.</p>

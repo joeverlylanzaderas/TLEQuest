@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronLeft, ChevronRight, ClipboardList, LogOut, Search } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { ChevronLeft, ChevronRight, ClipboardList, Search } from 'lucide-react';
 import { getAuditLogs } from '../api/auditLog';
 import type { AuditLogEntry } from '../types/auditLog';
 
@@ -29,9 +27,19 @@ const CATEGORIES = [
   { value: 'settings.', label: 'System settings' },
 ];
 
+const pretty = (key: string) => key.replace(/_/g, ' ');
+const show = (v: unknown) => (v === true ? 'on' : v === false ? 'off' : v === '' || v == null ? '(empty)' : String(v));
+
 function describe(entry: AuditLogEntry): string {
   const d = entry.details ?? {};
   const parts: string[] = [];
+  // What really changed: "theme: default → school"
+  if (d.changes && typeof d.changes === 'object') {
+    for (const [key, v] of Object.entries(d.changes as Record<string, { from?: unknown; to?: unknown }>)) {
+      parts.push(`${pretty(key)}: ${show(v?.from)} → ${show(v?.to)}`);
+    }
+  }
+  // Older entries (before this change) only had the list of fields
   if (Array.isArray(d.fields) && d.fields.length) parts.push(`changed ${(d.fields as string[]).join(', ')}`);
   if (d.role_from && d.role_to) parts.push(`role ${d.role_from} → ${d.role_to}`);
   else if (d.role) parts.push(`role: ${d.role}`);
@@ -47,9 +55,6 @@ function formatTime(iso: string): string {
 }
 
 export default function AuditLogPage() {
-  const navigate = useNavigate();
-  const { signOut } = useAuth();
-
   const [rows, setRows] = useState<AuditLogEntry[]>([]);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
@@ -142,16 +147,6 @@ export default function AuditLogPage() {
         @media (max-width: 640px) { .page-wrapper { padding: 16px; } .page-title-area h1 { font-size: 26px; } }
       `}</style>
 
-      <div className="header-nav">
-        <button className="back-btn" onClick={() => navigate('/dashboard')}>
-          <ArrowLeft size={16} />
-          <span>Go Back to Dashboard</span>
-        </button>
-        <button className="signout-btn" onClick={signOut}>
-          <LogOut size={16} />
-          <span>Sign Out</span>
-        </button>
-      </div>
 
       <div className="page-title-area">
         <h1>Audit Log</h1>

@@ -336,6 +336,7 @@ export default function SystemSettingsPage() {
         }
       `}</style>
 
+
       <div className="page-title-area">
         <h1>System Settings</h1>
         <p>Configure app-wide rules that apply across all classes, teachers, and students.</p>

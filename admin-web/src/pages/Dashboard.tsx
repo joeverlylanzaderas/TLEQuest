@@ -1,13 +1,9 @@
 // admin-web/src/pages/Dashboard.tsx
-//import sidebarLogo from '../assets/sidebar-logo2.png';
-import sidebarLogo from '../assets/tlequest-logo3.png';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, BookOpen, Users, ChartColumn, Settings, LogOut,
-  CalendarDays, Clock3, Search, FileDown, Flag, Trophy, Upload, Menu, X, Sliders, ClipboardList,
+  Users, CalendarDays, Clock3, Search, FileDown, Flag, Trophy, Upload,
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
 import { getDashboardSummary, getMonthActivity, getDayActivity } from '../api/dashboard';
 import { getAdminReports } from '../api/reports';
 import type { DashboardSummary, RecentActivityEvent, DayActivity, DayCounts } from '../types/dashboard';
@@ -58,12 +54,10 @@ function csvCell(value: unknown): string {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [reports, setReports] = useState<AdminReports | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [now, setNow] = useState(new Date());
   const [search, setSearch] = useState('');
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
@@ -198,31 +192,17 @@ export default function Dashboard() {
     date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 
   return (
-    <div className="layout">
+    <div className="dash-page">
       <style>{`
         *, *::before, *::after { box-sizing: border-box; }
         body { margin: 0; background-color: var(--t-f8efe6); color: var(--t-804022); font-family: 'Inter', sans-serif; overflow-x: hidden; }
         h1, h2, h3, .card-title, .logo, .stat-value { font-family: 'Plus Jakarta Sans', sans-serif; }
         a { text-decoration: none; color: inherit; }
-        .layout { display: flex; height: 100vh; width: 100vw; overflow: hidden; position: relative; }
 
-        .mobile-header { display: none; height: 60px; background: #FFFFFF; border-bottom: 1px solid var(--t-d6bb83); padding: 0 16px; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 90; width: 100%; }
-        .menu-toggle-btn { background: none; border: none; color: var(--t-804022); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 6px; }
 
-        .sidebar { width: 260px; background: #FFFFFF; border-right: 1px solid var(--t-d6bb83); display: flex; flex-direction: column; padding: 24px 16px; flex-shrink: 0; z-index: 100; transition: transform 0.3s ease; }
-        .logo { font-size: 22px; font-weight: 800; color: var(--t-c37800); margin-bottom: 20px; padding: 0 12px; display: flex; align-items: center; justify-content: center; position: relative; }
-        .logo .menu-toggle-btn { position: absolute; top: 0; right: 0; }
-        .brand-logo { height: 120px; width: auto; max-width: 100%; object-fit: contain; display: block; margin: 0 auto; }
-        .brand-logo-mobile { height: 44px; margin: 0; }
-        .logo-brand { display: flex; align-items: center; gap: 10px; }
-        .logo-icon { background: var(--t-fdc200); color: var(--t-804022); border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
-        .menu-label { font-size: 11px; text-transform: uppercase; color: var(--t-d6bb83); font-weight: 700; margin: 0 12px 12px; letter-spacing: 0.6px; }
-        .nav-item { padding: 10px 14px; border-radius: 10px; margin-bottom: 4px; font-size: 14px; font-weight: 500; color: var(--t-804022); display: flex; align-items: center; gap: 12px; transition: all 0.2s ease; }
-        .nav-item.active { background: var(--t-fcecd6); color: var(--t-c37800); font-weight: 700; }
-        .nav-item:hover:not(.active) { background: var(--t-f3efd4); }
-        .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(40,20,10,0.4); backdrop-filter: blur(2px); z-index: 95; }
 
-        .main-content { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 24px 32px; min-width: 0; }
+        .dash-page { width: 100%; }
+        .main-content { overflow-x: hidden; padding: 24px 32px; min-width: 0; }
 
         .hero-banner { background-image: url('${BANNER_IMAGE_URL}'); background-size: cover; background-position: center; border-radius: 20px; min-height: 200px; position: relative; margin-bottom: 24px; border: 1px solid var(--t-d6bb83); display: flex; flex-direction: column; justify-content: space-between; padding: 24px; overflow: hidden; box-shadow: 0 8px 24px rgba(128,64,34,0.12); }
         .hero-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(30,15,8,0.2) 0%, rgba(30,15,8,0.6) 100%); z-index: 1; }
@@ -321,12 +301,7 @@ export default function Dashboard() {
         }
         @media (max-width: 992px) { .bottom-grid { grid-template-columns: 1fr; } .day-section { grid-template-columns: 1fr; } }
         @media (max-width: 768px) {
-          .layout { flex-direction: column; height: auto; min-height: 100vh; overflow-y: auto; }
-          .mobile-header { display: flex; }
-          .sidebar { position: fixed; top: 0; left: 0; bottom: 0; height: 100vh; transform: translateX(-100%); box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
-          .sidebar.open { transform: translateX(0); }
-          .sidebar-backdrop { display: block; }
-          .main-content { padding: 16px; overflow-y: visible; }
+          .main-content { padding: 16px; }
           .hero-banner { min-height: auto; padding: 16px; margin-bottom: 16px; }
           .hero-top-info { flex-direction: column; align-items: flex-start; }
           .hero-controls { flex-direction: column; align-items: stretch; }
@@ -340,57 +315,6 @@ export default function Dashboard() {
         }
       `}</style>
 
-      {/* --- MOBILE TOP HEADER --- */}
-      <header className="mobile-header">
-        <img src={sidebarLogo} alt="TLEQuest" className="brand-logo brand-logo-mobile" />
-        <button className="menu-toggle-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)} aria-label="Toggle Navigation Menu">
-          {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </header>
-
-      {isSidebarOpen && <div className="sidebar-backdrop" onClick={() => setIsSidebarOpen(false)} />}
-
-      {/* --- SIDEBAR --- */}
-      <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
-        <div className="logo">
-          <img src={sidebarLogo} alt="TLEQuest" className="brand-logo" />
-          <button className="menu-toggle-btn" style={{ display: isSidebarOpen ? 'block' : 'none' }} onClick={() => setIsSidebarOpen(false)}>
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="menu-label">Menu</div>
-        <div className="nav-item active" onClick={() => setIsSidebarOpen(false)}>
-          <LayoutDashboard size={18} /><span>Dashboard</span>
-        </div>
-        <Link to="/classes" className="nav-item" onClick={() => setIsSidebarOpen(false)}>
-          <BookOpen size={18} /><span>Classes</span>
-        </Link>
-        <Link to="/users" className="nav-item" onClick={() => setIsSidebarOpen(false)}>
-          <Users size={18} /><span>Users</span>
-        </Link>
-        <Link to="/reports" className="nav-item" onClick={() => setIsSidebarOpen(false)}>
-          <ChartColumn size={18} /><span>Insights</span>
-        </Link>
-
-        <div className="menu-label" style={{ marginTop: 24 }}>Settings</div>
-        <Link to="/system-settings" className="nav-item" onClick={() => setIsSidebarOpen(false)}>
-          <Sliders size={18} /><span>System Settings</span>
-        </Link>
-        <Link to="/audit-log" className="nav-item" onClick={() => setIsSidebarOpen(false)}>
-          <ClipboardList size={18} /><span>Audit Log</span>
-        </Link>
-        <Link to="/profile" className="nav-item" onClick={() => setIsSidebarOpen(false)}>
-          <Settings size={18} /><span>Profile</span>
-        </Link>
-        <div
-          className="nav-item"
-          onClick={() => { setIsSidebarOpen(false); signOut(); }}
-          style={{ cursor: 'pointer', color: '#DF1B39', marginTop: 'auto' }}
-        >
-          <LogOut size={18} /><span>Sign Out</span>
-        </div>
-      </aside>
 
       {/* --- MAIN CONTENT --- */}
       <main className="main-content">

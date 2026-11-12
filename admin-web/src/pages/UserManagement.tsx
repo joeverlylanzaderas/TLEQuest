@@ -12,7 +12,6 @@ import {
   Upload,
   Download,
   ChevronLeft,
-  ChevronDown,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
@@ -30,7 +29,7 @@ import {
   resetUserPassword,
   bulkUploadUsers,
 } from '../api/users';
-import type { ManagedUser, UserRole, BulkUploadResult, CreateUserPayload } from '../types/users';
+import type { ManagedUser, UserRole, BulkUploadResult } from '../types/users';
 
 function formatApiError(data: any): string {
   if (!data || typeof data !== 'object') return 'Something went wrong.';
@@ -254,13 +253,7 @@ export default function UserManagement() {
       const result = await bulkUploadUsers(csvFile);
       setBulkResult(result);
       const summary = summarizeBulkResult(result);
-      const createdNow = result.created_count ?? result.created?.length ?? 0;
-      showToast(
-        createdNow > 0
-          ? `${summary.message} Passwords are shown only once. Download them now and hand them out personally.`
-          : summary.message,
-        summary.type
-      );
+      showToast(summary.message, summary.type);
       await load();
     } catch (e: any) {
       const data = e?.response?.data;
@@ -429,6 +422,8 @@ export default function UserManagement() {
         }
       `}</style>
 
+      {/* --- TOP HEADER NAVIGATION --- */}
+
       {/* --- PAGE TITLE & SUBTITLE --- */}
       <div className="page-title-area">
         <h1>User Management</h1>
@@ -588,15 +583,35 @@ export default function UserManagement() {
           </div>
 
           {bulkResult && (bulkResult.created?.length ?? 0) > 0 && (
-            <div style={{ marginTop: 12, borderTop: '1px solid #FCC896', paddingTop: 12 }}>
-              <button
-                className="action-btn-primary"
-                style={{ padding: '8px 16px', fontSize: 13 }}
-                onClick={handleDownloadCredentials}
-              >
-                <Download size={14} />
-                {credsDownloaded ? 'Download Again' : 'Download Credentials (CSV)'}
-              </button>
+            <div style={{ marginTop: 12, fontSize: 13, borderTop: '1px solid #FCC896', paddingTop: 8 }}>
+              {(bulkResult.created?.length ?? 0) > 0 && (
+                <div>✅ {bulkResult.created_count} account{bulkResult.created_count === 1 ? '' : 's'} created</div>
+              )}
+
+              {(bulkResult.created?.length ?? 0) > 0 && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <button
+                    className="action-btn-primary"
+                    style={{ padding: '8px 16px', fontSize: 13 }}
+                    onClick={handleDownloadCredentials}
+                  >
+                    <Download size={14} />
+                    {credsDownloaded ? 'Download Again' : 'Download Credentials (CSV)'}
+                  </button>
+                  <span style={{ color: '#DF1B39', fontSize: 12, fontWeight: 600 }}>
+                    ⚠️ Passwords are shown only once. Download them now and hand them out personally.
+                  </span>
+                </div>
+              )}
+
             </div>
           )}
         </div>
@@ -871,10 +886,6 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('student');
-  const [showDetails, setShowDetails] = useState(false);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -883,14 +894,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
     setError('');
     setIsSubmitting(true);
     try {
-      const payload: CreateUserPayload = { username, password, role };
-      // Optional details: only sent when the admin opened the section and typed something.
-      if (showDetails) {
-        if (firstName.trim()) payload.first_name = firstName.trim();
-        if (lastName.trim()) payload.last_name = lastName.trim();
-        if (email.trim()) payload.email = email.trim();
-      }
-      await createUser(payload);
+      await createUser({ username, password, role });
       onCreated();
     } catch (e: any) {
       setError(formatApiError(e?.response?.data));
@@ -930,52 +934,6 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
           <option value="teacher">Teacher</option>
           <option value="admin">Admin</option>
         </select>
-
-        {/* Optional details dropdown */}
-        <button
-          type="button"
-          onClick={() => setShowDetails((v) => !v)}
-          aria-expanded={showDetails}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: 'transparent', border: '1px dashed var(--t-d6bb83)', borderRadius: 12,
-            padding: '10px 14px', fontSize: 13, fontWeight: 600, color: 'var(--t-804022)', cursor: 'pointer',
-          }}
-        >
-          <span>Add name &amp; email (optional)</span>
-          <ChevronDown
-            size={16}
-            style={{ transform: showDetails ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}
-          />
-        </button>
-
-        {showDetails && (
-          <>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <input
-                className="modal-input"
-                placeholder="First name"
-                value={firstName}
-                maxLength={30}
-                onChange={(e) => setFirstName(e.target.value)}
-              />
-              <input
-                className="modal-input"
-                placeholder="Last name"
-                value={lastName}
-                maxLength={30}
-                onChange={(e) => setLastName(e.target.value)}
-              />
-            </div>
-            <input
-              className="modal-input"
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </>
-        )}
 
         {error && <p style={{ color: '#DF1B39', fontSize: 13, margin: 0, whiteSpace: 'pre-line' }}>{error}</p>}
 

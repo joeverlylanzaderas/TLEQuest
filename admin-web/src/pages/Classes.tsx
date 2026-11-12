@@ -16,6 +16,7 @@ function errorMessage(e: any, fallback: string): string {
 }
 
 export default function Classes() {
+
   const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -131,6 +132,7 @@ export default function Classes() {
         .cls-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
         @media (max-width: 640px) { .cls-grid { grid-template-columns: 1fr; } }
       `}</style>
+
 
       <div className="page-title-area">
         <h1>Classes</h1>
