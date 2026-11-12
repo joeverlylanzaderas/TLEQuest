@@ -175,6 +175,21 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
+    # Rate limiting. The strict login / forgot-password limits are attached to those views
+    # (apps/accounts/throttles.py); every other endpoint only gets the generous per-user cap.
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.UserRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "user": os.environ.get("THROTTLE_USER", "600/min"),
+        "login_user": os.environ.get("THROTTLE_LOGIN_USER", "5/min"),    # per IP + username
+        "login_ip": os.environ.get("THROTTLE_LOGIN_IP", "120/min"),      # per IP (a whole class may log in at once)
+        "reset_user": os.environ.get("THROTTLE_RESET_USER", "5/min"),
+        "reset_ip": os.environ.get("THROTTLE_RESET_IP", "30/min"),
+    },
+    # How many reverse proxies (nginx) sit in front of gunicorn. DRF uses it to read the REAL
+    # client IP from X-Forwarded-For. Without it a client could fake the header to dodge limits.
+    "NUM_PROXIES": int(os.environ.get("NUM_PROXIES", "0" if DEBUG else "1")),
 }
 
 
@@ -224,3 +239,15 @@ if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
+    SECURE_REFERRER_POLICY = 'same-origin'
+
+    # HTTPS hardening. OFF until you set FORCE_HTTPS=True in .env, because turning it on while
+    # nginx does not send X-Forwarded-Proto would redirect forever.
+    if os.environ.get('FORCE_HTTPS', 'False') == 'True':
+        SECURE_SSL_REDIRECT = True
+        # Start with 1 hour; raise to 31536000 (1 year) once everything works over https.
+        SECURE_HSTS_SECONDS = int(os.environ.get('HSTS_SECONDS', '3600'))
+        SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+        SECURE_HSTS_PRELOAD = False
+        SESSION_COOKIE_SECURE = True
+        CSRF_COOKIE_SECURE = True

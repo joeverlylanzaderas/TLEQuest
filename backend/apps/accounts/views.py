@@ -4,17 +4,23 @@ from django.db import IntegrityError, transaction
 from django.http import HttpResponse
 
 from rest_framework import generics, status
+from rest_framework.exceptions import APIException
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView, PermissionDenied
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from apps.accounts.models import User, UserProfile
 from apps.accounts.permissions import IsAdmin
 from apps.core.mixins import ReadAfterWriteMixin
 
-from .models import SecurityQuestion, UserSecurityAnswer
+from .audit import log_action
+from .models import AuditLog, SecurityQuestion, UserSecurityAnswer
 from .serializers import (
+    AuditLogSerializer,
     AdminUserCreateSerializer,
     AdminUserUpdateSerializer,
     BulkUserRowSerializer,
@@ -24,6 +30,12 @@ from .serializers import (
     SecurityQuestionSerializer,
     SelfProfileUpdateSerializer,
     UserSerializer,
+)
+from .throttles import (
+    LoginIPThrottle,
+    LoginUserThrottle,
+    PasswordResetIPThrottle,
+    PasswordResetUserThrottle,
 )
 from .utils import blacklist_all_tokens_for_user, generate_simple_password
 
@@ -37,6 +49,10 @@ class AdminUserListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIView):
     def get_serializer_class(self):
         return AdminUserCreateSerializer if self.request.method == "POST" else UserSerializer
 
+    def perform_create(self, serializer):
+        user = serializer.save()
+        log_action(self.request, "user.create", user, role=user.role)
+
 
 class AdminUserDetailView(ReadAfterWriteMixin, generics.RetrieveUpdateDestroyAPIView):
     read_serializer_class = UserSerializer
@@ -45,6 +61,18 @@ class AdminUserDetailView(ReadAfterWriteMixin, generics.RetrieveUpdateDestroyAPI
 
     def get_serializer_class(self):
         return AdminUserUpdateSerializer if self.request.method in ("PUT", "PATCH") else UserSerializer
+
+    def perform_update(self, serializer):
+        before_active = serializer.instance.is_active
+        before_role = serializer.instance.role
+        user = serializer.save()
+        changed = [f for f in serializer.validated_data.keys()]
+        if user.is_active != before_active:
+            action = "user.activate" if user.is_active else "user.deactivate"
+            log_action(self.request, action, user)
+        if changed and (set(changed) - {"is_active"}):
+            extra = {"role_from": before_role, "role_to": user.role} if user.role != before_role else {}
+            log_action(self.request, "user.update", user, fields=sorted(set(changed) - {"is_active"}), **extra)
 
     def perform_destroy(self, instance):
         from .utils import is_last_active_admin
@@ -55,6 +83,7 @@ class AdminUserDetailView(ReadAfterWriteMixin, generics.RetrieveUpdateDestroyAPI
         instance.is_active = False  # soft-delete instead of hard delete
         instance.save()
         blacklist_all_tokens_for_user(instance)
+        log_action(self.request, "user.deactivate", instance)
 
 
 class AdminBulkUserUploadView(APIView):
@@ -136,6 +165,8 @@ class AdminBulkUserUploadView(APIView):
                 "name": f'{data["first_name"]} {data["last_name"]}'.strip(),
             })
 
+        log_action(request, "user.bulk_upload", created_count=len(created), error_count=len(errors))
+
         if request.query_params.get("download") == "csv" and created:
             return self._as_csv_download(created)
 
@@ -178,6 +209,44 @@ class LoginView(TokenObtainPairView):
     """Login view that uses the custom token serializer."""
     permission_classes = [AllowAny]
     serializer_class = CustomTokenObtainPairSerializer
+    throttle_classes = [LoginUserThrottle, LoginIPThrottle]  # brute-force protection (see throttles.py)
+
+    def post(self, request, *args, **kwargs):
+        username = str(request.data.get("username", "")).strip()
+        try:
+            response = super().post(request, *args, **kwargs)
+        except APIException as exc:
+            # Only admin accounts are written to the audit log (students would flood it).
+            admin = User.objects.filter(username__iexact=username, role="admin").first() if username else None
+            if admin and exc.status_code in (400, 401, 403):
+                log_action(request, "auth.login_failed", admin, actor_username=admin.username)
+            raise
+        if response.status_code == 200 and response.data.get("role") == "admin":
+            user = User.objects.filter(pk=response.data.get("user_id")).first()
+            if user:
+                log_action(request, "auth.login", user, actor=user)
+        return response
+
+
+class LogoutView(APIView):
+    """Revokes the refresh token so a stolen copy stops working. Always answers 200
+    (a bad/expired token is already useless), and needs no access token, because idle
+    logout can happen after the access token expired."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        raw = request.data.get("refresh")
+        reason = "idle" if request.data.get("reason") == "idle" else None
+        if raw:
+            try:
+                token = RefreshToken(raw)
+                user = User.objects.filter(pk=token.get("user_id")).first()
+                token.blacklist()
+                if user and user.role == "admin":
+                    log_action(request, "auth.logout", user, actor=user, reason=reason)
+            except TokenError:
+                pass
+        return Response({"detail": "Signed out."})
 
 
 class ChangePasswordView(APIView):
@@ -191,6 +260,8 @@ class ChangePasswordView(APIView):
         user.set_password(serializer.validated_data["new_password"])
         user.save()
         blacklist_all_tokens_for_user(user)
+        if user.role == "admin":
+            log_action(request, "auth.password_change", user)
 
         # Only fires the first time, since validate() only requires
         # security_answers when fewer than 3 already exist.
@@ -216,6 +287,7 @@ class AdminResetPasswordView(APIView):
         user.set_password(new_password)
         user.save()
         blacklist_all_tokens_for_user(user)
+        log_action(request, "user.password_reset", user)
 
         resp = Response({
             "username": user.username,
@@ -237,6 +309,7 @@ class ForgotPasswordQuestionsView(APIView):
     """Step 1 of forgot-password: given a username, return THAT user's
     specific 3 questions (not the full preset list)."""
     permission_classes = [AllowAny]
+    throttle_classes = [PasswordResetIPThrottle]
 
     def get(self, request):
         from apps.core.models import SystemSettings
@@ -267,6 +340,7 @@ class ForgotPasswordQuestionsView(APIView):
 class ForgotPasswordResetView(APIView):
     """Step 2: submit the 3 answers + new password."""
     permission_classes = [AllowAny]
+    throttle_classes = [PasswordResetUserThrottle, PasswordResetIPThrottle]  # stops guessing the answers
 
     def post(self, request):
         from apps.core.models import SystemSettings
@@ -321,3 +395,29 @@ class MyProfileView(generics.RetrieveUpdateAPIView):
         # etc.) with `profile` nested inside, not a bare UserProfile.
         read_serializer = UserSerializer(request.user, context=self.get_serializer_context())
         return Response(read_serializer.data)
+
+
+# AUDIT LOG (admin only, read-only)
+class AuditLogPagination(PageNumberPagination):
+    page_size = 25
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
+class AuditLogListView(generics.ListAPIView):
+    """?action=user.create (exact) or ?action=user. (prefix), ?q=text (actor or target), ?page=N"""
+    permission_classes = [IsAdmin]
+    serializer_class = AuditLogSerializer
+    pagination_class = AuditLogPagination
+
+    def get_queryset(self):
+        from django.db.models import Q
+        qs = AuditLog.objects.all()
+        action = self.request.query_params.get("action", "").strip()
+        if action:
+            qs = qs.filter(action__startswith=action) if action.endswith(".") else qs.filter(action=action)
+        q = self.request.query_params.get("q", "").strip()
+        if q:
+            qs = qs.filter(Q(actor_username__icontains=q) | Q(target_label__icontains=q))
+        return qs
+

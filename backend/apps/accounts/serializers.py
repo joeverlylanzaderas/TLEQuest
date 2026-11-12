@@ -3,7 +3,7 @@ from django.contrib.auth.models import update_last_login
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.exceptions import AuthenticationFailed
-from .models import User, UserProfile, SecurityQuestion, UserSecurityAnswer
+from .models import AuditLog, User, UserProfile, SecurityQuestion, UserSecurityAnswer
 
 
 # Security question serializers — defined first, since ChangePasswordSerializer
@@ -243,3 +243,11 @@ class BulkUserRowSerializer(serializers.Serializer):
         if value and UserProfile.objects.filter(email=value).exists():
             raise serializers.ValidationError("Email already in use by another account.")
         return value
+
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AuditLog
+        fields = ["id", "action", "actor_username", "target_id", "target_label", "details", "ip_address", "created_at"]
+        read_only_fields = fields
+

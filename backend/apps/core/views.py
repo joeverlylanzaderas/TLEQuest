@@ -29,6 +29,12 @@ class SystemSettingsView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         return SystemSettings.get_solo()
 
+    def perform_update(self, serializer):
+        from apps.accounts.audit import log_action
+        changed = sorted(serializer.validated_data.keys())
+        serializer.save()
+        log_action(self.request, "settings.update", fields=changed)
+
 class PublicThemeView(generics.RetrieveAPIView):
     """Read-only, no login needed, so the login screen can already use the school theme."""
     permission_classes = [AllowAny]

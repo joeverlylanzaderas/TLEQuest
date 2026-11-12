@@ -7,6 +7,8 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     ForgotPasswordResetView,
     LoginView,
+    LogoutView,
+    AuditLogListView,
     ChangePasswordView,
     MyProfileView,
     AdminUserListCreateView,
@@ -20,6 +22,7 @@ from .views import (
 urlpatterns = [
     # Auth
     path("login/",  LoginView.as_view(), name="login"),
+    path("logout/", LogoutView.as_view(), name="logout"),
     path("login/refresh/", TokenRefreshView.as_view(), name="login_refresh"),
     path("change-password/", ChangePasswordView.as_view(), name="change_password"),
     
@@ -35,5 +38,6 @@ urlpatterns = [
     path("admin/users/", AdminUserListCreateView.as_view(), name="admin_user_list_create"),
     path("admin/users/<int:pk>/", AdminUserDetailView.as_view(), name="admin_user_detail"),
     path("admin/users/bulk-upload/", AdminBulkUserUploadView.as_view(), name="admin_bulk_upload"),
+    path("admin/audit-logs/", AuditLogListView.as_view(), name="admin_audit_logs"),
     path("admin/users/<int:pk>/reset-password/", AdminResetPasswordView.as_view(), name="admin_reset_password"),
 ]
