@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, SIGNED_OUT_REASON_KEY } from '../context/AuthContext';
 
 // Import local image assets relative to src/pages/
 import loginBg from '../assets/login-bg3.webp';
@@ -12,7 +12,16 @@ export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  // Why the person landed here (set when they were signed out automatically).
+  const [error, setError] = useState(() => {
+    try {
+      const reason = sessionStorage.getItem(SIGNED_OUT_REASON_KEY);
+      sessionStorage.removeItem(SIGNED_OUT_REASON_KEY);
+      if (reason === 'idle') return 'You were signed out because there was no activity for 30 minutes.';
+      if (reason === 'expired') return 'Your session has expired. Please sign in again.';
+    } catch { /* storage blocked */ }
+    return '';
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Dynamically load Fredoka web font for a game-style UI
@@ -35,7 +44,16 @@ export default function Login() {
       await signIn({ username, password });
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Login failed. Check your credentials.');
+      const status = err?.response?.status;
+      if (status === 429) {
+        setError('Too many attempts. Please wait a minute and try again.');
+      } else if (!err?.response && !err?.response?.data) {
+        setError(err?.code === 'ECONNABORTED'
+          ? 'The server took too long to answer. Please try again.'
+          : 'Cannot reach the server. Check your connection and try again.');
+      } else {
+        setError(err?.response?.data?.detail || 'Incorrect username or password.');
+      }
     } finally {
       setIsSubmitting(false);
     }
