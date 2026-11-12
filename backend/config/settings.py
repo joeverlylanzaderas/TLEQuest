@@ -193,6 +193,18 @@ REST_FRAMEWORK = {
 }
 
 
+# Cache used by the rate limits. gunicorn runs several worker processes, and the default in-memory
+# cache is separate for each one (so "5 per minute" became "5 per minute per worker"). In production
+# the counters are kept in files, which every worker shares. No extra setup or migration is needed.
+if not DEBUG:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+            "LOCATION": os.environ.get("CACHE_DIR", "/tmp/tlequest-cache"),
+        }
+    }
+
+
 AUTHENTICATION_BACKENDS = [
     "apps.accounts.backends.AllowInactiveAuthBackend",
 ]
@@ -242,7 +254,7 @@ if not DEBUG:
     SECURE_REFERRER_POLICY = 'same-origin'
 
     # HTTPS hardening. OFF until you set FORCE_HTTPS=True in .env, because turning it on while
-    # nginx does not send X-Forwarded-Proto would redirect forever.
+    # nginx does not send X-Forwarded-Proto would redirect forever. See the steps given with this change.
     if os.environ.get('FORCE_HTTPS', 'False') == 'True':
         SECURE_SSL_REDIRECT = True
         # Start with 1 hour; raise to 31536000 (1 year) once everything works over https.
