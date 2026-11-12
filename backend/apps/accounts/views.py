@@ -63,16 +63,17 @@ class AdminUserDetailView(ReadAfterWriteMixin, generics.RetrieveUpdateDestroyAPI
         return AdminUserUpdateSerializer if self.request.method in ("PUT", "PATCH") else UserSerializer
 
     def perform_update(self, serializer):
-        before_active = serializer.instance.is_active
-        before_role = serializer.instance.role
+        # Log only what REALLY changed (the form may send every field, changed or not).
+        before = {f: getattr(serializer.instance, f) for f in ("username", "role", "is_active")}
         user = serializer.save()
-        changed = [f for f in serializer.validated_data.keys()]
-        if user.is_active != before_active:
-            action = "user.activate" if user.is_active else "user.deactivate"
-            log_action(self.request, action, user)
-        if changed and (set(changed) - {"is_active"}):
-            extra = {"role_from": before_role, "role_to": user.role} if user.role != before_role else {}
-            log_action(self.request, "user.update", user, fields=sorted(set(changed) - {"is_active"}), **extra)
+        if user.is_active != before["is_active"]:
+            log_action(self.request, "user.activate" if user.is_active else "user.deactivate", user)
+        changes = {
+            f: {"from": before[f], "to": getattr(user, f)}
+            for f in ("username", "role") if getattr(user, f) != before[f]
+        }
+        if changes:
+            log_action(self.request, "user.update", user, changes=changes)
 
     def perform_destroy(self, instance):
         from .utils import is_last_active_admin

@@ -52,7 +52,11 @@ class SecurityFeaturesTests(TestCase):
         acts = list(AuditLog.objects.filter(target_label="new1").order_by("id").values_list("action", flat=True))
         self.assertEqual(acts, ["user.create", "user.update", "user.deactivate", "user.password_reset", "user.deactivate"])
         first = AuditLog.objects.get(action="user.update")
-        self.assertEqual(first.details["role_to"], "teacher")
+        self.assertEqual(first.details["changes"], {"role": {"from": "student", "to": "teacher"}})
+        # saving without changing anything must not create a log entry
+        n = AuditLog.objects.count()
+        self.api.patch(f"/api/accounts/admin/users/{uid}/", {"role": "teacher", "username": "new1"}, format="json")
+        self.assertEqual(AuditLog.objects.count(), n)
         self.assertEqual(first.actor_username, "boss")
 
     def test_audit_list_admin_only_and_filters(self):
@@ -79,3 +83,17 @@ class SecurityFeaturesTests(TestCase):
         for _ in range(30):
             self.api.get("/api/accounts/forgot-password/questions/?username=stud1")
         self.assertEqual(self.api.get("/api/accounts/forgot-password/questions/?username=stud1").status_code, 429)
+
+    def test_settings_update_logs_only_real_changes(self):
+        self.auth()
+        current = self.api.get("/api/core/system-settings/").data
+        # the admin page sends the whole form, with only the theme different
+        payload = dict(current, theme="school" if current["theme"] != "school" else "default")
+        payload.pop("updated_at", None)
+        r = self.api.patch("/api/core/system-settings/", payload, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        entry = AuditLog.objects.get(action="settings.update")
+        self.assertEqual(list(entry.details["changes"].keys()), ["theme"])
+        # same values again: nothing new is logged
+        self.api.patch("/api/core/system-settings/", payload, format="json")
+        self.assertEqual(AuditLog.objects.filter(action="settings.update").count(), 1)
