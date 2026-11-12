@@ -22,6 +22,8 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
+import { AnimatedLogo } from '../../src/components/AnimatedLogo';
+import { splashBus, useSplashState } from '../../src/splash/splashBus';
 
 // ============================================================================
 // ASSETS
@@ -82,7 +84,11 @@ export default function LoginScreen() {
   const artVisible = showArt && !keyboardVisible;
 
   // ---- Animations ----
-  const logoAnim = useRef(new Animated.Value(0)).current;
+  // the logo itself is handed over from the splash screen, so it needs no entrance of its own
+  const logoAnim = useRef(new Animated.Value(1)).current;
+  const splash = useSplashState();
+  const logoBoxRef = useRef<View>(null);
+  const logoReveal = useRef(new Animated.Value(splash.logoShown ? 1 : 0)).current;
   const fieldsAnim = useRef(new Animated.Value(0)).current;
   const buttonAnim = useRef(new Animated.Value(0)).current;
   const artAnim = useRef(new Animated.Value(0)).current;
@@ -93,20 +99,32 @@ export default function LoginScreen() {
 
   useEffect(() => {
     isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
+
+  // entrance: starts when the splash begins to leave (right away if there was no splash)
+  const introStarted = !splash.active || splash.handoff;
+  useEffect(() => {
+    if (!introStarted) return;
     const intro = Animated.parallel([
-      Animated.stagger(140, [
-        Animated.timing(logoAnim, { toValue: 1, duration: 550, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(fieldsAnim, { toValue: 1, duration: 550, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(buttonAnim, { toValue: 1, duration: 550, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.sequence([
+        Animated.delay(300),
+        Animated.stagger(150, [
+          Animated.timing(fieldsAnim, { toValue: 1, duration: 550, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          Animated.timing(buttonAnim, { toValue: 1, duration: 550, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        ]),
       ]),
       Animated.timing(artAnim, { toValue: 1, duration: 900, delay: 200, useNativeDriver: true }),
     ]);
     intro.start();
-    return () => {
-      isMounted.current = false;
-      intro.stop();
-    };
-  }, [logoAnim, fieldsAnim, buttonAnim, artAnim]);
+    return () => intro.stop();
+  }, [introStarted, fieldsAnim, buttonAnim, artAnim]);
+
+  // our own logo fades in as the splash's copy fades out (they sit on the same spot)
+  useEffect(() => {
+    if (!splash.logoShown) return;
+    Animated.timing(logoReveal, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+  }, [splash.logoShown, logoReveal]);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -259,13 +277,23 @@ export default function LoginScreen() {
             {/* --- LOGO ADJUSTMENTS --- */}
             {/* Logo is lower due to increased marginTop below and higher paddingTop in scrollContent */}
             <Animated.View style={[styles.logoWrap, logoStyle]}>
-              <Image
-                source={LOGO}
+              {/* the splash glides to exactly this box, so tell it where it is */}
+              <View
+                ref={logoBoxRef}
+                collapsable={false}
                 style={{ width: logoWidth, height: logoHeight }}
-                resizeMode="contain"
-                accessible
-                accessibilityLabel="TLEQuest logo"
-              />
+                onLayout={() => {
+                  requestAnimationFrame(() => {
+                    logoBoxRef.current?.measureInWindow((x, y, w, h) => {
+                      if (w > 0 && h > 0) splashBus.setRect({ x, y, width: w, height: h });
+                    });
+                  });
+                }}
+              >
+                <Animated.View style={{ opacity: logoReveal }}>
+                  <AnimatedLogo source={LOGO} width={logoWidth} height={logoHeight} busy={isSubmitting} />
+                </Animated.View>
+              </View>
             </Animated.View>
 
             {/* FIELDS */}

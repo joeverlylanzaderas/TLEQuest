@@ -2,9 +2,14 @@
 import React, { useEffect } from 'react';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
-import { View, ActivityIndicator, Alert } from 'react-native';
+import { View, Alert } from 'react-native';
 import OfflineBanner from '../src/components/OfflineBanner';
+import AnimatedSplash from '../src/components/AnimatedSplash';
 import AlertHost from '../src/components/AlertHost';
+import * as SplashScreen from 'expo-splash-screen';
+
+// keep the (plain cream) native splash up until our animated one is on screen
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function RootLayoutNav() {
   const { user, isLoading, signOut } = useAuth();
@@ -37,19 +42,17 @@ function RootLayoutNav() {
     }
   }, [user, isLoading, segments]);
 
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
-
   return (
-    <View style={{ flex: 1 }}>
-      <Slot />
-      <OfflineBanner />
-      <AlertHost />
+    <View style={{ flex: 1, backgroundColor: isLoading ? '#faf6e8' : undefined }}>
+      {!isLoading && (
+        <View style={{ flex: 1 }}>
+          <Slot />
+          <OfflineBanner />
+          <AlertHost />
+        </View>
+      )}
+      {/* animated splash, drawn over everything until it has handed over to the login screen */}
+      <AnimatedSplash appReady={!isLoading} toLogo={!user} />
     </View>
   );
 }
