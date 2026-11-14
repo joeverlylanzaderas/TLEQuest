@@ -12,9 +12,8 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from apps.accounts.permissions import IsAdmin
 from apps.core.mixins import ReadAfterWriteMixin
-from apps.assignments.models import QuestProgress
-from apps.rewards.models import StudentReward
 from apps.assignments.services import sync_progress_for_new_group_member
+from .services import purge_student_group_links
 from apps.notifications.models import Notification
 from apps.notifications.utils import notify
 from .models import Class, ClassEnrollment, Group, GroupMember
@@ -256,23 +255,7 @@ class GroupMemberDetailView(generics.DestroyAPIView):
     @transaction.atomic
     def perform_destroy(self, instance):
         _assert_owns_class(self.request.user, instance.group.class_obj)
-        group, student_id = instance.group, instance.student_id
-        # Removing a student from a group cuts every link between them and THAT group
-        # (their other groups and their class enrollment are untouched):
-        assignment_ids = list(group.quest_assignments.values_list("id", flat=True))
-        submission_ids = list(group.submissions.values_list("id", flat=True))
-        #  - their quest progress (steps and checklists go with it), so the quest disappears for them
-        QuestProgress.objects.filter(group=group, student_id=student_id).delete()
-        #  - the points and badges they earned from this group's quests
-        StudentReward.objects.filter(student_id=student_id, quest_assignment_id__in=assignment_ids).delete()
-        #  - notifications about this group's quests and submissions
-        Notification.objects.filter(recipient_id=student_id, related_type="quest_assignment", related_id__in=assignment_ids).delete()
-        Notification.objects.filter(recipient_id=student_id, related_type="submission", related_id__in=submission_ids).delete()
-        #  - leader links: the group's leader, and "leader at the time" on its assignments
-        if group.leader_id == student_id:
-            group.leader = None
-            group.save(update_fields=["leader"])
-        group.quest_assignments.filter(leader_at_assignment_id=student_id).update(leader_at_assignment=None)
+        purge_student_group_links(instance.group, instance.student_id)
         instance.delete()
 
 

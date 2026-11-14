@@ -1,11 +1,11 @@
 # backend/apps/assignments/views.py
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import NotFound, PermissionDenied
 
 from apps.core.permissions import IsTeacherOrAdmin
 from apps.classrooms.models import Group, GroupMember
@@ -19,6 +19,12 @@ from .serializers import (
     QuestAssignmentSerializer, AssignQuestSerializer, QuestAssignmentDueDateSerializer,
     QuestProgressSerializer, QuestProgressDetailSerializer, ChecklistItemToggleSerializer,
 )
+
+
+def _still_in_group():
+    """True only while the student is still a member of the progress row's group
+    (a removed student's old progress must never show up or be usable)."""
+    return Exists(GroupMember.objects.filter(group_id=OuterRef("group_id"), student_id=OuterRef("student_id")))
 
 
 class AssignQuestView(APIView):
@@ -132,7 +138,7 @@ class QuestProgressListView(generics.ListAPIView):
         user = self.request.user
         qs = QuestProgress.objects.select_related(
             "student", "student__profile", "quest_assignment__quest", "group", "current_step"
-        ).prefetch_related("step_completions__checklist_completions")
+        ).prefetch_related("step_completions__checklist_completions").filter(_still_in_group())
 
         if user.role == "student":
             # A quest with a future start date stays hidden until that day
@@ -163,6 +169,8 @@ class QuestProgressDetailView(generics.RetrieveAPIView):
 
     def get_object(self):
         obj = super().get_object()
+        if not GroupMember.objects.filter(group_id=obj.group_id, student_id=obj.student_id).exists():
+            raise NotFound("This quest is no longer assigned to this student.")
         user = self.request.user
         has_access = (
             user.role == "admin"
@@ -181,6 +189,8 @@ class ChecklistItemToggleView(APIView):
         progress = generics.get_object_or_404(QuestProgress, pk=progress_id)
         if request.user.role != "student" or progress.student_id != request.user.id:
             raise PermissionDenied("You can only update your own checklist.")
+        if not GroupMember.objects.filter(group_id=progress.group_id, student_id=progress.student_id).exists():
+            raise PermissionDenied("You are no longer in the group this quest was assigned to.")
         if not progress.quest_assignment.has_started:
             raise PermissionDenied("This quest has not started yet.")
 

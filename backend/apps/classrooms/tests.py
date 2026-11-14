@@ -155,3 +155,40 @@ class GroupTransferAndNamesTests(APITestCase):
         self.assertTrue(GroupMember.objects.filter(group=self.g2, student=self.s2).exists())
         self.assertFalse(GroupMember.objects.filter(group=self.g1, student=self.s2).exists())
         self.assertTrue(QuestProgress.objects.filter(student=self.s1).exists())
+
+    def _old_style_removal(self):
+        """A member removed BEFORE the cleanup existed: the membership is gone, the progress is not."""
+        from apps.classrooms.models import GroupMember
+        GroupMember.objects.filter(pk=self.m2.id).delete()
+
+    def test_old_orphan_progress_is_hidden_and_blocked(self):
+        from apps.assignments.models import QuestProgress
+        orphan = QuestProgress.objects.get(student=self.s2)
+        self._old_style_removal()
+
+        # the student no longer sees it, can't open it, can't tick checklists
+        self.client.force_authenticate(self.s2)
+        self.assertEqual(self.client.get("/api/assignments/progress/").json(), [])
+        self.assertEqual(self.client.get(f"/api/assignments/progress/{orphan.id}/").status_code, 404)
+        step = orphan.quest_assignment.quest.steps.first()
+        r = self.client.patch(
+            f"/api/assignments/progress/{orphan.id}/steps/{step.id}/checklist/1/", {"is_checked": True}, format="json"
+        )
+        self.assertEqual(r.status_code, 403)
+
+        # the teacher no longer sees the removed student's progress
+        self.client.force_authenticate(self.teacher)
+        prog = self.client.get("/api/assignments/progress/").json()
+        prog = prog["results"] if isinstance(prog, dict) else prog
+        self.assertEqual({p["student_username"] for p in prog}, {"s1"})
+
+    def test_prune_orphan_progress_command(self):
+        from io import StringIO
+        from django.core.management import call_command
+        from apps.assignments.models import QuestProgress
+        self._old_style_removal()
+        call_command("prune_orphan_progress", "--dry-run", stdout=StringIO())
+        self.assertTrue(QuestProgress.objects.filter(student=self.s2).exists())   # dry run changes nothing
+        call_command("prune_orphan_progress", stdout=StringIO())
+        self.assertFalse(QuestProgress.objects.filter(student=self.s2).exists())
+        self.assertTrue(QuestProgress.objects.filter(student=self.s1).exists())
