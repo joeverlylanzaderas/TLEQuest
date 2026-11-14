@@ -3,6 +3,7 @@ from enum import member
 
 from enum import member
 
+from django.db import transaction
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -11,6 +12,8 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from apps.accounts.permissions import IsAdmin
 from apps.core.mixins import ReadAfterWriteMixin
+from apps.assignments.models import QuestProgress
+from apps.rewards.models import StudentReward
 from apps.assignments.services import sync_progress_for_new_group_member
 from apps.notifications.models import Notification
 from apps.notifications.utils import notify
@@ -250,6 +253,47 @@ class GroupMemberDetailView(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated, IsTeacherOrAdmin]
     queryset = GroupMember.objects.select_related("group__class_obj")
 
+    @transaction.atomic
     def perform_destroy(self, instance):
         _assert_owns_class(self.request.user, instance.group.class_obj)
+        group, student_id = instance.group, instance.student_id
+        # Removing a student from a group cuts every link between them and THAT group
+        # (their other groups and their class enrollment are untouched):
+        assignment_ids = list(group.quest_assignments.values_list("id", flat=True))
+        submission_ids = list(group.submissions.values_list("id", flat=True))
+        #  - their quest progress (steps and checklists go with it), so the quest disappears for them
+        QuestProgress.objects.filter(group=group, student_id=student_id).delete()
+        #  - the points and badges they earned from this group's quests
+        StudentReward.objects.filter(student_id=student_id, quest_assignment_id__in=assignment_ids).delete()
+        #  - notifications about this group's quests and submissions
+        Notification.objects.filter(recipient_id=student_id, related_type="quest_assignment", related_id__in=assignment_ids).delete()
+        Notification.objects.filter(recipient_id=student_id, related_type="submission", related_id__in=submission_ids).delete()
+        #  - leader links: the group's leader, and "leader at the time" on its assignments
+        if group.leader_id == student_id:
+            group.leader = None
+            group.save(update_fields=["leader"])
+        group.quest_assignments.filter(leader_at_assignment_id=student_id).update(leader_at_assignment=None)
         instance.delete()
+
+
+class GroupReorderView(APIView):
+    """POST {"order": [group_id, ...]} — renumbers the class's groups 1..N in that order,
+    so the label ("Group N") on the cards and in the roster follows the teacher's arrangement."""
+    permission_classes = [IsAuthenticated, IsTeacherOrAdmin]
+
+    @transaction.atomic
+    def post(self, request, class_id):
+        klass = generics.get_object_or_404(Class, pk=class_id)
+        _assert_owns_class(request.user, klass)
+        order = request.data.get("order")
+        groups = {g.id: g for g in Group.objects.filter(class_obj=klass)}
+        if not isinstance(order, list) or sorted(order) != sorted(groups.keys()):
+            raise ValidationError({"order": "Send every group id of this class exactly once."})
+        # two passes so the unique (class, group_number) constraint is never hit mid-way
+        offset = max([g.group_number for g in groups.values()] + [len(order)]) + 1
+        for i, gid in enumerate(order, 1):
+            Group.objects.filter(pk=gid).update(group_number=offset + i)
+        for i, gid in enumerate(order, 1):
+            Group.objects.filter(pk=gid).update(group_number=i)
+        fresh = Group.objects.filter(class_obj=klass).select_related("leader").prefetch_related("members__student__profile")
+        return Response(GroupSerializer(fresh, many=True, context={"request": request}).data)

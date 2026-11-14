@@ -115,6 +115,7 @@ class StepCompletionSerializer(serializers.ModelSerializer):
 class QuestProgressSerializer(serializers.ModelSerializer):
     step_completions = StepCompletionSerializer(many=True, read_only=True)
     student_username = serializers.CharField(source="student.username", read_only=True)
+    student_name = serializers.SerializerMethodField()
     quest_title = serializers.CharField(source="quest_assignment.quest.title", read_only=True)
     quest_mode = serializers.CharField(source="quest_assignment.quest_mode", read_only=True)
     quest_cover_image_url = serializers.CharField(source="quest_assignment.quest.cover_image_url", read_only=True)
@@ -130,7 +131,7 @@ class QuestProgressSerializer(serializers.ModelSerializer):
         model = QuestProgress
         fields = [
             "id", "quest_assignment", "quest_title", "quest_mode", "quest_cover_image_url", "table_setting_type",
-            "group", "student", "student_username", "current_step", "total_steps",
+            "group", "student", "student_username", "student_name", "current_step", "total_steps",
             "percent_complete", "points_earned", "badge_earned", "started_at",
             "completed_at", "step_completions",
             "review_status", "teacher_feedback", "teacher_rating", "reviewed_at",
@@ -139,6 +140,11 @@ class QuestProgressSerializer(serializers.ModelSerializer):
             "id", "quest_assignment", "group", "student", "student_username",
             "total_steps", "percent_complete", "step_completions",
         ]
+
+    def get_student_name(self, obj):
+        prof = getattr(obj.student, "profile", None)
+        full = f"{prof.first_name} {prof.last_name}".strip() if prof else ""
+        return full or obj.student.username
 
     def _reviewed_submission(self, obj):
         from apps.submissions.models import Submission

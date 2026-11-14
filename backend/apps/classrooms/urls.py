@@ -4,7 +4,7 @@ from .views import (
     ClassListCreateView, ClassDetailView, JoinClassView,
     ClassEnrollmentListView, RemoveEnrollmentView,
     GroupListCreateView, GroupDetailView,
-    GroupMemberListCreateView, GroupMemberDetailView,
+    GroupMemberListCreateView, GroupMemberDetailView, GroupReorderView,
 )
 
 urlpatterns = [
@@ -17,6 +17,7 @@ urlpatterns = [
     path("enrollments/<int:pk>/", RemoveEnrollmentView.as_view(), name="remove_enrollment"),
     path("classes/<int:class_id>/groups/", GroupListCreateView.as_view(), name="group_list_create"),
     
+    path("classes/<int:class_id>/groups/reorder/", GroupReorderView.as_view(), name="group_reorder"),
     path("groups/<int:pk>/", GroupDetailView.as_view(), name="group_detail"),
     path("groups/<int:group_id>/members/", GroupMemberListCreateView.as_view(), name="group_member_list_create"),
     path("groups/members/<int:pk>/", GroupMemberDetailView.as_view(), name="group_member_detail"),
