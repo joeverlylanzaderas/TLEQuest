@@ -22,6 +22,7 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
 } from '../api/notifications';
+import { getMyProgress } from '../api/assignments';
 import { Notification } from '../types/notifications';
 
 const PAGE = T('#F5EDD8');
@@ -94,8 +95,35 @@ export default function NotificationsScreen() {
     }, [load])
   );
 
+  // Open the screen the notification is about. Teacher and student share this list,
+  // so the notification type tells us who it is for.
+  async function openTarget(item: Notification) {
+    const id = item.related_id;
+    try {
+      switch (item.notification_type) {
+        case 'new_submission': // teacher: review that submission
+          if (id) router.push(`/(teacher)/submission/${id}` as any);
+          break;
+        case 'student_enrolled': // teacher: the class that got a new student
+          if (id) router.push(`/(teacher)/class/${id}` as any);
+          break;
+        case 'submission_feedback': // student: their submissions list shows the feedback
+          router.push('/(student)/(tabs)/submissions' as any);
+          break;
+        case 'quest_assigned': { // student: related_id is the assignment; screen needs the progress id
+          const progress = (await getMyProgress()).find((p) => p.quest_assignment === id);
+          router.push((progress ? `/(student)/quest/${progress.id}/overview` : '/(student)/(tabs)/quests') as any);
+          break;
+        }
+      }
+    } catch {
+      // If the lookup fails, the notification is still marked read; stay on this screen.
+    }
+  }
+
   async function handleTapNotification(item: Notification) {
-    if (item.is_read) return;
+    if (item.is_read) { openTarget(item); return; }
+    openTarget(item);
     // Optimistic update — flip it locally first so tapping feels instant
     setNotifications((prev) =>
       prev.map((n) => (n.id === item.id ? { ...n, is_read: true } : n))

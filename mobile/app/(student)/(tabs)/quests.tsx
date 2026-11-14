@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { refreshClasses, inSelectedClass, useClassScope } from '../../../src/utils/selectedClass';
 import { useAuth } from '../../../src/context/AuthContext';
 import AppHeader from '../../../src/components/AppHeader';
+import QuestCover from '../../../src/components/QuestCover';
 import { FadeIn, PressableScale } from '../../../src/components/Motion';
 import { getMyProgress } from '../../../src/api/assignments';
 import { QuestProgress } from '../../../src/types/assignments';
@@ -132,9 +133,7 @@ export default function StudentQuests() {
                     // item.id is the QuestProgress id, which the Overview screen expects
                     onPress={() => router.push(`/(student)/quest/${item.id}/overview` as any)}
                   >
-                    <View style={styles.imagePlaceholder}>
-                      <Ionicons name="restaurant" size={28} color="#fff" />
-                    </View>
+                    <QuestCover url={item.quest_cover_image_url} style={styles.imagePlaceholder} iconSize={28} />
                     <Text style={styles.cardTitle} numberOfLines={2}>{item.quest_title}</Text>
                     <View style={styles.cardDivider} />
                     <View
