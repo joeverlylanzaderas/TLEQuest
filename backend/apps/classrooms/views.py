@@ -12,6 +12,8 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from apps.accounts.permissions import IsAdmin
 from apps.core.mixins import ReadAfterWriteMixin
 from apps.assignments.services import sync_progress_for_new_group_member
+from apps.notifications.models import Notification
+from apps.notifications.utils import notify
 from .models import Class, ClassEnrollment, Group, GroupMember
 from apps.core.permissions import IsTeacherOrAdmin, IsStudent
 from .serializers import (
@@ -112,6 +114,20 @@ class JoinClassView(APIView):
         enrollment = ClassEnrollment.objects.create(
             class_obj=serializer.validated_data["class_obj"],
             student=request.user,
+        )
+        # Let the class's teacher know a student just joined
+        try:
+            profile = request.user.profile
+            student_name = f"{profile.first_name} {profile.last_name}".strip() or request.user.username
+        except Exception:  # no profile row yet
+            student_name = request.user.username
+        notify(
+            recipient=enrollment.class_obj.teacher,
+            notification_type=Notification.NotificationType.STUDENT_ENROLLED,
+            title="New student enrolled",
+            message=f"{student_name} joined {enrollment.class_obj.class_name}.",
+            related_type="class",
+            related_id=enrollment.class_obj_id,
         )
         return Response(ClassEnrollmentSerializer(enrollment).data, status=status.HTTP_201_CREATED)
 
