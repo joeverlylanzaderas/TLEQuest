@@ -234,9 +234,9 @@ export default function StudentHome() {
   // Swipeable "current quest" cards: every unfinished quest, first one is the current quest.
   // If everything is finished, show the most recent one so it is still reachable from Home.
   const classProgress = progress.filter((p) => inSelectedClass(scope, p.group));
-  const unfinished = classProgress.filter((p) => !p.completed_at);
-  const carouselQuests: QuestProgress[] =
-    unfinished.length > 0 ? unfinished : classProgress.length > 0 ? [classProgress[classProgress.length - 1]] : [];
+  const carouselQuests: QuestProgress[] = classProgress.filter(
+    (p) => !p.completed_at || p.review_status === 'none'
+  );
   const CARD_GAP = 12;
   const cardWidth = carouselQuests.length > 1 ? screenWidth - 56 : screenWidth - 40;
   const snapInterval = cardWidth + CARD_GAP;
@@ -387,7 +387,9 @@ export default function StudentHome() {
         </View>
         </FadeIn>
       ) : (
-        <Text style={styles.emptyText}>No quests assigned yet.</Text>
+        <Text style={styles.emptyText}>
+          {classProgress.length > 0 ? 'All caught up! No quests waiting for you right now.' : 'No quests assigned yet.'}
+        </Text>
       )}
 
       {/* Quick stats */}

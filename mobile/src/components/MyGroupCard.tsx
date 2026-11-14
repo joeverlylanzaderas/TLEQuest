@@ -3,7 +3,8 @@
 // Pass the groups of the class being viewed (Home already loads them).
 import { thumbUrl } from '../utils/media';
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import CachedImage from './CachedImage';
 import { T } from '../theme/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -74,7 +75,7 @@ export default function MyGroupCard({ groups }: Props) {
           return (
             <View key={m.id} style={styles.member}>
               {m.student.profile_picture ? (
-                <Image source={{ uri: thumbUrl(m.student.profile_picture, 48) ?? m.student.profile_picture }} style={[styles.avatar, leader && styles.avatarLeader]} />
+                <CachedImage uri={thumbUrl(m.student.profile_picture, 48) ?? m.student.profile_picture} style={[styles.avatar, leader && styles.avatarLeader]} />
               ) : (
                 <View style={[styles.avatar, styles.avatarPlaceholder, leader && styles.avatarLeader]}>
                   <Text style={styles.avatarInitial}>{name.charAt(0).toUpperCase()}</Text>

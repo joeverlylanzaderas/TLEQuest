@@ -62,7 +62,9 @@ export default function StudentProgress() {
       // If everything is finished, fall back to the most recent one so a leader
       // who still needs to submit the output can do it from here.
       const current =
-        list.find((x) => !x.completed_at && x.percent_complete < 100) ?? list[list.length - 1] ?? null;
+        list.find((x) => !x.completed_at && x.percent_complete < 100) ??
+        list.find((x) => x.completed_at && x.review_status === 'none') ??
+        null;
       if (!current) {
         setProgress(null);
         return;

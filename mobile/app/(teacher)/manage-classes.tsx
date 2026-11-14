@@ -11,7 +11,6 @@ import {
   RefreshControl,
   Modal,
   Alert,
-  Image,
 } from 'react-native';
 import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../src/theme/theme';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -23,6 +22,7 @@ import { thumbUrl } from '../../src/utils/media';
 import { getMyClasses, createClass, updateClass, getClassEnrollments } from '../../src/api/classrooms';
 import { ClassSummary, ClassEnrollment, ClassCreatePayload, ClassUpdatePayload } from '../../src/types/classrooms';
 import KeyboardSafe from '../../src/components/KeyboardSafe';
+import CachedImage from '../../src/components/CachedImage';
 import { useToast } from '../../src/components/Toast';
 import { FadeIn, PressableScale } from '../../src/components/Motion';
 import { TOP_GAP } from '../../src/theme/layout';
@@ -63,6 +63,7 @@ export default function ManageClasses() {
   // ---- Selected class's roster ----
   const [selectedClass, setSelectedClass] = useState<ClassSummary | null>(null);
   const [roster, setRoster] = useState<ClassEnrollment[]>([]);
+  const [rosterSort, setRosterSort] = useState<'az' | 'za'>('az');
   const [isLoadingRoster, setIsLoadingRoster] = useState(false);
 
   // ---- Copy feedback ----
@@ -280,14 +281,32 @@ export default function ManageClasses() {
                 No students enrolled yet. Share the invite code above.
               </Text>
             ) : (
+              <>
+              <View style={styles.sortRow}>
+                <Text style={styles.sortLabel}>Sort</Text>
+                {([['az', 'A–Z'], ['za', 'Z–A']] as const).map(([key, label]) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.sortChip, rosterSort === key && styles.sortChipActive]}
+                    onPress={() => setRosterSort(key)}
+                  >
+                    <Text style={[styles.sortChipText, rosterSort === key && styles.sortChipTextActive]}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
               <View style={styles.rosterCard}>
-                {roster.map((enrollment) => {
+                {[...roster]
+                  .sort((a, b) => {
+                    const cmp = studentDisplayName(a).localeCompare(studentDisplayName(b));
+                    return rosterSort === 'za' ? -cmp : cmp;
+                  })
+                  .map((enrollment) => {
                   const name = studentDisplayName(enrollment);
                   const avatarUrl = thumbUrl(enrollment.student.profile_picture, 32);
                   return (
                     <View key={enrollment.id} style={styles.rosterRow}>
                       {avatarUrl ? (
-                        <Image source={{ uri: avatarUrl }} style={styles.rosterAvatarImage} />
+                        <CachedImage uri={avatarUrl} size={160} square style={styles.rosterAvatarImage} />
                       ) : (
                         <View style={styles.rosterAvatar}>
                           <Text style={styles.rosterAvatarText}>{name.charAt(0).toUpperCase()}</Text>
@@ -304,6 +323,7 @@ export default function ManageClasses() {
                   );
                 })}
               </View>
+              </>
             )}
           </>
         )}
@@ -426,6 +446,12 @@ const styles = StyleSheet.create({
   },
   rosterAvatarImage: { width: 30, height: 30, borderRadius: 15 },
   rosterAvatarText: { fontSize: 12, fontWeight: '800', color: IS_SCHOOL ? '#FFFFFF' : BROWN },
+  sortRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  sortLabel: { fontSize: 12, fontWeight: '700', color: T('#8A6A2A') },
+  sortChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: 'rgba(58,43,26,0.08)' },
+  sortChipActive: { backgroundColor: IS_SCHOOL ? BLUE : T('#5C3A2E') },
+  sortChipText: { fontSize: 12, fontWeight: '700', color: BROWN },
+  sortChipTextActive: { color: '#fff' },
   rosterName: { fontSize: 14, fontWeight: '700', color: BROWN },
   rosterSub: { fontSize: 11, color: T('#8A6A2A'), marginTop: 1 },
 

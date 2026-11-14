@@ -55,6 +55,7 @@ export default function SubmitOutputCard({ progress }: Props) {
     queued?: boolean; // saved on the phone, will be sent when signal returns
   } | null>(null);
   const { user } = useAuth();
+  const [resubmitting, setResubmitting] = useState(false);
 
   async function openCamera() {
     setError('');
@@ -124,12 +125,59 @@ export default function SubmitOutputCard({ progress }: Props) {
 
       setSubmitted({ result, aiUnavailable, queued: status.state === 'pending' });
       setPhotoUri(null);
+      setResubmitting(false);
     } catch (e: any) {
       setError(errorText(e));
     } finally {
       setIsSubmitting(false);
       setStage('');
     }
+  }
+
+    // ---- Already reviewed by the teacher: final, read-only ----
+  if (progress.review_status === 'reviewed') {
+    const stars = progress.teacher_rating ?? 0;
+    return (
+      <View style={styles.card}>
+        <Ionicons name="checkmark-circle" size={44} color={GREEN} />
+        <Text style={styles.title}>Quest{'\n'}Completed!</Text>
+        <Text style={styles.body}>
+          Your teacher reviewed your group's output. Your points and badge have been added.
+        </Text>
+        {stars > 0 ? (
+          <View style={{ flexDirection: 'row', gap: 2, marginBottom: 8 }}>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <Ionicons key={n} name={n <= stars ? 'star' : 'star-outline'} size={20} color={ORANGE} />
+            ))}
+          </View>
+        ) : null}
+        {progress.teacher_feedback ? (
+          <View style={styles.resultBox}>
+            <Text style={styles.resultNote}>{progress.teacher_feedback}</Text>
+          </View>
+        ) : null}
+      </View>
+    );
+  }
+
+  // ---- Already submitted, waiting for the teacher: no camera, unless the leader replaces the photo ----
+  if (progress.review_status === 'waiting' && !submitted && !resubmitting) {
+    return (
+      <View style={styles.card}>
+        <Ionicons name="time" size={44} color={ORANGE} />
+        <Text style={styles.title}>Submitted!</Text>
+        <Text style={styles.body}>
+          {progress.is_group_leader
+            ? 'Your output was sent to your teacher, who will review it soon. If the photo was wrong, you can replace it until your teacher reviews it.'
+            : "Your group leader submitted your group's final output. Your teacher will review it soon."}
+        </Text>
+        {progress.is_group_leader ? (
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => setResubmitting(true)}>
+            <Text style={styles.secondaryButtonText}>Replace photo</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    );
   }
 
   // ---- Not the leader: no buttons, just the explanation ----
@@ -227,6 +275,12 @@ export default function SubmitOutputCard({ progress }: Props) {
           </View>
         </>
       )}
+
+      {resubmitting && !submitted && !isSubmitting ? (
+        <TouchableOpacity style={styles.secondaryButton} onPress={() => { setResubmitting(false); setPhotoUri(null); setError(''); }}>
+          <Text style={styles.secondaryButtonText}>Keep my current submission</Text>
+        </TouchableOpacity>
+      ) : null}
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 

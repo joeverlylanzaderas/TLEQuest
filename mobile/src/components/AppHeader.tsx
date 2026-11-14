@@ -4,7 +4,8 @@
 // only has to render <AppHeader role="student" /> or <AppHeader role="teacher" />.
 import { HEADER_BG, HEADER_TEXT, activeTheme } from '../theme/theme';
 import React, { useCallback, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Image } from 'expo-image'; // keeps the avatar on the phone's disk, so it loads instantly next time
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -91,7 +92,13 @@ export default function AppHeader({ role, subtitle, children }: Props) {
           accessibilityLabel="Open profile and settings"
         >
           {profile?.profile.profile_picture ? (
-            <Image source={{ uri: thumbUrl(profile.profile.profile_picture, 46) ?? profile.profile.profile_picture }} style={styles.avatarImg} />
+            <Image
+              source={{ uri: thumbUrl(profile.profile.profile_picture, 46) ?? profile.profile.profile_picture }}
+              style={styles.avatarImg}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              recyclingKey={profile.profile.profile_picture}
+            />
           ) : (
             <View style={styles.avatarCircle}>
               {role === 'student' && displayName ? (

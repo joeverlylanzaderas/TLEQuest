@@ -2,7 +2,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl,
-  StyleSheet, Image, TextInput, Modal,
+  StyleSheet, TextInput, Modal,
 } from 'react-native';
 import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
 import { useRouter } from 'expo-router';
@@ -15,6 +15,7 @@ import { Submission } from '../../../src/types/submissions';
 import AppHeader from '../../../src/components/AppHeader';
 import { FadeIn, PressableScale } from '../../../src/components/Motion';
 import { NAV_CLEARANCE } from '../../../src/components/FloatingTabBar';
+import CachedImage from '../../../src/components/CachedImage';
 
 const GOLD = T('#F5B921');
 const CREAM = T('#F5EDD8');
@@ -262,7 +263,7 @@ export default function TeacherSubmissions() {
                   scaleTo={0.97}
                   onPress={() => router.push(`/(teacher)/submission/${s.id}` as any)}
                 >
-                  <Image source={{ uri: s.image_url }} style={styles.thumb} />
+                  <CachedImage uri={s.image_url} size={240} style={styles.thumb} />
                   <View style={{ flex: 1, gap: 3 }}>
                     <Text style={styles.questTitle} numberOfLines={1}>{s.quest_title}</Text>
                     <View style={styles.whoRow}>

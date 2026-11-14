@@ -2,7 +2,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, RefreshControl, Modal, Alert, Image, Switch,
+  ActivityIndicator, RefreshControl, Modal, Alert, Switch,
 } from 'react-native';
 import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -20,6 +20,7 @@ import {
 } from '../../../src/types/classrooms';
 import { Quest } from '../../../src/types/quests';
 import KeyboardSafe from '../../../src/components/KeyboardSafe';
+import CachedImage from '../../../src/components/CachedImage';
 import { useToast } from '../../../src/components/Toast';
 import { FadeIn, PressableScale } from '../../../src/components/Motion';
 import { TOP_GAP } from '../../../src/theme/layout';
@@ -59,6 +60,11 @@ export default function ClassOverview() {
   const [newGroupName, setNewGroupName] = useState('');
   const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
   const [addMemberTargetGroup, setAddMemberTargetGroup] = useState<Group | null>(null);
+  // ---- Rename group + roster sort ----
+  const [editGroupTarget, setEditGroupTarget] = useState<Group | null>(null);
+  const [editGroupName, setEditGroupName] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [rosterSort, setRosterSort] = useState<'az' | 'za' | 'group'>('az');
 
   async function loadAll() {
     setError('');
@@ -100,6 +106,46 @@ export default function ClassOverview() {
   function memberDisplayName(member: Group['members'][number]): string {
     const full = [member.student.first_name, member.student.last_name].filter(Boolean).join(' ');
     return full || member.student.username;
+  }
+
+  // Groups a student already belongs to (a student can be in more than one group)
+  function groupLabelsFor(studentId: number): string[] {
+    return groups
+      .filter((grp) => grp.members.some((m) => m.student.id === studentId))
+      .map((grp) => grp.group_name || `Group ${grp.group_number}`);
+  }
+
+  function sortedRoster(): ClassEnrollment[] {
+    return [...roster].sort((a, b) => {
+      if (rosterSort === 'group') {
+        const ga = groupNumberFor(a.student.id) ?? 9999;
+        const gb = groupNumberFor(b.student.id) ?? 9999;
+        if (ga !== gb) return ga - gb;
+      }
+      const cmp = studentDisplayName(a).localeCompare(studentDisplayName(b));
+      return rosterSort === 'za' ? -cmp : cmp;
+    });
+  }
+
+  function openRenameGroup(group: Group) {
+    setEditGroupTarget(group);
+    setEditGroupName(group.group_name || '');
+  }
+
+  async function handleRenameGroup() {
+    if (!editGroupTarget) return;
+    setIsRenaming(true);
+    try {
+      const updated = await updateGroup(editGroupTarget.id, { group_name: editGroupName.trim() });
+      const newName = updated?.group_name ?? editGroupName.trim();
+      setGroups((prev) => prev.map((g) => (g.id === editGroupTarget.id ? { ...g, group_name: newName } : g)));
+      setEditGroupTarget(null);
+      toast.success('Group name updated');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || e?.response?.data?.group_name?.[0] || 'Could not rename the group.');
+    } finally {
+      setIsRenaming(false);
+    }
   }
 
   function groupNumberFor(studentId: number): number | null {
@@ -248,15 +294,27 @@ export default function ClassOverview() {
             <Text style={styles.emptyText}>No students enrolled yet.</Text>
           ) : (
             <FadeIn>
+            <View style={styles.sortRow}>
+              <Text style={styles.sortLabel}>Sort</Text>
+              {([['az', 'A–Z'], ['za', 'Z–A'], ['group', 'Group']] as const).map(([key, label]) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[styles.sortChip, rosterSort === key && styles.sortChipActive]}
+                  onPress={() => setRosterSort(key)}
+                >
+                  <Text style={[styles.sortChipText, rosterSort === key && styles.sortChipTextActive]}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
             <View style={styles.card}>
-              {roster.map((enrollment) => {
+              {sortedRoster().map((enrollment) => {
                 const name = studentDisplayName(enrollment);
                 const avatarUrl = thumbUrl(enrollment.student.profile_picture, 40);
                 const groupNum = groupNumberFor(enrollment.student.id);
                 return (
                   <View key={enrollment.id} style={styles.rosterRow}>
                     {avatarUrl ? (
-                      <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                      <CachedImage uri={avatarUrl} size={160} square style={styles.avatarImage} />
                     ) : (
                       <View style={[styles.avatarFallback, { backgroundColor: AVATAR_TINTS[enrollment.student.id % AVATAR_TINTS.length].bg }]}>
                         <Text style={[styles.avatarFallbackText, { color: AVATAR_TINTS[enrollment.student.id % AVATAR_TINTS.length].fg }]}>
@@ -299,9 +357,14 @@ export default function ClassOverview() {
                       </Text>
                       <Text style={styles.groupCount}>{group.members.length} {group.members.length === 1 ? 'member' : 'members'}</Text>
                     </View>
-                    <TouchableOpacity onPress={() => handleDeleteGroup(group)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                      <Ionicons name="trash-outline" size={18} color={RED} />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                      <TouchableOpacity onPress={() => openRenameGroup(group)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Ionicons name="create-outline" size={18} color={BROWN} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleDeleteGroup(group)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Ionicons name="trash-outline" size={18} color={RED} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
 
                   {group.members.length === 0 ? (
@@ -416,26 +479,66 @@ export default function ClassOverview() {
         </KeyboardSafe>
       </Modal>
 
+      {/* ---------------- Rename Group modal ---------------- */}
+      <Modal visible={editGroupTarget !== null} transparent animationType="fade" onRequestClose={() => setEditGroupTarget(null)}>
+        <KeyboardSafe style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Edit Group Name</Text>
+            <Text style={styles.modalLabel}>GROUP NAME</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={editGroupName}
+              onChangeText={setEditGroupName}
+              placeholder={editGroupTarget ? `Group ${editGroupTarget.group_number}` : ''}
+              maxLength={100}
+              autoFocus
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalCancelButton} onPress={() => setEditGroupTarget(null)} disabled={isRenaming}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalConfirmButton} onPress={handleRenameGroup} disabled={isRenaming}>
+                {isRenaming ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.modalConfirmText}>Save</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardSafe>
+      </Modal>
+
       {/* ---------------- Add Member modal ---------------- */}
       <Modal visible={addMemberTargetGroup !== null} transparent animationType="fade" onRequestClose={() => setAddMemberTargetGroup(null)}>
         <KeyboardSafe style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Add Member</Text>
-            <ScrollView style={{ maxHeight: 300 }}>
+            <Text style={styles.modalTitle}>
+              Add to {addMemberTargetGroup ? (addMemberTargetGroup.group_name || `Group ${addMemberTargetGroup.group_number}`) : 'group'}
+            </Text>
+            <ScrollView style={{ maxHeight: 300, marginBottom: 12 }}>
               {roster
                 .filter((e) => !addMemberTargetGroup?.members.some((m) => m.student.id === e.student.id))
-                .map((e) => (
-                  <TouchableOpacity
-                    key={e.id}
-                    style={styles.pickerRow}
-                    onPress={() => addMemberTargetGroup && handleAddMember(addMemberTargetGroup, e.student.id)}
-                  >
-                    <Text style={styles.pickerRowText}>{studentDisplayName(e)}</Text>
-                  </TouchableOpacity>
-                ))}
+                .sort((a, b) => {
+                  // students with no group first, then A-Z
+                  const ga = groupLabelsFor(a.student.id).length > 0 ? 1 : 0;
+                  const gb = groupLabelsFor(b.student.id).length > 0 ? 1 : 0;
+                  return ga - gb || studentDisplayName(a).localeCompare(studentDisplayName(b));
+                })
+                .map((e) => {
+                  const inGroups = groupLabelsFor(e.student.id);
+                  return (
+                    <TouchableOpacity
+                      key={e.id}
+                      style={[styles.pickerRow, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }]}
+                      onPress={() => addMemberTargetGroup && handleAddMember(addMemberTargetGroup, e.student.id)}
+                    >
+                      <Text style={[styles.pickerRowText, { flex: 1 }]}>{studentDisplayName(e)}</Text>
+                      <Text style={[styles.pickerRowTag, inGroups.length === 0 && { color: GREEN }]}>
+                        {inGroups.length === 0 ? 'No group' : `In ${inGroups.join(', ')}`}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
             </ScrollView>
             <TouchableOpacity style={styles.modalCancelButton} onPress={() => setAddMemberTargetGroup(null)}>
-              <Text style={styles.modalCancelText}>Close</Text>
+              <Text style={styles.modalCancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </KeyboardSafe>
@@ -519,4 +622,11 @@ const styles = StyleSheet.create({
   modalConfirmText: { color: '#fff', fontWeight: '700' },
   pickerRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(58,43,26,0.08)' },
   pickerRowText: { fontSize: 14, color: BROWN, fontWeight: '600' },
+  pickerRowTag: { fontSize: 11, color: T('#8A6A2A'), fontWeight: '700', maxWidth: '45%', textAlign: 'right' },
+  sortRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  sortLabel: { fontSize: 12, fontWeight: '700', color: T('#8A6A2A') },
+  sortChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: 'rgba(58,43,26,0.08)' },
+  sortChipActive: { backgroundColor: T('#5C3A2E') },
+  sortChipText: { fontSize: 12, fontWeight: '700', color: BROWN },
+  sortChipTextActive: { color: '#fff' },
 });
