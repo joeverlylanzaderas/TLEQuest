@@ -26,7 +26,7 @@ class SubmissionListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        qs = Submission.objects.select_related("student", "group", "quest_assignment__quest")
+        qs = Submission.objects.select_related("student", "student__profile", "reviewed_by", "reviewed_by__profile", "group", "quest_assignment__quest")
         if user.role == "admin":
             return qs
         if user.role == "teacher":
@@ -71,7 +71,7 @@ class SubmissionDetailView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        qs = Submission.objects.select_related("student", "group", "quest_assignment__quest")
+        qs = Submission.objects.select_related("student", "student__profile", "reviewed_by", "reviewed_by__profile", "group", "quest_assignment__quest")
         if user.role == "admin":
             return qs
         if user.role == "teacher":
