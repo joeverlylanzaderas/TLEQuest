@@ -97,3 +97,32 @@ class SecurityFeaturesTests(TestCase):
         # same values again: nothing new is logged
         self.api.patch("/api/core/system-settings/", payload, format="json")
         self.assertEqual(AuditLog.objects.filter(action="settings.update").count(), 1)
+
+
+class PolicyConsentTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.user = User.objects.create_user("stud2", password="Passw0rd!x", role="student")
+        self.api = APIClient()
+        r = self.api.post("/api/accounts/login/", {"username": "stud2", "password": "Passw0rd!x"}, format="json")
+        self.api.credentials(HTTP_AUTHORIZATION=f"Bearer {r.data['access']}")
+
+    def test_not_accepted_at_first(self):
+        r = self.api.get("/api/accounts/consent/")
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(r.data["accepted"])
+
+    def test_accept_then_reported_accepted_once(self):
+        from apps.accounts.models import POLICY_VERSION, PolicyConsent
+        for _ in range(2):  # a retry must not create a second row
+            r = self.api.post("/api/accounts/consent/", {"version": POLICY_VERSION}, format="json")
+            self.assertEqual(r.status_code, 200)
+        self.assertTrue(self.api.get("/api/accounts/consent/").data["accepted"])
+        self.assertEqual(PolicyConsent.objects.filter(user=self.user).count(), 1)
+
+    def test_wrong_version_rejected(self):
+        r = self.api.post("/api/accounts/consent/", {"version": "1999-01-01"}, format="json")
+        self.assertEqual(r.status_code, 409)
+
+    def test_requires_login(self):
+        self.assertEqual(APIClient().get("/api/accounts/consent/").status_code, 401)

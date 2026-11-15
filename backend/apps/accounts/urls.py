@@ -17,6 +17,7 @@ from .views import (
     AdminResetPasswordView,
     SecurityQuestionListView,
     ForgotPasswordQuestionsView,
+    PolicyConsentView,
 )
 
 urlpatterns = [
@@ -33,6 +34,7 @@ urlpatterns = [
 
     # Self-service
     path("me/", MyProfileView.as_view(), name="my_profile"),
+    path("consent/", PolicyConsentView.as_view(), name="policy_consent"),
 
     # Admin CRUD
     path("admin/users/", AdminUserListCreateView.as_view(), name="admin_user_list_create"),

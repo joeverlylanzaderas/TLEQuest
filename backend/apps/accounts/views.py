@@ -17,8 +17,8 @@ from apps.accounts.models import User, UserProfile
 from apps.accounts.permissions import IsAdmin
 from apps.core.mixins import ReadAfterWriteMixin
 
-from .audit import log_action
-from .models import AuditLog, SecurityQuestion, UserSecurityAnswer
+from .audit import client_ip, log_action
+from .models import AuditLog, POLICY_VERSION, PolicyConsent, SecurityQuestion, UserSecurityAnswer
 from .serializers import (
     AuditLogSerializer,
     AdminUserCreateSerializer,
@@ -422,3 +422,33 @@ class AuditLogListView(generics.ListAPIView):
             qs = qs.filter(Q(actor_username__icontains=q) | Q(target_label__icontains=q))
         return qs
 
+
+
+# TERMS & PRIVACY CONSENT
+class PolicyConsentView(APIView):
+    """GET: has this user accepted the current Terms & Privacy Policy?  POST {"version": "..."}: record that they did."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        row = PolicyConsent.objects.filter(user=request.user, version=POLICY_VERSION).first()
+        return Response({
+            "current_version": POLICY_VERSION,
+            "accepted": row is not None,
+            "accepted_at": row.accepted_at if row else None,
+        })
+
+    def post(self, request):
+        version = str(request.data.get("version", "")).strip()
+        if version != POLICY_VERSION:
+            # the app shows an older/newer text than the server expects
+            return Response(
+                {"detail": "Please update the app to see the latest Terms and Privacy Policy.", "current_version": POLICY_VERSION},
+                status=status.HTTP_409_CONFLICT,
+            )
+        row, _ = PolicyConsent.objects.get_or_create(
+            user=request.user, version=version, defaults={"ip_address": client_ip(request)},
+        )
+        return Response(
+            {"current_version": POLICY_VERSION, "accepted": True, "accepted_at": row.accepted_at},
+            status=status.HTTP_200_OK,
+        )

@@ -114,3 +114,23 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.created_at:%Y-%m-%d %H:%M} {self.actor_username or '?'} {self.action} {self.target_label}".strip()
+
+
+# Terms & Privacy consent (kept as a history, so there is proof of who agreed to which version and when)
+POLICY_VERSION = "2026-11-16"  # bump this (and the same value in mobile/src/legal/legalContent.ts) when the Terms or Privacy Policy change
+
+
+class PolicyConsent(models.Model):
+    user        = models.ForeignKey(User, on_delete=models.CASCADE, related_name="policy_consents")
+    version     = models.CharField(max_length=20)
+    accepted_at = models.DateTimeField(auto_now_add=True)
+    ip_address  = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-accepted_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["user", "version"], name="unique_consent_per_user_version"),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} accepted {self.version}"
