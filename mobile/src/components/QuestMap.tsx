@@ -313,7 +313,7 @@ export default function QuestMap({ entries, onOpen, refreshing = false, onRefres
       </ScrollView>
 
       {/* Floating controls (stay put while the map scrolls) */}
-      <View pointerEvents="box-none" style={[styles.overlay, { top: topInset + 10 }]}>
+      <View pointerEvents="box-none" style={[styles.overlay, { top: topInset + 16 }]}>
         {toolbar}
         <Legend />
       </View>
@@ -324,7 +324,7 @@ export default function QuestMap({ entries, onOpen, refreshing = false, onRefres
 const styles = StyleSheet.create({
   root: { flex: 1 },
   scroll: { flex: 1 },
-  overlay: { position: 'absolute', left: 16, right: 16, gap: 8, alignItems: 'flex-start' },
+  overlay: { position: 'absolute', left: 20, right: 20, gap: 8, alignItems: 'flex-start' },
   legend: {
     flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 12, height: 30, borderRadius: 15,
     backgroundColor: 'rgba(255,249,234,0.95)', borderWidth: 2, borderColor: INK,

@@ -11,6 +11,7 @@ import {
   RefreshControl,
   Modal,
   Alert,
+  Pressable,
 } from 'react-native';
 import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../src/theme/theme';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -26,6 +27,7 @@ import CachedImage from '../../src/components/CachedImage';
 import { useToast } from '../../src/components/Toast';
 import { FadeIn, PressableScale } from '../../src/components/Motion';
 import { TOP_GAP } from '../../src/theme/layout';
+import AppHeader from '../../src/components/AppHeader';
 import { NAV_CLEARANCE } from '../../src/components/FloatingTabBar';
 
 const CREAM = T('#F5EDD8');
@@ -179,6 +181,12 @@ export function ManageClassesScreen({ asTab = false }: { asTab?: boolean }) {
     }
   }
 
+  // Tapping empty space (outside the class cards and the student list) hides the student list again.
+  function handleClearSelection() {
+    setSelectedClass(null);
+    setRoster([]);
+  }
+
   async function handleCopyCode(classItem: ClassSummary) {
     await Clipboard.setStringAsync(classItem.invite_code);
     setCopiedClassId(classItem.id);
@@ -191,9 +199,15 @@ export function ManageClassesScreen({ asTab = false }: { asTab?: boolean }) {
   }
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: HEADER_AREA_BG }]} edges={['top']}>
+    <SafeAreaView
+      style={[styles.screen, { backgroundColor: asTab ? CREAM : HEADER_AREA_BG }]}
+      edges={asTab ? [] : ['top']}
+    >
+      {/* As a tab: the same gold app header as the other teacher tabs */}
+      {asTab && <AppHeader role="teacher" />}
+
       {/* ---------------- Header ---------------- */}
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, asTab && { paddingTop: 16 }]}>
         {!asTab && (
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={22} color={BACK_ICON} />
@@ -208,10 +222,11 @@ export function ManageClassesScreen({ asTab = false }: { asTab?: boolean }) {
 
       <ScrollView
         style={{ flex: 1, backgroundColor: CREAM }}
-        contentContainerStyle={[styles.scrollContent, asTab && { paddingBottom: NAV_CLEARANCE }]}
+        contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }, asTab && { paddingBottom: NAV_CLEARANCE }]}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={BROWN} />}
       >
 
+      <Pressable style={{ flexGrow: 1 }} onPress={handleClearSelection} accessible={false}>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         {/* ---------------- My Classes ---------------- */}
@@ -273,7 +288,8 @@ export function ManageClassesScreen({ asTab = false }: { asTab?: boolean }) {
 
         {/* ---------------- Roster for selected class ---------------- */}
         {selectedClass && (
-          <>
+          // Pressable with an empty onPress: taps inside the student list must NOT hide it
+          <Pressable onPress={() => {}} accessible={false}>
             <Text style={styles.sectionLabel}>
               STUDENTS — {selectedClass.class_name.toUpperCase()}
             </Text>
@@ -329,8 +345,9 @@ export function ManageClassesScreen({ asTab = false }: { asTab?: boolean }) {
               </View>
               </>
             )}
-          </>
+          </Pressable>
         )}
+      </Pressable>
       </ScrollView>
 
       {/* ---------------- Create / Edit class modal ---------------- */}

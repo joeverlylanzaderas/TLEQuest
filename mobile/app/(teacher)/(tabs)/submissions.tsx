@@ -59,6 +59,7 @@ export default function TeacherSubmissions() {
   const [status, setStatus] = useState<Status>('pending');
   const [search, setSearch] = useState('');
   const [picker, setPicker] = useState<PickerKind>(null);
+  const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -184,7 +185,7 @@ export default function TeacherSubmissions() {
           {/* Status tabs */}
           <View style={styles.segment}>
             {([
-              { k: 'pending', label: 'Needs review', n: pendingCount },
+              { k: 'pending', label: 'To review', n: pendingCount },
               { k: 'reviewed', label: 'Reviewed', n: reviewedCount },
               { k: 'all', label: 'All', n: submissions.length },
             ] as { k: Status; label: string; n: number }[]).map((t) => (
@@ -201,49 +202,65 @@ export default function TeacherSubmissions() {
             ))}
           </View>
 
-          <View style={styles.searchBox}>
-            <Ionicons name="search" size={16} color="#B8A671" />
-            <TextInput
-              style={styles.searchInput}
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Search quest, group, or student"
-              placeholderTextColor="#B8A671"
-            />
-            {search ? (
-              <TouchableOpacity onPress={() => setSearch('')}>
-                <Ionicons name="close-circle" size={16} color="#B8A671" />
-              </TouchableOpacity>
-            ) : null}
+          {/* One row: search + a Filter button. Class / group pickers only show when asked for. */}
+          <View style={styles.searchRow}>
+            <View style={[styles.searchBox, { flex: 1, marginBottom: 0 }]}>
+              <Ionicons name="search" size={16} color="#B8A671" />
+              <TextInput
+                style={styles.searchInput}
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search"
+                placeholderTextColor="#B8A671"
+              />
+              {search ? (
+                <TouchableOpacity onPress={() => setSearch('')} accessibilityLabel="Clear search">
+                  <Ionicons name="close-circle" size={16} color="#B8A671" />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            <TouchableOpacity
+              style={[styles.filterBtn, (showFilters || classId !== null || groupId !== null) && styles.filterBtnOn]}
+              onPress={() => setShowFilters((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel="Filter by class or group"
+            >
+              <Ionicons name="options" size={20} color={showFilters || classId !== null || groupId !== null ? '#fff' : BROWN} />
+              <Text style={[styles.filterBtnText, (showFilters || classId !== null || groupId !== null) && { color: '#fff' }]}>Filter</Text>
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.filterRow}>
-            <TouchableOpacity
-              style={[styles.dropdown, classId !== null && styles.dropdownActive]}
-              onPress={() => setPicker('class')}
-            >
-              <Text style={[styles.dropdownText, classId !== null && styles.dropdownTextActive]} numberOfLines={1}>
-                {classLabel}
-              </Text>
-              <Ionicons name="chevron-down" size={14} color={classId !== null ? '#fff' : BROWN} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.dropdown, groupId !== null && styles.dropdownActive]}
-              onPress={() => setPicker('group')}
-            >
-              <Text style={[styles.dropdownText, groupId !== null && styles.dropdownTextActive]} numberOfLines={1}>
-                {groupLabel}
-              </Text>
-              <Ionicons name="chevron-down" size={14} color={groupId !== null ? '#fff' : BROWN} />
-            </TouchableOpacity>
-            {activeFilters > 0 || search ? (
-              <TouchableOpacity style={styles.clearBtn} onPress={clearFilters}>
-                <Ionicons name="refresh" size={14} color={ORANGE} />
+          {showFilters ? (
+            <View style={styles.filterRow}>
+              <TouchableOpacity
+                style={[styles.dropdown, classId !== null && styles.dropdownActive]}
+                onPress={() => setPicker('class')}
+              >
+                <Text style={[styles.dropdownText, classId !== null && styles.dropdownTextActive]} numberOfLines={1}>
+                  {classLabel}
+                </Text>
+                <Ionicons name="chevron-down" size={14} color={classId !== null ? '#fff' : BROWN} />
               </TouchableOpacity>
-            ) : null}
-          </View>
+              <TouchableOpacity
+                style={[styles.dropdown, groupId !== null && styles.dropdownActive]}
+                onPress={() => setPicker('group')}
+              >
+                <Text style={[styles.dropdownText, groupId !== null && styles.dropdownTextActive]} numberOfLines={1}>
+                  {groupLabel}
+                </Text>
+                <Ionicons name="chevron-down" size={14} color={groupId !== null ? '#fff' : BROWN} />
+              </TouchableOpacity>
+            </View>
+          ) : null}
 
-          <Text style={styles.resultText}>Showing {visible.length} of {submissions.length}</Text>
+          {classId !== null || groupId !== null || search ? (
+            <View style={styles.resultRow}>
+              <Text style={styles.resultText}>Showing {visible.length} of {submissions.length}</Text>
+              <TouchableOpacity onPress={clearFilters} hitSlop={8}>
+                <Text style={styles.clearText}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+          ) : <View style={{ height: 8 }} />}
 
           {visible.length === 0 ? (
             <Text style={styles.emptyText}>
@@ -255,7 +272,6 @@ export default function TeacherSubmissions() {
             visible.map((s, si) => {
               const accepted = s.classifier_result === 'ACCEPTED';
               const cls = classById.get(groupById.get(s.group)?.classId ?? -1);
-              const tint = AVATAR_TINTS[s.student % AVATAR_TINTS.length];
               return (
                 <FadeIn key={s.id} delay={Math.min(si, 6) * 70}>
                 <PressableScale
@@ -266,39 +282,25 @@ export default function TeacherSubmissions() {
                   <CachedImage uri={s.image_url} size={240} style={styles.thumb} />
                   <View style={{ flex: 1, gap: 3 }}>
                     <Text style={styles.questTitle} numberOfLines={1}>{s.quest_title}</Text>
-                    <View style={styles.whoRow}>
-                      <View style={[styles.miniAvatar, { backgroundColor: tint.bg }]}>
-                        <Text style={[styles.miniAvatarText, { color: tint.fg }]}>
-                          {s.student_username.charAt(0).toUpperCase()}
-                        </Text>
+                    <Text style={styles.meta} numberOfLines={1}>
+                      {s.group_name}{cls ? ` · ${cls.class_name}` : ''}
+                    </Text>
+                    {/* ONE small tag: "Reviewed" once done, otherwise the app's hint (it is only a hint) */}
+                    {s.is_reviewed ? (
+                      <View style={[styles.badge, { backgroundColor: '#DCF2E3' }]}>
+                        <Ionicons name="checkmark-circle" size={11} color="#166B3A" />
+                        <Text style={[styles.badgeText, { color: '#166B3A' }]}>Reviewed</Text>
                       </View>
-                      <Text style={styles.meta} numberOfLines={1}>
-                        {s.group_name}{cls ? ` · ${cls.class_name}` : ''}
-                      </Text>
-                    </View>
-                    <View style={styles.badgeRow}>
-                      <View style={[styles.badge, { backgroundColor: s.is_reviewed ? '#DCF2E3' : '#FFF1C7' }]}>
-                        <Ionicons
-                          name={s.is_reviewed ? 'checkmark-circle' : 'time'}
-                          size={11}
-                          color={s.is_reviewed ? '#166B3A' : '#92400E'}
-                        />
-                        <Text style={[styles.badgeText, { color: s.is_reviewed ? '#166B3A' : '#92400E' }]}>
-                          {s.is_reviewed ? 'Reviewed' : 'Needs review'}
-                        </Text>
-                      </View>
+                    ) : (
                       <View style={[styles.badge, { backgroundColor: accepted ? '#E3F3E9' : '#FDE9D2' }]}>
                         <Ionicons name="sparkles" size={11} color={accepted ? '#166B3A' : '#A34A0A'} />
                         <Text style={[styles.badgeText, { color: accepted ? '#166B3A' : '#A34A0A' }]}>
-                          {accepted ? 'AI: looks right' : 'AI: check'}
+                          {accepted ? 'Looks complete' : 'May be incomplete'}
                         </Text>
                       </View>
-                    </View>
+                    )}
                   </View>
-                  <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                    <Text style={styles.timeText}>{timeAgo(s.submitted_at)}</Text>
-                    <Ionicons name="chevron-forward" size={18} color="#B8A671" />
-                  </View>
+                  <Text style={styles.timeText}>{timeAgo(s.submitted_at)}</Text>
                 </PressableScale>
                 </FadeIn>
               );
@@ -361,6 +363,11 @@ const styles = StyleSheet.create({
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: T('#EADEC9'), borderRadius: 14, paddingHorizontal: 12, marginBottom: 10 },
   searchInput: { flex: 1, paddingVertical: 10, fontSize: 14, color: BROWN },
 
+  searchRow: { flexDirection: 'row', gap: 8, marginBottom: 8, alignItems: 'stretch' },
+  filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fff', borderWidth: 1, borderColor: T('#EADEC9'), borderRadius: 14, paddingHorizontal: 12, minHeight: 44 },
+  filterBtnOn: { backgroundColor: ORANGE, borderColor: ORANGE },
+  filterBtnText: { fontSize: 13, fontWeight: '800', color: BROWN },
+  resultRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 6 },
   filterRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   dropdown: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6, backgroundColor: '#fff', borderWidth: 1, borderColor: T('#EADEC9'), borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
   dropdownActive: { backgroundColor: ORANGE, borderColor: ORANGE },
@@ -372,12 +379,12 @@ const styles = StyleSheet.create({
   resultText: { fontSize: 11, color: T('#8A6A2A'), marginVertical: 6 },
   emptyText: { color: T('#8A6A2A'), fontStyle: 'italic', textAlign: 'center', marginTop: 24, lineHeight: 20 },
 
-  card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 18, padding: 12, marginBottom: 12 },
-  thumb: { width: 78, height: 78, borderRadius: 12, backgroundColor: T('#EADEC9') },
-  questTitle: { fontSize: 14, fontWeight: '800', color: T('#7c2d12') },
-  meta: { fontSize: 11, color: T('#8A6A2A'), marginTop: 2 },
+  card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 18, padding: 10, marginBottom: 10 },
+  thumb: { width: 64, height: 64, borderRadius: 12, backgroundColor: T('#EADEC9') },
+  questTitle: { fontSize: 15, fontWeight: '800', color: T('#7c2d12') },
+  meta: { fontSize: 12, color: T('#8A6A2A') },
   badgeRow: { flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  badge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
   whoRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   miniAvatar: { width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   miniAvatarText: { fontSize: 10, fontWeight: '800' },

@@ -227,12 +227,13 @@ const toggleStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
-  toggleRow: { paddingHorizontal: 16, paddingVertical: 8, marginBottom: 4 },
+  toggleRow: { paddingVertical: 0, marginBottom: 12 },
   mapWrap: { flex: 1, marginTop: -MAP_TOP_INSET },
   screen: { flex: 1, backgroundColor: CREAM },
   bgImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  scrollContent: { padding: 20, paddingBottom: NAV_CLEARANCE },
+  // 16px between the header and the Map | List pill (same as the map view, see QuestMap overlay)
+  scrollContent: { padding: 20, paddingTop: 16, paddingBottom: NAV_CLEARANCE },
   errorText: { color: '#B3261E', marginBottom: 12, fontSize: 13 },
   emptyText: { color: T('#8A6A2A'), fontStyle: 'italic', textAlign: 'center', marginTop: 20 },
 
