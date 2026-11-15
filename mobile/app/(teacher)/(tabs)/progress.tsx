@@ -243,7 +243,12 @@ export default function TeacherProgress() {
                               </View>
                               <View style={{ flex: 1 }}>
                                 <View style={styles.memberNameRow}>
-                                  <Text style={styles.memberName} numberOfLines={1}>{m.student_username}</Text>
+                                  <Text style={styles.memberName} numberOfLines={1}>
+                                    {m.student_username}
+                                    {m.student_name && m.student_name !== m.student_username ? (
+                                      <Text style={styles.memberRealName}>{`  ·  ${m.student_name}`}</Text>
+                                    ) : null}
+                                  </Text>
                                   {needsHelp ? (
                                     <View style={styles.helpPill}><Text style={styles.helpText}>Needs help</Text></View>
                                   ) : null}
@@ -342,6 +347,7 @@ const styles = StyleSheet.create({
   emptyMembers: { fontSize: 12, color: T('#8A6A2A'), fontStyle: 'italic' },
   memberRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
   memberName: { fontSize: 13, fontWeight: '700', color: BROWN, marginBottom: 5 },
+  memberRealName: { fontSize: 12, fontWeight: '600', color: '#8A6A2A' },
   trackSmall: { height: 5, backgroundColor: '#F3EBCB', borderRadius: 3, overflow: 'hidden' },
   fillSmall: { height: 5, borderRadius: 3 },
   memberPercent: { fontSize: 13, fontWeight: '800', color: BROWN },

@@ -9,6 +9,7 @@ export interface QuestProgress {
   group: number;
   student: number;
   student_username: string;
+  student_name?: string;
   current_step: number | null;
   total_steps: number;
   percent_complete: number;

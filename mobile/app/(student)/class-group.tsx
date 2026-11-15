@@ -126,7 +126,7 @@ export default function ClassAndGroupScreen() {
           <Text style={styles.title} numberOfLines={1}>{cls ? cls.class_name : 'My class and group'}</Text>
           {cls ? (
             <Text style={styles.sub} numberOfLines={1}>
-              {cls.teacher?.username ? `${cls.teacher.username} · ` : ''}{cls.student_count} student{cls.student_count === 1 ? '' : 's'}
+              {cls.teacher ? `${cls.teacher.name || cls.teacher.username} · ` : ''}{cls.student_count} student{cls.student_count === 1 ? '' : 's'}
             </Text>
           ) : null}
         </View>

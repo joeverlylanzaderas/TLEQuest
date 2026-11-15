@@ -133,7 +133,7 @@ export default function StudentQuests() {
                     // item.id is the QuestProgress id, which the Overview screen expects
                     onPress={() => router.push(`/(student)/quest/${item.id}/overview` as any)}
                   >
-                    <QuestCover url={item.quest_cover_image_url} style={styles.imagePlaceholder} iconSize={28} />
+                    <QuestCover url={item.quest_cover_image_url} style={styles.imagePlaceholder} iconSize={32} />
                     <Text style={styles.cardTitle} numberOfLines={2}>{item.quest_title}</Text>
                     <View style={styles.cardDivider} />
                     <View
@@ -174,10 +174,10 @@ const styles = StyleSheet.create({
 
    grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   cardSlot: { width: '48%' },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 10, marginBottom: 14 },
-  imagePlaceholder: { height: 90, borderRadius: 12, backgroundColor: T('#B8895C'), alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  cardTitle: { fontSize: 12, fontWeight: '700', color: T('#7c2d12'), minHeight: 30 },
-  cardDivider: { height: 1, backgroundColor: '#eee', marginVertical: 8 },
-  statusButton: { borderRadius: 20, paddingVertical: 8, alignItems: 'center' },
-  statusButtonText: { fontSize: 12, fontWeight: '700' },
+  card: { backgroundColor: '#fff', borderRadius: 18, padding: 12, marginBottom: 14 },
+  imagePlaceholder: { height: 120, borderRadius: 14, backgroundColor: T('#B8895C'), alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  cardTitle: { fontSize: 14, fontWeight: '800', color: T('#7c2d12'), minHeight: 38 },
+  cardDivider: { height: 1, backgroundColor: '#eee', marginVertical: 10 },
+  statusButton: { borderRadius: 22, paddingVertical: 10, alignItems: 'center' },
+  statusButtonText: { fontSize: 13, fontWeight: '800' },
 });

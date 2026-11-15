@@ -28,6 +28,7 @@ import { thumbUrl } from '../../../src/utils/media';
 import { useToast } from '../../../src/components/Toast';
 import ThemePicker from '../../../src/components/ThemePicker';
 import ConfirmModal from '../../../src/components/ConfirmModal';
+import AvatarCropModal from '../../../src/components/AvatarCropModal';
 import { HowItWorksRow } from '../../../src/components/HowItWorks';
 import { NAV_CLEARANCE } from '../../../src/components/FloatingTabBar';
 
@@ -89,6 +90,7 @@ export default function TeacherSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [fields, setFields] = useState<EditableFields>(EMPTY_FIELDS);
   const [pendingImage, setPendingImage] = useState<{ uri: string; name: string; type: string } | null>(null);
+  const [cropSource, setCropSource] = useState<string | null>(null);
   const [showSignOut, setShowSignOut] = useState(false);
 
   function confirmSignOut() {
@@ -159,14 +161,19 @@ export default function TeacherSettings() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
+      allowsEditing: false,
+      quality: 1,
     });
 
     if (result.canceled || !result.assets?.[0]) return;
 
-    const small = await shrinkAvatar(result.assets[0].uri);
+    // our own crop screen (big Crop button) opens next; the cropped picture is saved by handleCropped
+    setCropSource(result.assets[0].uri);
+  }
+
+  async function handleCropped(croppedUri: string) {
+    setCropSource(null);
+    const small = await shrinkAvatar(croppedUri);
     setPendingImage({ uri: small.uri, name: `profile_picture.${small.ext}`, type: small.type });
   }
 
@@ -282,6 +289,12 @@ export default function TeacherSettings() {
               <Text style={styles.changePhotoText}>{pendingImage ? 'Choose a different photo' : 'Change photo'}</Text>
             </TouchableOpacity>
           </View>
+          <AvatarCropModal
+            visible={cropSource !== null}
+            uri={cropSource}
+            onCancel={() => setCropSource(null)}
+            onDone={handleCropped}
+          />
 
           <View style={styles.formCard}>
             <FormField label="First Name" value={fields.first_name} onChangeText={(v) => updateField('first_name', v)} />

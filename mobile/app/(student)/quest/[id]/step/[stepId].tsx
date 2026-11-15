@@ -1,5 +1,5 @@
 // mobile/app/(student)/quest/[id]/step/[stepId].tsx
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet, Alert,
 } from 'react-native';
@@ -40,12 +40,20 @@ export default function QuestStepScreen() {
   const [showComplete, setShowComplete] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [togglingId, setTogglingId] = useState<number | null>(null);
+  // Checklist taps: the checkbox changes right away and the saves are sent to the server one
+  // after another in the background, so fast taps are never ignored and nothing waits for the network.
+  const [savingIds, setSavingIds] = useState<number[]>([]);
+  const progressRef = useRef<QuestProgressDetail | null>(null);
+  const saveQueue = useRef<Promise<void>>(Promise.resolve());
+  const pendingSaves = useRef(0);
+  const saveFailed = useRef(false);
 
   const load = useCallback(async () => {
     setError('');
     try {
-      setProgress(await getProgressDetail(progressId));
+      const fresh = await getProgressDetail(progressId);
+      progressRef.current = fresh;
+      setProgress(fresh);
     } catch (e: any) {
       setError(e?.response?.data?.detail || 'Could not load this step.');
     }
@@ -79,39 +87,51 @@ export default function QuestStepScreen() {
     else setShowComplete(true);
   }
 
-  async function handleToggle(itemId: number, isChecked: boolean) {
-    if (!step || step.status !== 'available' || togglingId !== null) return;
+  function updateProgress(next: QuestProgressDetail | null) {
+    progressRef.current = next;
+    setProgress(next);
+  }
 
-    const next = !isChecked;
-    setTogglingId(itemId);
+  function handleToggle(itemId: number) {
+    const current = progressRef.current;
+    const curStep = current?.steps.find((st) => st.id === currentStepId);
+    if (!current || !curStep || curStep.status !== 'available') return;
+    const item = curStep.checklist_items.find((i) => i.id === itemId);
+    if (!item) return;
+    const next = !item.is_checked;
+    const stepId = curStep.id;
 
-    // Optimistic update so the checkbox responds instantly
-    setProgress((prev) =>
-      prev
-        ? {
-            ...prev,
-            steps: prev.steps.map((s) =>
-              s.id !== step.id
-                ? s
-                : {
-                    ...s,
-                    checklist_items: s.checklist_items.map((i) =>
-                      i.id === itemId ? { ...i, is_checked: next } : i
-                    ),
-                  }
-            ),
-          }
-        : prev
-    );
+    // 1. Show the new state instantly
+    updateProgress({
+      ...current,
+      steps: current.steps.map((st) =>
+        st.id !== stepId
+          ? st
+          : { ...st, checklist_items: st.checklist_items.map((i) => (i.id === itemId ? { ...i, is_checked: next } : i)) }
+      ),
+    });
+    setSavingIds((ids) => (ids.includes(itemId) ? ids : [...ids, itemId]));
+    pendingSaves.current += 1;
 
-    try {
-      setProgress(await toggleChecklistItem(progressId, step.id, itemId, next));
-    } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.detail || 'Could not save that. Please try again.');
-      await load();
-    } finally {
-      setTogglingId(null);
-    }
+    // 2. Save in the background, in tap order
+    saveQueue.current = saveQueue.current.then(async () => {
+      try {
+        const fresh = await toggleChecklistItem(progressId, stepId, itemId, next);
+        // Only take the server's copy once the LAST pending save has finished, so it can't
+        // undo taps that were made while this one was on its way.
+        if (pendingSaves.current === 1 && !saveFailed.current) updateProgress(fresh);
+      } catch (e: any) {
+        saveFailed.current = true;
+        Alert.alert('Error', e?.response?.data?.detail || 'Could not save that. Please try again.');
+      } finally {
+        pendingSaves.current -= 1;
+        setSavingIds((ids) => ids.filter((x) => x !== itemId));
+        if (pendingSaves.current === 0 && saveFailed.current) {
+          saveFailed.current = false;
+          await load(); // put the screen back in line with what the server has
+        }
+      }
+    });
   }
 
   if (isLoading) {
@@ -204,7 +224,7 @@ export default function QuestStepScreen() {
                     <TouchableOpacity
                       key={item.id}
                       style={styles.checklistRow}
-                      onPress={() => handleToggle(item.id, item.is_checked)}
+                      onPress={() => handleToggle(item.id)}
                       activeOpacity={isCompleted ? 1 : 0.7}
                       disabled={isCompleted}
                     >
@@ -214,7 +234,7 @@ export default function QuestStepScreen() {
                       <Text style={[styles.checklistText, item.is_checked && styles.checklistTextChecked]}>
                         {item.checklist_text}
                       </Text>
-                      {togglingId === item.id && <ActivityIndicator size="small" color={ORANGE} />}
+                      {savingIds.includes(item.id) && <ActivityIndicator size="small" color={ORANGE} />}
                     </TouchableOpacity>
                   ))}
                 </>

@@ -194,6 +194,24 @@ export default function SubmitOutputCard({ progress }: Props) {
     );
   }
 
+  // The leader can only submit when every group member has finished (the server enforces it too)
+  const waitingOn = progress.group_progress?.pending_names ?? [];
+  if (waitingOn.length > 0 && !submitted) {
+    return (
+      <View style={styles.card}>
+        <Ionicons name="people" size={40} color={ORANGE} />
+        <Text style={styles.title}>Almost there!</Text>
+        <Text style={styles.body}>
+          You can submit your group's final output once every member has finished all the steps.
+          Still working: {waitingOn.join(', ')}.
+        </Text>
+        <View style={[styles.orangeButton, styles.disabledButton]} accessibilityState={{ disabled: true }}>
+          <Text style={styles.orangeButtonText}>Submit Now</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.card}>
       <Text style={styles.congrats}>Congratulations!</Text>

@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import {
   getClassDetail, getClassEnrollments, getClassGroups,
-  createGroup, updateGroup, deleteGroup, addGroupMember, removeGroupMember,
+  createGroup, updateGroup, deleteGroup, addGroupMember, removeGroupMember, reorderGroups,
 } from '../../../src/api/classrooms';
 import { getMyQuests, updateQuest } from '../../../src/api/quests';
 import { thumbUrl } from '../../../src/utils/media';
@@ -145,6 +145,31 @@ export default function ClassOverview() {
       toast.error(e?.response?.data?.detail || e?.response?.data?.group_name?.[0] || 'Could not rename the group.');
     } finally {
       setIsRenaming(false);
+    }
+  }
+
+  // Long-press a group card to move it up or down. The server renumbers the groups, so the
+  // "Group N" labels on the cards and in the roster follow the new order.
+  function openMoveGroup(group: Group) {
+    const ordered = [...groups].sort((a, b) => a.group_number - b.group_number);
+    const idx = ordered.findIndex((g) => g.id === group.id);
+    const buttons: { text: string; style?: 'cancel'; onPress?: () => void }[] = [];
+    if (idx > 0) buttons.push({ text: 'Move up', onPress: () => handleMoveGroup(ordered, idx, idx - 1) });
+    if (idx < ordered.length - 1) buttons.push({ text: 'Move down', onPress: () => handleMoveGroup(ordered, idx, idx + 1) });
+    if (buttons.length === 0) return; // only one group
+    buttons.push({ text: 'Cancel', style: 'cancel' });
+    Alert.alert(group.group_name || `Group ${group.group_number}`, 'Change the order of this group.', buttons);
+  }
+
+  async function handleMoveGroup(ordered: Group[], from: number, to: number) {
+    const next = [...ordered];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    try {
+      const updated = await reorderGroups(classId, next.map((g) => g.id));
+      setGroups(updated);
+    } catch {
+      toast.error('Could not reorder the groups.');
     }
   }
 
@@ -310,7 +335,7 @@ export default function ClassOverview() {
               {sortedRoster().map((enrollment) => {
                 const name = studentDisplayName(enrollment);
                 const avatarUrl = thumbUrl(enrollment.student.profile_picture, 40);
-                const groupNum = groupNumberFor(enrollment.student.id);
+                const groupLabels = groupLabelsFor(enrollment.student.id);
                 return (
                   <View key={enrollment.id} style={styles.rosterRow}>
                     {avatarUrl ? (
@@ -323,9 +348,9 @@ export default function ClassOverview() {
                       </View>
                     )}
                     <Text style={styles.rosterName} numberOfLines={1}>{name}</Text>
-                    <View style={[styles.groupPill, groupNum === null && styles.groupPillNone]}>
-                      <Text style={[styles.groupPillText, groupNum === null && { color: '#6B7280' }]}>
-                        {groupNum !== null ? `Group ${groupNum}` : 'No group'}
+                    <View style={[styles.groupPill, groupLabels.length === 0 && styles.groupPillNone]}>
+                      <Text style={[styles.groupPillText, groupLabels.length === 0 && { color: '#6B7280' }]} numberOfLines={1}>
+                        {groupLabels.length > 0 ? groupLabels.join(', ') : 'No group'}
                       </Text>
                     </View>
                   </View>
@@ -344,13 +369,19 @@ export default function ClassOverview() {
               <Text style={styles.addButtonText}>Create group</Text>
             </PressableScale>
 
+            {groups.length > 1 ? <Text style={styles.reorderHint}>Tip: press and hold a group to move it up or down.</Text> : null}
             {groups.length === 0 ? (
               <Text style={styles.emptyText}>No groups yet.</Text>
             ) : (
               groups.map((group, gi) => (
                 <FadeIn key={group.id} delay={Math.min(gi, 5) * 70}>
                 <View style={styles.groupCard}>
-                  <View style={styles.groupCardHeader}>
+                  <TouchableOpacity
+                    style={styles.groupCardHeader}
+                    activeOpacity={0.85}
+                    delayLongPress={350}
+                    onLongPress={() => openMoveGroup(group)}
+                  >
                     <View style={{ flex: 1 }}>
                       <Text style={styles.groupTitle}>
                         {group.group_name || `Group ${group.group_number}`}
@@ -365,7 +396,7 @@ export default function ClassOverview() {
                         <Ionicons name="trash-outline" size={18} color={RED} />
                       </TouchableOpacity>
                     </View>
-                  </View>
+                  </TouchableOpacity>
 
                   {group.members.length === 0 ? (
                     <Text style={styles.groupEmptyText}>No members yet.</Text>
@@ -578,7 +609,7 @@ const styles = StyleSheet.create({
   avatarFallback: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   avatarFallbackText: { fontSize: 14, fontWeight: '800' },
   rosterName: { flex: 1, fontSize: 14, fontWeight: '700', color: BROWN },
-  groupPill: { backgroundColor: '#FFF1C7', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
+  groupPill: { backgroundColor: '#FFF1C7', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, maxWidth: '45%' },
   groupPillNone: { backgroundColor: '#F3F4F6' },
   groupPillText: { fontSize: 11, fontWeight: '800', color: '#6B4A00' },
   rosterSub: { fontSize: 11, color: T('#8A6A2A'), marginTop: 1 },
@@ -588,6 +619,7 @@ const styles = StyleSheet.create({
   addButtonText: { color: BROWN, fontSize: 13, fontWeight: '800' },
 
   groupCard: { backgroundColor: '#fff', borderRadius: 18, padding: 14, marginBottom: 12 },
+  reorderHint: { fontSize: 11, color: T('#8A6A2A'), marginBottom: 10 },
   groupCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   groupTitle: { fontSize: 16, fontWeight: '900', color: BROWN },
   groupCount: { fontSize: 11, color: T('#8A6A2A'), marginTop: 1 },

@@ -21,6 +21,7 @@ import { StudentReward } from '../../../src/types/rewards';
 import { getMediaUrl, thumbUrl } from '../../../src/utils/media';
 import ThemePicker from '../../../src/components/ThemePicker';
 import ConfirmModal from '../../../src/components/ConfirmModal';
+import AvatarCropModal from '../../../src/components/AvatarCropModal';
 import { HowItWorksRow } from '../../../src/components/HowItWorks';
 import { FadeIn, PressableScale, CountUp, Pop } from '../../../src/components/Motion';
 import { NAV_CLEARANCE } from '../../../src/components/FloatingTabBar';
@@ -99,6 +100,7 @@ export default function StudentProfile() {
   const [initialFields, setInitialFields] = useState<EditableFields>(EMPTY_FIELDS);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof EditableFields, string>>>({});
   const [pendingImage, setPendingImage] = useState<{ uri: string; name: string; type: string } | null>(null);
+  const [cropSource, setCropSource] = useState<string | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<BadgeSummary | null>(null);
 
   async function loadData() {
@@ -188,10 +190,16 @@ export default function StudentProfile() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7,
+      mediaTypes: ['images'], allowsEditing: false, quality: 1,
     });
     if (result.canceled || !result.assets?.[0]) return;
-    const small = await shrinkAvatar(result.assets[0].uri);
+    // our own crop screen (big Crop button) opens next; the cropped picture is saved by handleCropped
+    setCropSource(result.assets[0].uri);
+  }
+
+  async function handleCropped(croppedUri: string) {
+    setCropSource(null);
+    const small = await shrinkAvatar(croppedUri);
     setPendingImage({ uri: small.uri, name: `profile_picture.${small.ext}`, type: small.type });
   }
 
@@ -334,6 +342,12 @@ export default function StudentProfile() {
               <Text style={styles.changePhotoText}>{pendingImage ? 'Choose a different photo' : 'Change photo'}</Text>
             </TouchableOpacity>
           </View>
+          <AvatarCropModal
+            visible={cropSource !== null}
+            uri={cropSource}
+            onCancel={() => setCropSource(null)}
+            onDone={handleCropped}
+          />
 
           <SectionCard icon="person" title="Personal">
             <Field label="FIRST NAME" value={fields.first_name} onChangeText={(v) => updateField('first_name', v)} error={fieldErrors.first_name} />
