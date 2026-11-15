@@ -18,7 +18,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://tlequest.duckdns.org/api"
+        "EXPO_PUBLIC_API_URL": "https://tlequest.duckdns.org/api",
+        "EXPO_PUBLIC_QUEST_MAP": "1"
       },
       "channel": "preview"
     },
