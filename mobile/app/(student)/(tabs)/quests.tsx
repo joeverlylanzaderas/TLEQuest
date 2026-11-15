@@ -16,6 +16,39 @@ import { FadeIn, PressableScale } from '../../../src/components/Motion';
 import { getMyProgress } from '../../../src/api/assignments';
 import { QuestProgress } from '../../../src/types/assignments';
 import { NAV_CLEARANCE } from '../../../src/components/FloatingTabBar';
+import { QUEST_MAP_ENABLED } from '../../../src/config/features';
+
+// EXPERIMENTAL map view. Needs react-native-svg (development build), so it is only loaded when the flag is on,
+// and if anything about it fails the screen falls back to the normal list.
+let QuestMapView: React.ComponentType<any> | null = null;
+if (QUEST_MAP_ENABLED) {
+  try {
+    QuestMapView = require('../../../src/components/QuestMap').default;
+  } catch {
+    QuestMapView = null;
+  }
+}
+
+const MAP_TOP_INSET = 32; // px of the map that sit under the header
+
+class MapBoundary extends React.Component<{ onFail: () => void; children: React.ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch() { this.props.onFail(); }
+  render() { return this.state.failed ? null : this.props.children; }
+}
+
+function ViewToggle({ value, onChange }: { value: 'map' | 'list'; onChange: (v: 'map' | 'list') => void }) {
+  return (
+    <View style={toggleStyles.wrap}>
+      {(['map', 'list'] as const).map((v) => (
+        <TouchableOpacity key={v} style={[toggleStyles.btn, value === v && toggleStyles.btnActive]} onPress={() => onChange(v)}>
+          <Text style={[toggleStyles.text, value === v && toggleStyles.textActive]}>{v === 'map' ? 'Map' : 'List'}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
 
 const GOLD = T('#F5B921');
 const QUEST_BG = require('../../../assets/images/quest-bg.png');
@@ -43,6 +76,8 @@ export default function StudentQuests() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [view, setView] = useState<'map' | 'list'>('map');
+  const [mapFailed, setMapFailed] = useState(false);
 
   const load = useCallback(async () => {
     setError('');
@@ -73,6 +108,12 @@ export default function StudentQuests() {
   const classProgress = progress.filter((p) => inSelectedClass(scope, p.group));
   const filtered = classProgress.filter((p) => filter === 'all' || statusOf(p) === filter);
 
+  const mapAvailable = !!QuestMapView && !mapFailed;
+  const showMap = mapAvailable && view === 'map' && classProgress.length > 0;
+  const mapEntries = [...classProgress]
+    .sort((a, b) => a.quest_assignment - b.quest_assignment)
+    .map((item) => ({ item, status: statusOf(item) }));
+
   const filters: { key: FilterKey; label: string }[] = [
     { key: 'all', label: `All (${classProgress.length})` },
     { key: 'in_progress', label: 'In Progress' },
@@ -90,11 +131,27 @@ export default function StudentQuests() {
     <View style={styles.screen}>
       <Image source={QUEST_BG} style={styles.bgImage} resizeMode="cover" />
       {/* Same header as Home */}
-      <AppHeader role="student" />
+      <View style={{ zIndex: 20 }}>
+        <AppHeader role="student" />
+      </View>
 
       {isLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={BROWN} />
+        </View>
+      ) : showMap && QuestMapView ? (
+        // the map runs underneath the header's rounded corners, so there is no gap between them
+        <View style={styles.mapWrap}>
+          <MapBoundary onFail={() => setMapFailed(true)}>
+            <QuestMapView
+              entries={mapEntries}
+              onOpen={(item: QuestProgress) => router.push(`/(student)/quest/${item.id}/overview` as any)}
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              topInset={MAP_TOP_INSET}
+              toolbar={<ViewToggle value={view} onChange={setView} />}
+            />
+          </MapBoundary>
         </View>
       ) : (
         <ScrollView
@@ -102,6 +159,11 @@ export default function StudentQuests() {
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={BROWN} />}
         >
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {mapAvailable ? (
+            <View style={[styles.toggleRow, { paddingHorizontal: 0 }]}>
+              <ViewToggle value={view} onChange={setView} />
+            </View>
+          ) : null}
 
           {/* Filter pills */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
@@ -156,7 +218,17 @@ export default function StudentQuests() {
   );
 }
 
+const toggleStyles = StyleSheet.create({
+  wrap: { flexDirection: 'row', alignSelf: 'flex-start', backgroundColor: '#FFF9EA', borderWidth: 2, borderColor: '#3A1D0E', borderRadius: 22, padding: 3 },
+  btn: { height: 34, paddingHorizontal: 20, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  btnActive: { backgroundColor: '#C2410C' },
+  text: { fontSize: 13, fontWeight: '900', color: '#4A2412' },
+  textActive: { color: '#fff' },
+});
+
 const styles = StyleSheet.create({
+  toggleRow: { paddingHorizontal: 16, paddingVertical: 8, marginBottom: 4 },
+  mapWrap: { flex: 1, marginTop: -MAP_TOP_INSET },
   screen: { flex: 1, backgroundColor: CREAM },
   bgImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
