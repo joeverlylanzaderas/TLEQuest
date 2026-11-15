@@ -15,6 +15,7 @@ import { getMyClasses } from '../api/classrooms';
 import { getUnreadNotifications } from '../api/notifications';
 import { FullUser } from '../types/accounts';
 import { useClassScope, selectedClassName } from '../utils/selectedClass';
+import { useCoachTarget } from './CoachTour';
 
 
 const GOLD = HEADER_BG;      // header background: gold, or blue in the School theme
@@ -36,6 +37,7 @@ interface Props {
 
 export default function AppHeader({ role, subtitle, children }: Props) {
   const router = useRouter();
+  const target = useCoachTarget(); // lets the guided tour light up the avatar and the bell
   const scope = useClassScope();
   const [profile, setProfile] = useState<FullUser | null>(getCachedProfile() ?? (cache?.role === role ? cache.profile : null));
   const [className, setClassName] = useState(cache?.role === role ? cache.className : '');
@@ -84,6 +86,7 @@ export default function AppHeader({ role, subtitle, children }: Props) {
     <View style={styles.header}>
       <View style={[styles.row, children ? { marginBottom: 14 } : null]}>
         {/* The avatar shows the picture (or first letter) and opens Profile / Settings (student: Profile tab, teacher: Settings) */}
+        <View {...target('header-avatar')}>
         <TouchableOpacity
           onPress={() => router.navigate((role === 'teacher' ? '/(teacher)/(tabs)/settings' : '/(student)/(tabs)/profile') as any)}
           activeOpacity={0.8}
@@ -108,6 +111,7 @@ export default function AppHeader({ role, subtitle, children }: Props) {
             </View>
           )}
         </TouchableOpacity>
+        </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.welcomeSmall}>Welcome back,</Text>
           <Text style={styles.welcomeName} numberOfLines={1}>{displayName ? `${displayName}!` : ' '}</Text>
@@ -116,14 +120,15 @@ export default function AppHeader({ role, subtitle, children }: Props) {
           <Text style={styles.dateText}>{today}</Text>
           <Text style={styles.subText} numberOfLines={1}>{sub}</Text>
         </View>
+        <View {...target('header-bell')} style={{ marginLeft: 10 }}>
         <TouchableOpacity
           onPress={() => router.push((role === 'teacher' ? '/(teacher)/notifications' : '/(student)/notifications') as any)}
-          style={{ marginLeft: 10 }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Ionicons name="notifications" size={22} color={DARK} />
           {unread > 0 && <View style={styles.bellDot} />}
         </TouchableOpacity>
+        </View>
       </View>
       {children}
     </View>

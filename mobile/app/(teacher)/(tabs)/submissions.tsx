@@ -15,6 +15,7 @@ import { Submission } from '../../../src/types/submissions';
 import AppHeader from '../../../src/components/AppHeader';
 import { FadeIn, PressableScale } from '../../../src/components/Motion';
 import { NAV_CLEARANCE } from '../../../src/components/FloatingTabBar';
+import { useCoachTarget, useScreenTour } from '../../../src/components/CoachTour';
 import CachedImage from '../../../src/components/CachedImage';
 
 const GOLD = T('#F5B921');
@@ -51,6 +52,8 @@ const AVATAR_TINTS = [
 
 export default function TeacherSubmissions() {
   const router = useRouter();
+  const target = useCoachTarget();
+  useScreenTour('teacher-review'); // first-visit tip
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [groups, setGroups] = useState<GroupInfo[]>([]);
@@ -183,7 +186,7 @@ export default function TeacherSubmissions() {
           <Text style={styles.pageTitle}>Review</Text>
 
           {/* Status tabs */}
-          <View style={styles.segment}>
+          <View style={styles.segment} {...target('review-tabs')}>
             {([
               { k: 'pending', label: 'To review', n: pendingCount },
               { k: 'reviewed', label: 'Reviewed', n: reviewedCount },
@@ -203,7 +206,7 @@ export default function TeacherSubmissions() {
           </View>
 
           {/* One row: search + a Filter button. Class / group pickers only show when asked for. */}
-          <View style={styles.searchRow}>
+          <View style={styles.searchRow} {...target('review-search')}>
             <View style={[styles.searchBox, { flex: 1, marginBottom: 0 }]}>
               <Ionicons name="search" size={16} color="#B8A671" />
               <TextInput
@@ -274,6 +277,7 @@ export default function TeacherSubmissions() {
               const cls = classById.get(groupById.get(s.group)?.classId ?? -1);
               return (
                 <FadeIn key={s.id} delay={Math.min(si, 6) * 70}>
+                <View {...(si === 0 ? target('review-first') : {})}>
                 <PressableScale
                   style={styles.card}
                   scaleTo={0.97}
@@ -302,6 +306,7 @@ export default function TeacherSubmissions() {
                   </View>
                   <Text style={styles.timeText}>{timeAgo(s.submitted_at)}</Text>
                 </PressableScale>
+                </View>
                 </FadeIn>
               );
             })

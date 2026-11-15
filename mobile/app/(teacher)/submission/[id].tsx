@@ -15,6 +15,7 @@ import { getMyClasses, getClassGroups } from '../../../src/api/classrooms';
 import { CONFIDENCE_THRESHOLD } from '../../../src/ml/classifier';
 import { useToast } from '../../../src/components/Toast';
 import { FadeIn, PressableScale } from '../../../src/components/Motion';
+import { useCoachTarget, useScreenTour } from '../../../src/components/CoachTour';
 
 const GOLD = T('#F5B921');
 const CREAM = T('#F5EDD8');
@@ -56,6 +57,8 @@ function errorText(e: any, fallback: string): string {
 
 export default function SubmissionReview() {
   const router = useRouter();
+  const target = useCoachTarget();
+  useScreenTour('teacher-review-detail'); // first-visit tip
   const toast = useToast();
   const scrollRef = useRef<ScrollView>(null);
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -191,7 +194,7 @@ export default function SubmissionReview() {
               </View>
             </TouchableOpacity>
             {/* What the AI said, with its confidence score */}
-            <View style={[styles.aiBox, { backgroundColor: aiBg }]}>
+            <View style={[styles.aiBox, { backgroundColor: aiBg }]} {...target('detail-ai')}>
               <View style={styles.aiTop}>
                 <Ionicons name={noCheck ? 'help-circle' : accepted ? 'sparkles' : 'alert-circle'} size={18} color={aiColor} />
                 <Text style={[styles.aiLabel, { color: aiColor }]}>AI result: {aiTitle}</Text>
@@ -241,7 +244,7 @@ export default function SubmissionReview() {
         </FadeIn>
 
         <FadeIn delay={120}>
-          <View style={styles.card}>
+          <View style={styles.card} {...target('detail-rating')}>
             <Text style={styles.sectionLabel}>RATING (OPTIONAL)</Text>
             <View style={styles.starRow}>
               {[1, 2, 3, 4, 5].map((n) => (

@@ -10,6 +10,8 @@ import { T } from '../theme/theme';
 import { hasSeenGuide, markGuideSeen } from '../utils/guideSeen';
 import { WELCOME, GuideRole, TileColor } from './GuideContent';
 import HowItWorks from './HowItWorks';
+import { useCoach } from './CoachTour';
+import { MAIN_TOUR_ID } from './CoachContent';
 
 const BROWN = T('#5C2C16');
 const MUTED = T('#8A6A2A');
@@ -64,6 +66,7 @@ function StudentGuide() {
 // ------------------------------------------------------------------ teacher (as before)
 function TeacherWelcome() {
   const { user } = useAuth();
+  const coach = useCoach();
   const userId = user?.id;
   const slides = WELCOME.teacher;
   const [visible, setVisible] = useState(false);
@@ -86,6 +89,8 @@ function TeacherWelcome() {
   function finish() {
     setVisible(false);
     if (userId != null) markGuideSeen(userId);
+    // right after the welcome cards, walk the teacher through the app (it can be skipped)
+    setTimeout(() => coach?.start(MAIN_TOUR_ID), 500);
   }
 
   const slide = slides[index];

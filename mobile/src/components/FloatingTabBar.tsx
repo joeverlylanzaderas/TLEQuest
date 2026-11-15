@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-context';
 import { T, activeTheme } from '../theme/theme';
 import { BounceOnFocus, motionReduced } from './Motion';
+import { useCoach } from './CoachTour';
 
 const SCHOOL = activeTheme === 'school';
 // Cream used behind the screens (the bar itself floats over them).
@@ -48,6 +49,7 @@ export const NAV_CLEARANCE = 8 + BAR_H + LIFT + Math.max(initialWindowMetrics?.i
 
 export interface TabBarItem {
   key: string;
+  name?: string; // route name, e.g. 'submissions' (used by the guided tour)
   label: string;
   icon: string; // Ionicons name
 }
@@ -224,6 +226,7 @@ function AllLabelsBar({
   onPress: (index: number) => void;
   insetBottom: number;
 }) {
+  const coach = useCoach();
   const n = items.length;
   const [innerW, setInnerW] = useState(0);
   // activeIndex is -1 on a screen that is not in the bar (e.g. Settings): then no tab is highlighted.
@@ -271,7 +274,9 @@ function AllLabelsBar({
             return (
               <Pressable
                 key={it.key}
-                style={[styles.allTab, { width: tabW > 0 ? tabW : undefined }]}
+                ref={(node: any) => coach?.register(`tab-${it.name ?? it.key}`, node)}
+                collapsable={false}
+                style={styles.allTab}
                 onPressIn={() => press(i, true)}
                 onPressOut={() => press(i, false)}
                 onPress={() => { goTo(i); onPress(i); }}
@@ -308,6 +313,7 @@ export function FloatingTabBar({ state, descriptors, navigation, showAllLabels =
     const o = descriptors[route.key]?.options ?? {};
     return {
       key: route.key,
+      name: route.name,
       label: typeof o.title === 'string' ? o.title : route.name,
       icon: icons?.[route.name] ?? ICONS[route.name] ?? 'ellipse-outline',
     };

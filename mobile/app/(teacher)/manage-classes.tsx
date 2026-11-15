@@ -28,6 +28,7 @@ import { useToast } from '../../src/components/Toast';
 import { FadeIn, PressableScale } from '../../src/components/Motion';
 import { TOP_GAP } from '../../src/theme/layout';
 import AppHeader from '../../src/components/AppHeader';
+import { useCoachTarget, useScreenTour } from '../../src/components/CoachTour';
 import { NAV_CLEARANCE } from '../../src/components/FloatingTabBar';
 
 const CREAM = T('#F5EDD8');
@@ -49,6 +50,8 @@ const CREATE_BG = IS_SCHOOL ? BLUE : GREEN;
 export function ManageClassesScreen({ asTab = false }: { asTab?: boolean }) {
   const router = useRouter();
   const toast = useToast();
+  const target = useCoachTarget();
+  useScreenTour(asTab ? 'teacher-classes' : '_none'); // first-visit tip (only on the Classes tab)
 
   const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -214,10 +217,12 @@ export function ManageClassesScreen({ asTab = false }: { asTab?: boolean }) {
           </TouchableOpacity>
         )}
         <Text style={styles.title}>My classes</Text>
+        <View {...target('classes-new')}>
         <PressableScale style={styles.createButton} scaleTo={0.94} onPress={openCreateModal}>
           <Ionicons name="add" size={18} color={IS_SCHOOL ? '#fff' : BROWN} />
           <Text style={styles.createButtonText}>New class</Text>
         </PressableScale>
+        </View>
       </View>
 
       <ScrollView
@@ -242,6 +247,7 @@ export function ManageClassesScreen({ asTab = false }: { asTab?: boolean }) {
             const justCopied = copiedClassId === c.id;
             return (
               <FadeIn key={c.id} delay={Math.min(ci, 6) * 70}>
+              <View {...(ci === 0 ? target('classes-first') : {})}>
               <TouchableOpacity
                 style={[styles.classCard, isSelected && styles.classCardSelected]}
                 onPress={() => handleSelectClass(c)}
@@ -281,6 +287,7 @@ export function ManageClassesScreen({ asTab = false }: { asTab?: boolean }) {
                   </TouchableOpacity>
                 </View>
               </TouchableOpacity>
+              </View>
               </FadeIn>
             );
           })
