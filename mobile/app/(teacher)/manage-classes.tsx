@@ -26,6 +26,7 @@ import CachedImage from '../../src/components/CachedImage';
 import { useToast } from '../../src/components/Toast';
 import { FadeIn, PressableScale } from '../../src/components/Motion';
 import { TOP_GAP } from '../../src/theme/layout';
+import { NAV_CLEARANCE } from '../../src/components/FloatingTabBar';
 
 const CREAM = T('#F5EDD8');
 const CARD_BG = T('#F5B921');
@@ -42,7 +43,8 @@ const BACK_BG = IS_SCHOOL ? '#FFFFFF' : CARD_BG;
 const BACK_ICON = IS_SCHOOL ? BLUE : BROWN;
 const CREATE_BG = IS_SCHOOL ? BLUE : GREEN;
 
-export default function ManageClasses() {
+// Used as a stack screen (back button) and as the Classes tab of the teacher bottom nav (asTab).
+export function ManageClassesScreen({ asTab = false }: { asTab?: boolean }) {
   const router = useRouter();
   const toast = useToast();
 
@@ -192,9 +194,11 @@ export default function ManageClasses() {
     <SafeAreaView style={[styles.screen, { backgroundColor: HEADER_AREA_BG }]} edges={['top']}>
       {/* ---------------- Header ---------------- */}
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={22} color={BACK_ICON} />
-        </TouchableOpacity>
+        {!asTab && (
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={22} color={BACK_ICON} />
+          </TouchableOpacity>
+        )}
         <Text style={styles.title}>My classes</Text>
         <PressableScale style={styles.createButton} scaleTo={0.94} onPress={openCreateModal}>
           <Ionicons name="add" size={18} color={IS_SCHOOL ? '#fff' : BROWN} />
@@ -204,7 +208,7 @@ export default function ManageClasses() {
 
       <ScrollView
         style={{ flex: 1, backgroundColor: CREAM }}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, asTab && { paddingBottom: NAV_CLEARANCE }]}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={BROWN} />}
       >
 
@@ -394,6 +398,10 @@ export default function ManageClasses() {
       </Modal>
     </SafeAreaView>
   );
+}
+
+export default function ManageClasses() {
+  return <ManageClassesScreen />;
 }
 
 const styles = StyleSheet.create({

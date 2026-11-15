@@ -60,17 +60,44 @@ const ICONS: Record<string, string> = {
   progress: 'bar-chart-outline',
   profile: 'person-outline',
   settings: 'settings-outline',
+  classes: 'people-outline',
 };
 
 // ------------------------------------------------------------------ the bar itself
 export function TabBarView({
-  items, activeIndex, onPress,
+  items, activeIndex, onPress, showAllLabels = false,
 }: {
   items: TabBarItem[];
   activeIndex: number;
   onPress: (index: number) => void;
+  /** true: every tab shows its icon AND its label (teacher app); false: only the active tab shows its label. */
+  showAllLabels?: boolean;
 }) {
   const insets = useSafeAreaInsets();
+  if (showAllLabels) {
+    return (
+      <View pointerEvents="box-none" style={[styles.strip, { paddingBottom: Math.max(insets.bottom, 12) + LIFT }]}>
+        <View style={[styles.bar, { flexDirection: 'row', alignItems: 'center' }]} accessibilityRole="tablist">
+          {items.map((it, i) => {
+            const focused = i === activeIndex;
+            return (
+              <Pressable
+                key={it.key}
+                onPress={() => onPress(i)}
+                accessibilityRole="tab"
+                accessibilityLabel={it.label}
+                accessibilityState={{ selected: focused }}
+                style={[styles.allTab, focused && styles.allTabActive]}
+              >
+                <Ionicons name={it.icon as any} size={22} color={focused ? ACTIVE_FG : IDLE_FG} />
+                <Text numberOfLines={1} style={[styles.allLabel, { color: focused ? ACTIVE_FG : IDLE_FG }]}>{it.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+    );
+  }
   const n = items.length;
   const [innerW, setInnerW] = useState(0);
   // measured label widths (start with a guess so the first frame is already close)
@@ -196,7 +223,8 @@ export function TabBarView({
 }
 
 // ------------------------------------------------------------------ expo-router adapter
-export function FloatingTabBar({ state, descriptors, navigation }: any) {
+// showAllLabels: show every label (teacher). icons: per-route icon overrides, e.g. { submissions: 'checkbox-outline' }.
+export function FloatingTabBar({ state, descriptors, navigation, showAllLabels = false, icons }: any) {
   // only the tabs that are really shown (href: null hides a route)
   const visible = state.routes
     .map((route: any, index: number) => ({ route, index }))
@@ -207,7 +235,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
     return {
       key: route.key,
       label: typeof o.title === 'string' ? o.title : route.name,
-      icon: ICONS[route.name] ?? 'ellipse-outline',
+      icon: icons?.[route.name] ?? ICONS[route.name] ?? 'ellipse-outline',
     };
   });
   const activeIndex = Math.max(0, visible.findIndex(({ index }: any) => index === state.index));
@@ -220,7 +248,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
     }
   };
 
-  return <TabBarView items={items} activeIndex={activeIndex} onPress={press} />;
+  return <TabBarView items={items} activeIndex={activeIndex} onPress={press} showAllLabels={showAllLabels} />;
 }
 
 const styles = StyleSheet.create({
@@ -242,6 +270,9 @@ const styles = StyleSheet.create({
   iconBox: { position: 'absolute', left: 0, top: 0, bottom: 0, width: ICON, justifyContent: 'center', alignItems: 'center' },
   labelBox: { position: 'absolute', left: 0, top: 0, bottom: 0, justifyContent: 'center' },
   label: { fontSize: LABEL_SIZE, fontWeight: '700', color: ACTIVE_FG },
+  allTab: { flex: 1, height: TAB_H, borderRadius: TAB_H / 2, alignItems: 'center', justifyContent: 'center', gap: 1 },
+  allTabActive: { backgroundColor: BUBBLE },
+  allLabel: { fontSize: 11, fontWeight: '700' },
   hitRow: { flexDirection: 'row', height: TAB_H + 8 },
   measure: { position: 'absolute', left: 0, top: 0, opacity: 0, flexDirection: 'row', alignItems: 'flex-start' },
 });

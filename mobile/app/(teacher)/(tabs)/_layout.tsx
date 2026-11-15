@@ -5,6 +5,7 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTabScreenOptions, TAB_BG } from '../../../src/components/useTabScreenOptions';
 import { FloatingTabBar } from '../../../src/components/FloatingTabBar';
+import { FloatingTabBar } from '../../../src/components/FloatingTabBar';
 
 export default function TeacherTabsLayout() {
   const screenOptions = useTabScreenOptions();
@@ -13,7 +14,9 @@ export default function TeacherTabsLayout() {
     <Tabs
       backBehavior="history"
       screenOptions={screenOptions}
-      tabBar={(props) => <FloatingTabBar {...props} />}
+      tabBar={(props) => (
+        <FloatingTabBar {...props} showAllLabels icons={{ submissions: 'checkbox-outline' }} />
+      )}
     >
       <Tabs.Screen
         name="quests"
@@ -29,7 +32,7 @@ export default function TeacherTabsLayout() {
         options={{
           title: 'Submissions',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="ribbon-outline" size={size} color={color} />
+            <Ionicons name="checkbox-outline" size={size} color={color} />
           ),
         }}
       />
@@ -52,14 +55,16 @@ export default function TeacherTabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="settings"
+        name="classes"
         options={{
-          title: 'Settings',
+          title: 'Classes',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />
+            <Ionicons name="people-outline" size={size} color={color} />
           ),
         }}
       />
+      {/* Settings is no longer in the bar: open it from the profile picture in the header */}
+      <Tabs.Screen name="settings" options={{ title: 'Settings', href: null }} />
     </Tabs>
     </View>
   );

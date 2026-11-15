@@ -83,10 +83,9 @@ export default function AppHeader({ role, subtitle, children }: Props) {
   return (
     <View style={styles.header}>
       <View style={[styles.row, children ? { marginBottom: 14 } : null]}>
-        {/* Students: the avatar shows their picture (or first letter) and opens Profile / Settings */}
+        {/* The avatar shows the picture (or first letter) and opens Profile / Settings (student: Profile tab, teacher: Settings) */}
         <TouchableOpacity
-          disabled={role !== 'student'}
-          onPress={() => router.navigate('/(student)/(tabs)/profile' as any)}
+          onPress={() => router.navigate((role === 'teacher' ? '/(teacher)/(tabs)/settings' : '/(student)/(tabs)/profile') as any)}
           activeOpacity={0.8}
           accessibilityRole="button"
           accessibilityLabel="Open profile and settings"
@@ -101,7 +100,7 @@ export default function AppHeader({ role, subtitle, children }: Props) {
             />
           ) : (
             <View style={styles.avatarCircle}>
-              {role === 'student' && displayName ? (
+              {displayName ? (
                 <Text style={styles.avatarInitial}>{displayName.charAt(0).toUpperCase()}</Text>
               ) : (
                 <Ionicons name="person" size={22} color="#3A2B1A" />
