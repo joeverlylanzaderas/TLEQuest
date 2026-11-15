@@ -5,7 +5,6 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTabScreenOptions, TAB_BG } from '../../../src/components/useTabScreenOptions';
 import { FloatingTabBar } from '../../../src/components/FloatingTabBar';
-import { FloatingTabBar } from '../../../src/components/FloatingTabBar';
 
 export default function TeacherTabsLayout() {
   const screenOptions = useTabScreenOptions();
@@ -15,7 +14,7 @@ export default function TeacherTabsLayout() {
       backBehavior="history"
       screenOptions={screenOptions}
       tabBar={(props) => (
-        <FloatingTabBar {...props} showAllLabels icons={{ submissions: 'checkbox-outline' }} />
+        <FloatingTabBar {...props} showAllLabels hiddenRoutes={['settings']} icons={{ submissions: 'checkbox-outline' }} />
       )}
     >
       <Tabs.Screen
@@ -30,7 +29,7 @@ export default function TeacherTabsLayout() {
       <Tabs.Screen
         name="submissions"
         options={{
-          title: 'Submissions',
+          title: 'Review',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="checkbox-outline" size={size} color={color} />
           ),
