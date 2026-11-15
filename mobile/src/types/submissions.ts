@@ -20,6 +20,7 @@ export interface Submission {
   group_name: string;
   student: number;
   student_username: string;
+  student_name?: string; // real name (first + last); falls back to the username
   image_url: string;
   classifier_result: string;
   confidence_score: number;
@@ -29,6 +30,7 @@ export interface Submission {
   is_reviewed: boolean;
   reviewed_by: number | null;
   reviewed_by_username: string | null;
+  reviewed_by_name?: string | null;
   submitted_at: string;
   reviewed_at: string | null;
 }

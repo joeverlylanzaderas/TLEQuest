@@ -11,6 +11,7 @@ import {
   RefreshControl,
   Modal,
   Alert,
+  Pressable,
 } from 'react-native';
 import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../src/theme/theme';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -26,6 +27,9 @@ import CachedImage from '../../src/components/CachedImage';
 import { useToast } from '../../src/components/Toast';
 import { FadeIn, PressableScale } from '../../src/components/Motion';
 import { TOP_GAP } from '../../src/theme/layout';
+import AppHeader from '../../src/components/AppHeader';
+import { useCoachTarget, useScreenTour } from '../../src/components/CoachTour';
+import { NAV_CLEARANCE } from '../../src/components/FloatingTabBar';
 
 const CREAM = T('#F5EDD8');
 const CARD_BG = T('#F5B921');
@@ -42,9 +46,12 @@ const BACK_BG = IS_SCHOOL ? '#FFFFFF' : CARD_BG;
 const BACK_ICON = IS_SCHOOL ? BLUE : BROWN;
 const CREATE_BG = IS_SCHOOL ? BLUE : GREEN;
 
-export default function ManageClasses() {
+// Used as a stack screen (back button) and as the Classes tab of the teacher bottom nav (asTab).
+export function ManageClassesScreen({ asTab = false }: { asTab?: boolean }) {
   const router = useRouter();
   const toast = useToast();
+  const target = useCoachTarget();
+  useScreenTour(asTab ? 'teacher-classes' : '_none'); // first-visit tip (only on the Classes tab)
 
   const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -177,6 +184,12 @@ export default function ManageClasses() {
     }
   }
 
+  // Tapping empty space (outside the class cards and the student list) hides the student list again.
+  function handleClearSelection() {
+    setSelectedClass(null);
+    setRoster([]);
+  }
+
   async function handleCopyCode(classItem: ClassSummary) {
     await Clipboard.setStringAsync(classItem.invite_code);
     setCopiedClassId(classItem.id);
@@ -189,25 +202,36 @@ export default function ManageClasses() {
   }
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: HEADER_AREA_BG }]} edges={['top']}>
+    <SafeAreaView
+      style={[styles.screen, { backgroundColor: asTab ? CREAM : HEADER_AREA_BG }]}
+      edges={asTab ? [] : ['top']}
+    >
+      {/* As a tab: the same gold app header as the other teacher tabs */}
+      {asTab && <AppHeader role="teacher" />}
+
       {/* ---------------- Header ---------------- */}
-      <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={22} color={BACK_ICON} />
-        </TouchableOpacity>
+      <View style={[styles.headerRow, asTab && { paddingTop: 16 }]}>
+        {!asTab && (
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={22} color={BACK_ICON} />
+          </TouchableOpacity>
+        )}
         <Text style={styles.title}>My classes</Text>
+        <View {...target('classes-new')}>
         <PressableScale style={styles.createButton} scaleTo={0.94} onPress={openCreateModal}>
           <Ionicons name="add" size={18} color={IS_SCHOOL ? '#fff' : BROWN} />
           <Text style={styles.createButtonText}>New class</Text>
         </PressableScale>
+        </View>
       </View>
 
       <ScrollView
         style={{ flex: 1, backgroundColor: CREAM }}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }, asTab && { paddingBottom: NAV_CLEARANCE }]}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={BROWN} />}
       >
 
+      <Pressable style={{ flexGrow: 1 }} onPress={handleClearSelection} accessible={false}>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         {/* ---------------- My Classes ---------------- */}
@@ -223,6 +247,7 @@ export default function ManageClasses() {
             const justCopied = copiedClassId === c.id;
             return (
               <FadeIn key={c.id} delay={Math.min(ci, 6) * 70}>
+              <View {...(ci === 0 ? target('classes-first') : {})}>
               <TouchableOpacity
                 style={[styles.classCard, isSelected && styles.classCardSelected]}
                 onPress={() => handleSelectClass(c)}
@@ -262,6 +287,7 @@ export default function ManageClasses() {
                   </TouchableOpacity>
                 </View>
               </TouchableOpacity>
+              </View>
               </FadeIn>
             );
           })
@@ -269,7 +295,8 @@ export default function ManageClasses() {
 
         {/* ---------------- Roster for selected class ---------------- */}
         {selectedClass && (
-          <>
+          // Pressable with an empty onPress: taps inside the student list must NOT hide it
+          <Pressable onPress={() => {}} accessible={false}>
             <Text style={styles.sectionLabel}>
               STUDENTS — {selectedClass.class_name.toUpperCase()}
             </Text>
@@ -325,8 +352,9 @@ export default function ManageClasses() {
               </View>
               </>
             )}
-          </>
+          </Pressable>
         )}
+      </Pressable>
       </ScrollView>
 
       {/* ---------------- Create / Edit class modal ---------------- */}
@@ -394,6 +422,10 @@ export default function ManageClasses() {
       </Modal>
     </SafeAreaView>
   );
+}
+
+export default function ManageClasses() {
+  return <ManageClassesScreen />;
 }
 
 const styles = StyleSheet.create({

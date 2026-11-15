@@ -1,16 +1,19 @@
 // mobile/src/components/SubmitOutputCard.tsx
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, Image, ActivityIndicator, StyleSheet,
 } from 'react-native';
 import { T } from '../theme/theme';
 import { useCameraPermissions } from 'expo-camera';
 import CameraCapture from './CameraCapture';
+import { useCoachTarget, useScreenTour } from './CoachTour';
 import { Ionicons } from '@expo/vector-icons';
 import { classifyImage, ClassificationResult } from '../ml/classifier';
 import { useAuth } from '../context/AuthContext';
 import { enqueueSubmission, flushQueue, getItemStatus, discardSubmission } from '../utils/submissionQueue';
 import { QuestProgressDetail } from '../types/assignments';
+import { getSubmissions } from '../api/submissions';
+import { Submission } from '../types/submissions';
 
 const BROWN = T('#5C2C16');
 const GREEN = '#22C55E';
@@ -42,7 +45,14 @@ interface Props {
   progress: QuestProgressDetail;
 }
 
+/** Renders nothing; shows the "send your photo" tip the first time the camera card appears. */
+function SubmitTip() {
+  useScreenTour('student-submit');
+  return null;
+}
+
 export default function SubmitOutputCard({ progress }: Props) {
+  const target = useCoachTarget();
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraOpen, setCameraOpen] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -55,7 +65,27 @@ export default function SubmitOutputCard({ progress }: Props) {
     queued?: boolean; // saved on the phone, will be sent when signal returns
   } | null>(null);
   const { user } = useAuth();
-  const [resubmitting, setResubmitting] = useState(false);
+  // The group's submission for this quest (photo, AI result, teacher review). One submission per quest:
+  // after it is sent there is no camera and no "submit another" button, only the result.
+  const [sub, setSub] = useState<Submission | null>(null);
+  const [zoomOpen, setZoomOpen] = useState(false); // full-screen view of the submitted photo
+
+  const loadSub = useCallback(async () => {
+    try {
+      const all = await getSubmissions();
+      const mine = all
+        .filter((x) => x.quest_assignment === progress.quest_assignment)
+        .sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
+      setSub(mine[0] ?? null);
+    } catch {
+      // keep whatever we already show; the result still comes from the progress data
+    }
+  }, [progress.quest_assignment]);
+
+  // Already submitted (or reviewed) when the screen opens: load the photo + AI result
+  useEffect(() => {
+    if (progress.review_status !== 'none') loadSub();
+  }, [progress.review_status, progress.quest_assignment, loadSub]);
 
   async function openCamera() {
     setError('');
@@ -125,7 +155,7 @@ export default function SubmitOutputCard({ progress }: Props) {
 
       setSubmitted({ result, aiUnavailable, queued: status.state === 'pending' });
       setPhotoUri(null);
-      setResubmitting(false);
+      if (status.state !== 'pending') loadSub();
     } catch (e: any) {
       setError(errorText(e));
     } finally {
@@ -134,48 +164,82 @@ export default function SubmitOutputCard({ progress }: Props) {
     }
   }
 
-    // ---- Already reviewed by the teacher: final, read-only ----
-  if (progress.review_status === 'reviewed') {
-    const stars = progress.teacher_rating ?? 0;
+  // ---- Submitted (just now, or earlier): show the RESULT of the group's output, then the teacher's review.
+  // No camera and no "submit another photo": a quest has one submission. ----
+  const justSent = !!submitted && !submitted.queued;
+  if (progress.review_status === 'reviewed' || progress.review_status === 'waiting' || justSent) {
+    const reviewed = progress.review_status === 'reviewed';
+    const label = sub?.classifier_result ?? submitted?.result.label ?? '';
+    const score = sub?.confidence_score ?? submitted?.result.confidence ?? 0;
+    const accepted = label === 'ACCEPTED';
+    const aiChecked = !!label && score > 0;
+    const stars = progress.teacher_rating ?? sub?.teacher_rating ?? 0;
+    const note = progress.teacher_feedback || sub?.teacher_feedback || '';
+    const aiColor = accepted ? GREEN : ORANGE;
     return (
       <View style={styles.card}>
-        <Ionicons name="checkmark-circle" size={44} color={GREEN} />
-        <Text style={styles.title}>Quest{'\n'}Completed!</Text>
-        <Text style={styles.body}>
-          Your teacher reviewed your group's output. Your points and badge have been added.
-        </Text>
-        {stars > 0 ? (
-          <View style={{ flexDirection: 'row', gap: 2, marginBottom: 8 }}>
-            {[1, 2, 3, 4, 5].map((n) => (
-              <Ionicons key={n} name={n <= stars ? 'star' : 'star-outline'} size={20} color={ORANGE} />
-            ))}
-          </View>
-        ) : null}
-        {progress.teacher_feedback ? (
-          <View style={styles.resultBox}>
-            <Text style={styles.resultNote}>{progress.teacher_feedback}</Text>
-          </View>
-        ) : null}
-      </View>
-    );
-  }
+        <Ionicons name={reviewed ? 'checkmark-circle' : 'time'} size={44} color={reviewed ? GREEN : ORANGE} />
+        <Text style={styles.title}>{reviewed ? 'Quest\nCompleted!' : 'Submitted!'}</Text>
 
-  // ---- Already submitted, waiting for the teacher: no camera, unless the leader replaces the photo ----
-  if (progress.review_status === 'waiting' && !submitted && !resubmitting) {
-    return (
-      <View style={styles.card}>
-        <Ionicons name="time" size={44} color={ORANGE} />
-        <Text style={styles.title}>Submitted!</Text>
-        <Text style={styles.body}>
-          {progress.is_group_leader
-            ? 'Your output was sent to your teacher, who will review it soon. If the photo was wrong, you can replace it until your teacher reviews it.'
-            : "Your group leader submitted your group's final output. Your teacher will review it soon."}
-        </Text>
-        {progress.is_group_leader ? (
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => setResubmitting(true)}>
-            <Text style={styles.secondaryButtonText}>Replace photo</Text>
+        {/* Your group's submitted output */}
+        {sub?.image_url ? (
+          <TouchableOpacity
+            style={{ width: '100%' }}
+            activeOpacity={0.9}
+            onPress={() => setZoomOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Open the submitted photo in full screen"
+          >
+            <Image source={{ uri: sub.image_url }} style={styles.resultPhoto} />
+            <View style={styles.zoomHint}>
+              <Ionicons name="expand-outline" size={14} color="#fff" />
+            </View>
           </TouchableOpacity>
         ) : null}
+
+        <View style={styles.resultBox}>
+          <Text style={styles.sectionHead}>AI RESULT</Text>
+          {aiChecked ? (
+            <>
+              <Text style={[styles.resultLabel, { color: aiColor, marginTop: 2 }]}>{accepted ? 'Accepted' : 'For review'}</Text>
+              <Text style={styles.resultConfidence}>Confidence: {(score * 100).toFixed(1)}%</Text>
+              <Text style={styles.resultNote}>{feedbackFor(label)}</Text>
+            </>
+          ) : (
+            <Text style={styles.resultNote}>The AI check was not available, so your teacher reviews your output directly.</Text>
+          )}
+        </View>
+
+        <View style={[styles.resultBox, { marginTop: 10 }]}>
+          <Text style={styles.sectionHead}>TEACHER REVIEW</Text>
+          {reviewed ? (
+            <>
+              {stars > 0 ? (
+                <View style={{ flexDirection: 'row', gap: 2, marginVertical: 6 }}>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <Ionicons key={n} name={n <= stars ? 'star' : 'star-outline'} size={22} color={ORANGE} />
+                  ))}
+                </View>
+              ) : null}
+              {note ? <Text style={styles.resultNote}>{note}</Text> : null}
+              <Text style={styles.resultNote}>Your points and badge have been added.</Text>
+            </>
+          ) : (
+            <Text style={styles.resultNote}>
+              Waiting for your teacher. You will get a notification when the review is ready.
+            </Text>
+          )}
+        </View>
+
+        {/* Tap the photo to see it big; tap anywhere to close */}
+        <Modal visible={zoomOpen} transparent animationType="fade" onRequestClose={() => setZoomOpen(false)}>
+          <TouchableOpacity style={styles.zoomOverlay} activeOpacity={1} onPress={() => setZoomOpen(false)}>
+            {sub?.image_url ? <Image source={{ uri: sub.image_url }} style={styles.zoomImage} resizeMode="contain" /> : null}
+            <View style={styles.zoomClose}>
+              <Ionicons name="close" size={22} color="#fff" />
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </View>
     );
   }
@@ -213,7 +277,8 @@ export default function SubmitOutputCard({ progress }: Props) {
   }
 
   return (
-    <View style={styles.card}>
+    <View style={styles.card} {...target('submit-card')}>
+      <SubmitTip />
       <Text style={styles.congrats}>Congratulations!</Text>
       <Text style={styles.title}>All Steps{'\n'}Completed!</Text>
       <Text style={styles.body}>
@@ -241,11 +306,6 @@ export default function SubmitOutputCard({ progress }: Props) {
               ? 'AI check is not available on this device, so your teacher will review your output directly.'
               : feedbackFor(submitted.result.label)}
           </Text>
-          {!submitted.queued && (
-            <TouchableOpacity style={styles.secondaryButton} onPress={openCamera}>
-              <Text style={styles.secondaryButtonText}>Submit another photo</Text>
-            </TouchableOpacity>
-          )}
         </View>
       ) : (
         <>
@@ -294,12 +354,6 @@ export default function SubmitOutputCard({ progress }: Props) {
         </>
       )}
 
-      {resubmitting && !submitted && !isSubmitting ? (
-        <TouchableOpacity style={styles.secondaryButton} onPress={() => { setResubmitting(false); setPhotoUri(null); setError(''); }}>
-          <Text style={styles.secondaryButtonText}>Keep my current submission</Text>
-        </TouchableOpacity>
-      ) : null}
-
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       {/* In-app camera: no gallery, the photo has to be taken live */}
@@ -336,6 +390,12 @@ const styles = StyleSheet.create({
   cancelButton: { marginTop: 10, paddingVertical: 8, paddingHorizontal: 24 },
   cancelButtonText: { color: T('#8A6A2A'), fontWeight: '700', fontSize: 13, textDecorationLine: 'underline' },
 
+  zoomHint: { position: 'absolute', right: 10, bottom: 22, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
+  zoomOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' },
+  zoomImage: { width: '100%', height: '85%' },
+  zoomClose: { position: 'absolute', top: 48, right: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  resultPhoto: { width: '100%', aspectRatio: 4 / 3, borderRadius: 14, marginBottom: 12, backgroundColor: '#EADEC9' },
+  sectionHead: { fontSize: 10, fontWeight: '800', color: T('#8A6A2A'), letterSpacing: 0.8 },
   resultBox: { width: '100%', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 18 },
   resultLabel: { fontSize: 22, fontWeight: '900', marginTop: 6 },
   resultConfidence: { fontSize: 12, color: BROWN, fontWeight: '700', marginTop: 2 },

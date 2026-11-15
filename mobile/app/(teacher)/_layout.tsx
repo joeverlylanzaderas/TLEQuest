@@ -1,10 +1,13 @@
 //app/(teacher)/_layout.tsx
 import { Stack } from 'expo-router';
 import WelcomeGuide from '../../src/components/WelcomeGuide';
+import { CoachProvider } from '../../src/components/CoachTour';
+import ConsentGate from '../../src/components/ConsentGate';
 
 export default function TeacherLayout() {
   return (
-    <>
+    <ConsentGate>
+    <CoachProvider role="teacher">
       <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', animationDuration: 280 }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="create-quest" />
@@ -15,6 +18,7 @@ export default function TeacherLayout() {
       </Stack>
       {/* Shows once, the first time this teacher gets here after logging in */}
       <WelcomeGuide role="teacher" />
-    </>
+    </CoachProvider>
+    </ConsentGate>
   );
 }

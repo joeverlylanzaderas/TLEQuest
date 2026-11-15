@@ -12,6 +12,7 @@ import { getSubmissions } from '../../../src/api/submissions';
 import { TeacherDashboardSummary, RecentActivityEvent } from '../../../src/types/dashboard';
 import { Submission } from '../../../src/types/submissions';
 import AppHeader from '../../../src/components/AppHeader';
+import { useCoachTarget } from '../../../src/components/CoachTour';
 import { FadeIn, PressableScale, CountUp, Pop } from '../../../src/components/Motion';
 import { NAV_CLEARANCE } from '../../../src/components/FloatingTabBar';
 
@@ -55,6 +56,7 @@ function activityIcon(type: RecentActivityEvent['type']): { name: any; color: st
 }
 
 export default function TeacherDashboard() {
+  const target = useCoachTarget(); // lets the guided tour light up parts of this screen
   const router = useRouter();
   const [summary, setSummary] = useState<TeacherDashboardSummary | null>(null);
   const [pending, setPending] = useState<Submission[]>([]);
@@ -132,7 +134,7 @@ export default function TeacherDashboard() {
 
         {/* ---------- 1. What needs me right now ---------- */}
         <FadeIn>
-          <View style={styles.hero}>
+          <View style={styles.hero} {...target('home-hero')}>
             <Text style={styles.heroLabel}>{waiting > 0 ? 'NEEDS YOUR REVIEW' : 'ALL CAUGHT UP'}</Text>
             <View style={styles.heroRow}>
               {waiting > 0 ? (
@@ -183,7 +185,7 @@ export default function TeacherDashboard() {
         </FadeIn>
 
         {/* ---------- 2. Quick numbers ---------- */}
-        <View style={styles.statsRow}>
+        <View style={styles.statsRow} {...target('home-stats')}>
           {stats.map((s, i) => (
             <FadeIn key={s.label} delay={120 + i * 70} style={styles.statTile}>
               <View style={[styles.statIcon, { backgroundColor: s.tint.bg }]}>
@@ -198,7 +200,7 @@ export default function TeacherDashboard() {
         {/* ---------- 3. Shortcuts ---------- */}
         <FadeIn delay={300}>
           <Text style={styles.sectionHeader}>Quick actions</Text>
-          <View style={styles.actionsRow}>
+          <View style={styles.actionsRow} {...target('home-actions')}>
             {actions.map((a) => (
               <PressableScale
                 key={a.label}

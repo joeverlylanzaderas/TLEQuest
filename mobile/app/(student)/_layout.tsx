@@ -3,6 +3,8 @@ import { Stack } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import { useSubmissionQueueSync } from '../../src/utils/useSubmissionQueueSync';
 import WelcomeGuide from '../../src/components/WelcomeGuide';
+import { CoachProvider } from '../../src/components/CoachTour';
+import ConsentGate from '../../src/components/ConsentGate';
 
 export default function StudentLayout() {
   // Sends submissions that were saved on the phone while there was no signal
@@ -10,7 +12,8 @@ export default function StudentLayout() {
   useSubmissionQueueSync(user?.id);
 
   return (
-    <>
+    <ConsentGate>
+    <CoachProvider role="student">
       <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', animationDuration: 280 }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="notifications" options={{ animation: 'slide_from_bottom' }} />
@@ -21,6 +24,7 @@ export default function StudentLayout() {
       </Stack>
       {/* Shows once, the first time this student gets here after logging in */}
       <WelcomeGuide role="student" />
-    </>
+    </CoachProvider>
+    </ConsentGate>
   );
 }

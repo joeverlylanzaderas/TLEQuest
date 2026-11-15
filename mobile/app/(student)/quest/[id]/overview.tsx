@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getProgressDetail } from '../../../../src/api/assignments';
 import { QuestProgressDetail, ProgressStep } from '../../../../src/types/assignments';
 import SubmitOutputCard from '../../../../src/components/SubmitOutputCard';
+import { useCoachTarget, useScreenTour } from '../../../../src/components/CoachTour';
 import QuestCover from '../../../../src/components/QuestCover';
 import { FadeIn, PressableScale, AnimatedBar, Confetti } from '../../../../src/components/Motion';
 
@@ -33,6 +34,8 @@ function formatDate(iso: string | null): string {
 }
 
 export default function QuestOverview() {
+  const target = useCoachTarget();
+  useScreenTour('student-overview'); // first-time tip
   const { width: bgWidth } = useWindowDimensions();
   const router = useRouter();
   // [id] is the QuestProgress id (what Home and the Quests tab push), not the quest id
@@ -180,6 +183,7 @@ export default function QuestOverview() {
                   {!isLast && <View style={[styles.railLine, isCompleted && styles.railLineDone]} />}
                 </View>
 
+                <View style={{ flex: 1, minWidth: 0 }} {...(isCurrent ? target('overview-first') : {})}>
                 <PressableScale
                   containerStyle={{ flex: 1, minWidth: 0 }}
                   onPress={() => openStep(step)}
@@ -231,6 +235,7 @@ export default function QuestOverview() {
                     </>
                   )}
                 </PressableScale>
+                </View>
               </View>
             </FadeIn>
           );

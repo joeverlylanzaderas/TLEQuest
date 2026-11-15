@@ -11,6 +11,7 @@ import { getAssignmentsForQuest } from '../../../src/api/assignments';
 import { Quest } from '../../../src/types/quests';
 import { ClassSummary } from '../../../src/types/classrooms';
 import AppHeader from '../../../src/components/AppHeader';
+import { useCoachTarget, useScreenTour } from '../../../src/components/CoachTour';
 import { FadeIn, PressableScale } from '../../../src/components/Motion';
 import QuestCover from '../../../src/components/QuestCover';
 import { NAV_CLEARANCE } from '../../../src/components/FloatingTabBar';
@@ -31,6 +32,8 @@ interface QuestDates {
 
 export default function TeacherQuestLibrary() {
   const router = useRouter();
+  const target = useCoachTarget();
+  useScreenTour('teacher-quests'); // first-visit tip
   const [quests, setQuests] = useState<Quest[]>([]);
   const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [questDates, setQuestDates] = useState<Record<number, QuestDates>>({});
@@ -124,6 +127,7 @@ export default function TeacherQuestLibrary() {
             <Text style={styles.pageTitle}>Quests</Text>
             <Text style={styles.pageSub}>{quests.length} in your library</Text>
           </View>
+          <View {...target('quests-new')}>
           <PressableScale
             style={styles.createButton}
             scaleTo={0.94}
@@ -132,6 +136,7 @@ export default function TeacherQuestLibrary() {
             <Ionicons name="add" size={18} color={BROWN} />
             <Text style={styles.createButtonText}>New quest</Text>
           </PressableScale>
+          </View>
         </View>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -179,6 +184,7 @@ export default function TeacherQuestLibrary() {
             const dates = questDates[quest.id] || { assigned: null, due: null };
             return (
               <FadeIn key={quest.id} delay={Math.min(qi, 6) * 70}>
+              <View {...(qi === 0 ? target('quests-first') : {})}>
               <PressableScale
                 style={styles.questCard}
                 scaleTo={0.97}
@@ -212,6 +218,7 @@ export default function TeacherQuestLibrary() {
                   </View>
                 </View>
               </PressableScale>
+              </View>
               </FadeIn>
             );
           })

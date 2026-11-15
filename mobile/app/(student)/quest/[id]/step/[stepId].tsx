@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getProgressDetail, toggleChecklistItem } from '../../../../../src/api/assignments';
 import { QuestProgressDetail } from '../../../../../src/types/assignments';
 import SubmitOutputCard from '../../../../../src/components/SubmitOutputCard';
+import { useCoachTarget, useScreenTour } from '../../../../../src/components/CoachTour';
 import AppHeader from '../../../../../src/components/AppHeader';
 import { TabBarView, NAV_CLEARANCE } from '../../../../../src/components/FloatingTabBar';
 import { FadeIn, AnimatedBar, Pop } from '../../../../../src/components/Motion';
@@ -32,6 +33,8 @@ const TABS = [
 
 export default function QuestStepScreen() {
   const router = useRouter();
+  const target = useCoachTarget();
+  useScreenTour('student-step'); // first-time tip
   const { id, stepId } = useLocalSearchParams<{ id: string; stepId: string }>();
   const progressId = Number(id);
 
@@ -218,7 +221,7 @@ export default function QuestStepScreen() {
               </View>
             ) : (
               total > 0 && (
-                <>
+                <View {...target('step-checklist')}>
                   <Text style={styles.checklistLabel}>Checklist: ({checkedCount}/{total})</Text>
                   {step.checklist_items.map((item) => (
                     <TouchableOpacity
@@ -237,7 +240,7 @@ export default function QuestStepScreen() {
                       {savingIds.includes(item.id) && <ActivityIndicator size="small" color={ORANGE} />}
                     </TouchableOpacity>
                   ))}
-                </>
+                </View>
               )
             )}
 
@@ -248,6 +251,7 @@ export default function QuestStepScreen() {
                 </Text>
               </TouchableOpacity>
 
+              <View {...target('step-proceed')}>
               <TouchableOpacity
                 style={[styles.proceedButton, !isCompleted && styles.proceedButtonDisabled]}
                 onPress={handleProceed}
@@ -257,6 +261,7 @@ export default function QuestStepScreen() {
                   {nextStep ? 'Proceed to Next Step' : 'Complete Quest'}
                 </Text>
               </TouchableOpacity>
+              </View>
             </View>
 
             {showRewards && (

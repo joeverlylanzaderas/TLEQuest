@@ -27,6 +27,7 @@ import { Ionicons } from '@expo/vector-icons';
 import MyGroupCard from '../../../src/components/MyGroupCard';
 import KeyboardSafe from '../../../src/components/KeyboardSafe';
 import AppHeader from '../../../src/components/AppHeader';
+import { useCoachTarget } from '../../../src/components/CoachTour';
 import QuestCover from '../../../src/components/QuestCover';
 import { Avatar, prefetchAvatars } from '../../../src/components/Avatar';
 import { FadeIn, PressableScale, AnimatedBar, CountUp, Pop } from '../../../src/components/Motion';
@@ -46,6 +47,7 @@ const AVATAR_COLORS = ['#f87171', '#4ade80', T('#fbbf24'), '#60a5fa', '#f472b6',
 
 export default function StudentHome() {
   const router = useRouter();
+  const target = useCoachTarget(); // lets the guided tour light up parts of this screen
   const { user } = useAuth();
   const scope = useClassScope();
   const { width: screenWidth } = useWindowDimensions();
@@ -327,7 +329,7 @@ export default function StudentHome() {
 
       {carouselQuests.length > 0 ? (
         <FadeIn delay={120}>
-        <View style={styles.questCarouselWrap}>
+        <View style={styles.questCarouselWrap} {...target('home-quest')}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -393,7 +395,7 @@ export default function StudentHome() {
       )}
 
       {/* Quick stats */}
-      <View style={styles.statsRow}>
+      <View style={styles.statsRow} {...target('home-stats')}>
         <FadeIn delay={250} style={styles.statCard}>
           <Ionicons name="star" size={18} color={GOLD} />
           <CountUp value={totalPoints} style={styles.statValue} delay={400} />
