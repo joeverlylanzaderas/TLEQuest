@@ -21,9 +21,6 @@
       "package": "com.tlequest.app",
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
