@@ -11,6 +11,7 @@ import {
   FileSpreadsheet,
   Upload,
   Download,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -29,7 +30,7 @@ import {
   resetUserPassword,
   bulkUploadUsers,
 } from '../api/users';
-import type { ManagedUser, UserRole, BulkUploadResult } from '../types/users';
+import type { ManagedUser, UserRole, BulkUploadResult, CreateUserPayload } from '../types/users';
 
 function formatApiError(data: any): string {
   if (!data || typeof data !== 'object') return 'Something went wrong.';
@@ -886,6 +887,10 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('student');
+  const [showDetails, setShowDetails] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -894,7 +899,14 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
     setError('');
     setIsSubmitting(true);
     try {
-      await createUser({ username, password, role });
+      const payload: CreateUserPayload = { username, password, role };
+      // Optional details: only sent when the admin opened the section and typed something.
+      if (showDetails) {
+        if (firstName.trim()) payload.first_name = firstName.trim();
+        if (lastName.trim()) payload.last_name = lastName.trim();
+        if (email.trim()) payload.email = email.trim();
+      }
+      await createUser(payload);
       onCreated();
     } catch (e: any) {
       setError(formatApiError(e?.response?.data));
@@ -934,6 +946,52 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
           <option value="teacher">Teacher</option>
           <option value="admin">Admin</option>
         </select>
+
+        {/* Optional details dropdown */}
+        <button
+          type="button"
+          onClick={() => setShowDetails((v) => !v)}
+          aria-expanded={showDetails}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            background: 'transparent', border: '1px dashed var(--t-d6bb83)', borderRadius: 12,
+            padding: '10px 14px', fontSize: 13, fontWeight: 600, color: 'var(--t-804022)', cursor: 'pointer',
+          }}
+        >
+          <span>Add name &amp; email (optional)</span>
+          <ChevronDown
+            size={16}
+            style={{ transform: showDetails ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}
+          />
+        </button>
+
+        {showDetails && (
+          <>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <input
+                className="modal-input"
+                placeholder="First name"
+                value={firstName}
+                maxLength={30}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
+              <input
+                className="modal-input"
+                placeholder="Last name"
+                value={lastName}
+                maxLength={30}
+                onChange={(e) => setLastName(e.target.value)}
+              />
+            </div>
+            <input
+              className="modal-input"
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </>
+        )}
 
         {error && <p style={{ color: '#DF1B39', fontSize: 13, margin: 0, whiteSpace: 'pre-line' }}>{error}</p>}
 
