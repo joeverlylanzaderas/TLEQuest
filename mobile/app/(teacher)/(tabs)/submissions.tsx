@@ -118,7 +118,7 @@ export default function TeacherSubmissions() {
     if (status === 'pending' && s.is_reviewed) return false;
     if (status === 'reviewed' && !s.is_reviewed) return false;
     const q = search.trim().toLowerCase();
-    if (q && !`${s.quest_title} ${s.group_name} ${s.student_username}`.toLowerCase().includes(q)) return false;
+    if (q && !`${s.quest_title} ${s.group_name} ${s.student_username} ${s.student_name ?? ''}`.toLowerCase().includes(q)) return false;
     return true;
   });
 

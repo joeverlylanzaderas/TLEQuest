@@ -113,7 +113,7 @@ export default function StudentSubmissions() {
                   <View style={styles.cardBody}>
                     <Text style={styles.questTitle} numberOfLines={2}>{s.quest_title}</Text>
                     <Text style={styles.meta}>
-                      {s.group_name} • by {s.student_username} • {formatDateTime(s.submitted_at)}
+                      {s.group_name} • by {s.student_name || s.student_username} • {formatDateTime(s.submitted_at)}
                     </Text>
 
                     <View style={styles.badgeRow}>
@@ -141,7 +141,7 @@ export default function StudentSubmissions() {
                           {s.teacher_feedback || 'Your teacher reviewed this without a written comment.'}
                         </Text>
                         {s.reviewed_by_username ? (
-                          <Text style={styles.reviewedBy}>by {s.reviewed_by_username}</Text>
+                          <Text style={styles.reviewedBy}>by {s.reviewed_by_name || s.reviewed_by_username}</Text>
                         ) : null}
                       </View>
                     )}

@@ -155,7 +155,7 @@ export default function SubmissionReview() {
 
   const submitter = group?.members.find((m) => m.student.id === submission.student)?.student
     ?? (group?.leader && group.leader.id === submission.student ? group.leader : null);
-  const submitterName = submitter ? fullName(submitter) : submission.student_username;
+  const submitterName = submitter ? fullName(submitter) : (submission.student_name || submission.student_username);
 
   function addQuickNote(text: string) {
     setFeedback((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
@@ -275,7 +275,7 @@ export default function SubmissionReview() {
             {submission.is_reviewed && (
               <Text style={styles.reviewedNote}>
                 Reviewed {submission.reviewed_at ? formatDateTime(submission.reviewed_at) : ''}
-                {submission.reviewed_by_username ? ` by ${submission.reviewed_by_username}` : ''}. You can update it.
+                {submission.reviewed_by_username ? ` by ${submission.reviewed_by_name || submission.reviewed_by_username}` : ''}. You can update it.
               </Text>
             )}
 

@@ -91,6 +91,7 @@ function PillBar({
   onPress: (index: number) => void;
 }) {
   const insets = useSafeAreaInsets();
+  const coach = useCoach();
   const n = items.length;
   const [innerW, setInnerW] = useState(0);
   // measured label widths (start with a guess so the first frame is already close)
@@ -184,6 +185,8 @@ function PillBar({
           {items.map((it, i) => (
             <Pressable
               key={it.key}
+              ref={(node: any) => coach?.register(`tab-${it.name ?? it.key}`, node)}
+              collapsable={false}
               style={{ width: i === activeIndex ? activeW : idleW, height: '100%', justifyContent: 'center' }}
               onPressIn={() => press(i, true)}
               onPressOut={() => press(i, false)}

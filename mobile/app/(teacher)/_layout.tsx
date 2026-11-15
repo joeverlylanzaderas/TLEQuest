@@ -5,7 +5,7 @@ import { CoachProvider } from '../../src/components/CoachTour';
 
 export default function TeacherLayout() {
   return (
-    <CoachProvider>
+    <CoachProvider role="teacher">
       <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', animationDuration: 280 }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="create-quest" />

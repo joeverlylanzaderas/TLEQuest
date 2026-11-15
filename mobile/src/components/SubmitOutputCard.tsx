@@ -6,6 +6,7 @@ import {
 import { T } from '../theme/theme';
 import { useCameraPermissions } from 'expo-camera';
 import CameraCapture from './CameraCapture';
+import { useCoachTarget, useScreenTour } from './CoachTour';
 import { Ionicons } from '@expo/vector-icons';
 import { classifyImage, ClassificationResult } from '../ml/classifier';
 import { useAuth } from '../context/AuthContext';
@@ -44,7 +45,14 @@ interface Props {
   progress: QuestProgressDetail;
 }
 
+/** Renders nothing; shows the "send your photo" tip the first time the camera card appears. */
+function SubmitTip() {
+  useScreenTour('student-submit');
+  return null;
+}
+
 export default function SubmitOutputCard({ progress }: Props) {
+  const target = useCoachTarget();
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraOpen, setCameraOpen] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -60,6 +68,7 @@ export default function SubmitOutputCard({ progress }: Props) {
   // The group's submission for this quest (photo, AI result, teacher review). One submission per quest:
   // after it is sent there is no camera and no "submit another" button, only the result.
   const [sub, setSub] = useState<Submission | null>(null);
+  const [zoomOpen, setZoomOpen] = useState(false); // full-screen view of the submitted photo
 
   const loadSub = useCallback(async () => {
     try {
@@ -173,7 +182,20 @@ export default function SubmitOutputCard({ progress }: Props) {
         <Text style={styles.title}>{reviewed ? 'Quest\nCompleted!' : 'Submitted!'}</Text>
 
         {/* Your group's submitted output */}
-        {sub?.image_url ? <Image source={{ uri: sub.image_url }} style={styles.resultPhoto} /> : null}
+        {sub?.image_url ? (
+          <TouchableOpacity
+            style={{ width: '100%' }}
+            activeOpacity={0.9}
+            onPress={() => setZoomOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Open the submitted photo in full screen"
+          >
+            <Image source={{ uri: sub.image_url }} style={styles.resultPhoto} />
+            <View style={styles.zoomHint}>
+              <Ionicons name="expand-outline" size={14} color="#fff" />
+            </View>
+          </TouchableOpacity>
+        ) : null}
 
         <View style={styles.resultBox}>
           <Text style={styles.sectionHead}>AI RESULT</Text>
@@ -208,6 +230,16 @@ export default function SubmitOutputCard({ progress }: Props) {
             </Text>
           )}
         </View>
+
+        {/* Tap the photo to see it big; tap anywhere to close */}
+        <Modal visible={zoomOpen} transparent animationType="fade" onRequestClose={() => setZoomOpen(false)}>
+          <TouchableOpacity style={styles.zoomOverlay} activeOpacity={1} onPress={() => setZoomOpen(false)}>
+            {sub?.image_url ? <Image source={{ uri: sub.image_url }} style={styles.zoomImage} resizeMode="contain" /> : null}
+            <View style={styles.zoomClose}>
+              <Ionicons name="close" size={22} color="#fff" />
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </View>
     );
   }
@@ -245,7 +277,8 @@ export default function SubmitOutputCard({ progress }: Props) {
   }
 
   return (
-    <View style={styles.card}>
+    <View style={styles.card} {...target('submit-card')}>
+      <SubmitTip />
       <Text style={styles.congrats}>Congratulations!</Text>
       <Text style={styles.title}>All Steps{'\n'}Completed!</Text>
       <Text style={styles.body}>
@@ -357,6 +390,10 @@ const styles = StyleSheet.create({
   cancelButton: { marginTop: 10, paddingVertical: 8, paddingHorizontal: 24 },
   cancelButtonText: { color: T('#8A6A2A'), fontWeight: '700', fontSize: 13, textDecorationLine: 'underline' },
 
+  zoomHint: { position: 'absolute', right: 10, bottom: 22, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
+  zoomOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' },
+  zoomImage: { width: '100%', height: '85%' },
+  zoomClose: { position: 'absolute', top: 48, right: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
   resultPhoto: { width: '100%', aspectRatio: 4 / 3, borderRadius: 14, marginBottom: 12, backgroundColor: '#EADEC9' },
   sectionHead: { fontSize: 10, fontWeight: '800', color: T('#8A6A2A'), letterSpacing: 0.8 },
   resultBox: { width: '100%', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 18 },

@@ -19,17 +19,33 @@ export interface CoachTourDef {
   steps: CoachStep[];
 }
 
-export const MAIN_TOUR_ID = 'teacher-main';
+export type CoachRole = 'teacher' | 'student';
 
-// Screens the full tour visits (a step with `route` opens that screen first)
+export const MAIN_TOUR_IDS: Record<CoachRole, string> = {
+  teacher: 'teacher-main',
+  student: 'student-main',
+};
+/** Kept for older imports: the teacher's full tour. */
+export const MAIN_TOUR_ID = MAIN_TOUR_IDS.teacher;
+
+// Screens the full tours visit (a step with `route` opens that screen first)
 const R_HOME = '/(teacher)/(tabs)/dashboard';
 const R_REVIEW = '/(teacher)/(tabs)/submissions';
 const R_QUESTS = '/(teacher)/(tabs)/quests';
 const R_PROGRESS = '/(teacher)/(tabs)/progress';
 const R_CLASSES = '/(teacher)/(tabs)/classes';
 
+const S_HOME = '/(student)/(tabs)/home';
+const S_QUESTS = '/(student)/(tabs)/quests';
+const S_SUBS = '/(student)/(tabs)/submissions';
+const S_PROGRESS = '/(student)/(tabs)/progress';
+const S_PROFILE = '/(student)/(tabs)/profile';
+
 /** The full tour already explains these screens, so finishing it hides their first-visit tips. */
-export const TIPS_COVERED_BY_MAIN_TOUR = ['teacher-review', 'teacher-quests', 'teacher-classes'];
+export const TIPS_COVERED_BY_MAIN_TOUR: Record<CoachRole, string[]> = {
+  teacher: ['teacher-review', 'teacher-quests', 'teacher-classes'],
+  student: ['student-quests'],
+};
 
 export const COACH_TOURS: Record<string, CoachTourDef> = {
   // ------------------------------------------------------------- the full guided tour
@@ -140,7 +156,62 @@ export const COACH_TOURS: Record<string, CoachTourDef> = {
       },
     ],
   },
+
+  // ============================================================= STUDENT
+  [MAIN_TOUR_IDS.student]: {
+    kind: 'tour',
+    steps: [
+      { route: S_HOME, title: 'Welcome to TLEQuest!', body: 'Finish quests, earn points and collect badges. This quick tour shows you where everything is. You can tap Skip at any time.' },
+      { route: S_HOME, target: 'tab-home', title: 'Home', body: 'Your starting place. You see your current quest, your points and your badges.' },
+      { route: S_HOME, target: 'home-quest', title: 'Your current quest', body: 'Tap this card to open your quest. "Continue" takes you to the step where you stopped.' },
+      { route: S_HOME, target: 'home-stats', title: 'Points and badges', body: 'The points and badges you earned, and how many quests you finished.' },
+
+      { route: S_QUESTS, target: 'tab-quests', title: 'Quests', body: 'All the quests from your teacher are here. Tap a quest to see its steps.' },
+      { route: S_QUESTS, target: 'quests-toggle', title: 'Map or List', body: 'See your quests as a road map or as a simple list. Pick the one you like.' },
+      { route: S_QUESTS, title: 'How to finish a quest', body: '1. Open a quest.\n2. Do the steps in order and tick every box in the checklist.\n3. After the last step, your group leader takes a photo of your finished work.\n4. Your teacher checks it and gives you points and badges.' },
+
+      { route: S_SUBS, target: 'tab-submissions', title: 'Submissions', body: 'The photo your group sent, the AI check, and your teacher\'s feedback show up here.' },
+      { route: S_PROGRESS, target: 'tab-progress', title: 'Progress', body: 'Your points and badges, and how far you are in each quest.' },
+      { route: S_PROFILE, target: 'tab-profile', title: 'Profile', body: 'Your information, the colors of the app, and help. You can see this tour again here.' },
+
+      { route: S_HOME, target: 'header-avatar', title: 'Your picture', body: 'Tap your picture any time to open your profile.' },
+      { route: S_HOME, target: 'header-bell', title: 'Notifications', body: 'The bell tells you when your teacher sends feedback or something new happens. A red dot means something is new.' },
+
+      { route: S_HOME, title: "You're ready!", body: 'You can see this tour again any time: open Profile and tap "Guided tour". You will also see a short tip the first time you open a quest, a step, and the camera.' },
+    ],
+  },
+
+  'student-quests': {
+    kind: 'tips',
+    steps: [
+      { target: 'quests-toggle', title: 'Map or List', body: 'See your quests as a road map or as a simple list. Tap a quest to open it.' },
+    ],
+  },
+  'student-overview': {
+    kind: 'tips',
+    steps: [
+      { target: 'overview-first', title: 'Do the steps in order', body: 'Tap a step to open its checklist. A locked step opens after you finish the step before it.' },
+    ],
+  },
+  'student-step': {
+    kind: 'tips',
+    steps: [
+      { target: 'step-checklist', title: 'Tick the checklist', body: 'Do each thing, then tap its box. Tap all the boxes to finish the step.' },
+      { target: 'step-proceed', title: 'Go to the next step', body: 'This button turns on when every box is ticked. Tap it to move on.' },
+    ],
+  },
+  'student-submit': {
+    kind: 'tips',
+    steps: [
+      { target: 'submit-card', title: 'Send your photo', body: 'Only the group leader sends the photo. Take one clear photo of your finished work in good light, check it, then tap "Submit Now". A group can send only one photo, so make it a good one.' },
+    ],
+  },
 };
 
-/** The tours that "Show tips again" forgets. */
-export const ALL_TOUR_IDS = Object.keys(COACH_TOURS);
+/** The tours that belong to a role ("Show tips again" forgets these). */
+export function tourIdsFor(role: CoachRole): string[] {
+  return Object.keys(COACH_TOURS).filter((id) => id.startsWith(`${role}-`));
+}
+
+/** Kept for older imports. */
+export const ALL_TOUR_IDS = tourIdsFor('teacher');

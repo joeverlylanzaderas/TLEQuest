@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { refreshClasses, inSelectedClass, useClassScope } from '../../../src/utils/selectedClass';
 import { useAuth } from '../../../src/context/AuthContext';
 import AppHeader from '../../../src/components/AppHeader';
+import { useCoachTarget, useScreenTour } from '../../../src/components/CoachTour';
 import QuestCover from '../../../src/components/QuestCover';
 import { FadeIn, PressableScale } from '../../../src/components/Motion';
 import { getMyProgress } from '../../../src/api/assignments';
@@ -39,8 +40,9 @@ class MapBoundary extends React.Component<{ onFail: () => void; children: React.
 }
 
 function ViewToggle({ value, onChange }: { value: 'map' | 'list'; onChange: (v: 'map' | 'list') => void }) {
+  const target = useCoachTarget();
   return (
-    <View style={toggleStyles.wrap}>
+    <View style={toggleStyles.wrap} {...target('quests-toggle')}>
       {(['map', 'list'] as const).map((v) => (
         <TouchableOpacity key={v} style={[toggleStyles.btn, value === v && toggleStyles.btnActive]} onPress={() => onChange(v)}>
           <Text style={[toggleStyles.text, value === v && toggleStyles.textActive]}>{v === 'map' ? 'Map' : 'List'}</Text>
@@ -69,6 +71,7 @@ function statusOf(p: QuestProgress): StatusKey {
 
 export default function StudentQuests() {
   const router = useRouter();
+  useScreenTour('student-quests'); // first-visit tip (skipped once the full tour was finished)
   const { user } = useAuth();
   const scope = useClassScope();
   const [progress, setProgress] = useState<QuestProgress[]>([]);
