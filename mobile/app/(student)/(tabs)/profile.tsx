@@ -24,6 +24,7 @@ import ConfirmModal from '../../../src/components/ConfirmModal';
 import AvatarCropModal from '../../../src/components/AvatarCropModal';
 import { HowItWorksRow } from '../../../src/components/HowItWorks';
 import { GuidedTourRow } from '../../../src/components/CoachTour';
+import { LegalRow } from '../../../src/components/LegalDocs';
 import { FadeIn, PressableScale, CountUp, Pop } from '../../../src/components/Motion';
 import { NAV_CLEARANCE } from '../../../src/components/FloatingTabBar';
 
@@ -454,6 +455,7 @@ export default function StudentProfile() {
 
         <HowItWorksRow role="student" />
         <GuidedTourRow />
+        <LegalRow />
 
         <View style={{ marginTop: 16 }}>
           <ActionRow

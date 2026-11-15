@@ -23,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import { AnimatedLogo } from '../../src/components/AnimatedLogo';
+import { LegalLinks } from '../../src/components/LegalDocs';
 import { splashBus, useSplashState } from '../../src/splash/splashBus';
 
 // ============================================================================
@@ -395,6 +396,8 @@ export default function LoginScreen() {
                   Forgot Password? <Text style={styles.forgotLink}>Click Here</Text>
                 </Text>
               </TouchableOpacity>
+              {/* above the button, on the plain background (below it the table drawing runs behind the text) */}
+              <LegalLinks style={{ color: INK, fontWeight: '600', fontSize: 13.5, marginTop: 10 }} />
             </Animated.View>
 
             <View style={styles.spacer} />
