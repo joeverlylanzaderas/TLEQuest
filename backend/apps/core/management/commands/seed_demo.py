@@ -1,11 +1,11 @@
-# backend/apps/core/management/commands/seed_demo.py
-"""Seed a demo class, groups, quests and *different progress* for the 4 demo
-accounts that the admin created by uploading demo/demo_roster.csv.
+"""Seed the TLEQuest demonstration dataset.
 
     python manage.py seed_demo            # build (safe to re-run)
-    python manage.py seed_demo --reset    # wipe the demo data, then rebuild
+    python manage.py seed_demo --reset    # replace the demo dataset first
 
-DEMO ONLY: never run this against a real database.
+The seed creates the teacher, 15 enrolled students, one Grade 8 Cookery class,
+three five-member groups, five published table-setting quests, and varied
+per-student progress for the presentation.
 """
 from datetime import timedelta
 
@@ -13,250 +13,369 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
-from apps.accounts.models import User
+from apps.accounts.models import User, UserProfile
 from apps.assignments.models import (
-    ChecklistItemCompletion, QuestAssignment, QuestProgress, StepCompletion,
+    ChecklistItemCompletion,
+    QuestAssignment,
+    QuestProgress,
+    StepCompletion,
 )
 from apps.classrooms.models import Class, ClassEnrollment, Group, GroupMember
 from apps.notifications.models import Notification
 from apps.notifications.utils import notify
 from apps.quests.models import Quest, QuestStep, StepChecklist
 from apps.rewards.models import QuestStepReward, Reward, StudentReward
-from apps.submissions.models import Submission
 
-TEACHER = "T-00045"                                   # Rosa Almendras
-CARLO, LIZA, MIGUEL = "2024-00201", "2024-00202", "2024-00203"
-DEMO_TAG = "demo-seed"                                # marks Reward rows so --reset can remove them
-CLASS_NAME = "TLE 9 - Demo Class"
-PHOTO = "https://res.cloudinary.com/demo/image/upload/sample.jpg"  # placeholder photo
 
-# (title, description, type, published, steps)
-# step = (title, instruction, checklist items, points, badge or None); last step is final.
-QUESTS = [
-    ("Basic Table Setting", "Set a table for one person.", "table_setting", True, [
-        ("Prepare the table", "Clean the table and lay the tablecloth.",
-         ["Table is clean and dry", "Tablecloth is centered and wrinkle-free"], 10, None),
-        ("Place the plates and cutlery", "Set the plate, fork, knife and spoon.",
-         ["Plate is in the center", "Fork on the left", "Knife and spoon on the right"], 10, None),
-        ("Place the glass and napkin", "Add the glass and fold the napkin.",
-         ["Glass is above the knife", "Napkin is neatly folded"], 20, "Table Setting Pro"),
-    ]),
-    ("Napkin Folding Basics", "Fold napkins into three classic shapes.", "napkin_folding", True, [
-        ("Prepare the napkin", "Smooth out a square napkin.",
-         ["Napkin is clean", "Napkin is flat and wrinkle-free"], 10, None),
-        ("Make the base fold", "Fold into a triangle, then a smaller one.",
-         ["Corners are matched", "Creases are sharp"], 10, None),
-        ("Finish the fold", "Shape it into a fan or pyramid and place it on the plate.",
-         ["Shape stands on its own", "Napkin is placed on the plate"], 20, "Napkin Artist"),
-    ]),
-    ("Formal Dinner Table Setting", "Set a table for a three-course formal dinner.", "table_setting", True, [
-        ("Lay the foundation", "Tablecloth, placemat and charger plate.",
-         ["Tablecloth is even on all sides", "Charger plate is centered"], 10, None),
-        ("Set the cutlery", "Place cutlery in the order of the courses (outside to inside).",
-         ["Forks on the left, outside to inside", "Knives and spoons on the right",
-          "Dessert spoon above the plate"], 15, None),
-        ("Set the glasses and bread plate", "Water glass, wine glass and bread plate.",
-         ["Glasses are above the knife", "Bread plate is on the left"], 15, None),
-        ("Final touches", "Add the napkin and a centerpiece.",
-         ["Napkin is folded and placed", "Centerpiece does not block the view"], 25, "Formal Dining Star"),
-    ]),
-    ("Casual Lunch Table Setting", "A relaxed lunch setting for two.", "table_setting", True, [
-        ("Set the place mats", "Lay two place mats facing each other.",
-         ["Mats are aligned", "Mats are clean"], 10, None),
-        ("Add plates and cutlery", "Plate, fork and spoon for each seat.",
-         ["Plate on each mat", "Fork and spoon placed correctly"], 15, "Lunch Host"),
-    ]),
-    ("Buffet Table Setting (draft)", "Not yet published - teacher is still editing.", "table_setting", False, [
-        ("Plan the layout", "Decide where dishes and plates go.",
-         ["Layout drawn"], 10, "Buffet Planner"),
-    ]),
+TEACHER_USERNAME = "T2026002"
+TEACHER_PASSWORD = "teacher3"
+STUDENT_PASSWORD = "testpass123"
+CLASS_NAME = "GRADE 8 - Cookery"
+CLASS_SUBJECT = "TLE"
+CLASS_SECTION = "Veritas"
+CLASS_SCHOOL_YEAR = "2026-2027"
+DEMO_TAG = "demo-seed"
+
+STUDENTS = [
+    ("S2026-031", "Aira", "Bautista"),
+    ("S2026-032", "Bianca", "Cruz"),
+    ("S2026-033", "Caleb", "Dela Cruz"),
+    ("S2026-034", "Daniel", "Garcia"),
+    ("S2026-035", "Ella", "Hernandez"),
+    ("S2026-036", "Faith", "Lopez"),
+    ("S2026-037", "Gabriel", "Mendoza"),
+    ("S2026-038", "Hannah", "Navarro"),
+    ("S2026-039", "Ivan", "Ocampo"),
+    ("S2026-040", "Jasmine", "Reyes"),
+    ("S2026-041", "Karl", "Santos"),
+    ("S2026-042", "Lara", "Torres"),
+    ("S2026-043", "Miguel", "Valdez"),
+    ("S2026-044", "Nina", "Villanueva"),
+    ("S2026-045", "Owen", "Yap"),
 ]
+
+GROUPS = (
+    ("8Veritas_Group 1", 0, "leader"),
+    ("8Veritas_Group 2", 5, "leader"),
+    ("8Veritas_Group 3", 10, "leader"),
+)
+
+QUESTS = (
+    (
+        "Basic Table Setting",
+        "Arrange the essential items for one diner.",
+        [
+            ("Prepare the table", "Clean the table and lay the tablecloth.",
+             ["Table is clean and dry", "Tablecloth is centered and wrinkle-free"], 10),
+            ("Place the plate and cutlery", "Set the plate, fork, knife, and spoon.",
+             ["Plate is centered", "Fork is on the left", "Knife and spoon are on the right"], 15),
+            ("Add the glass and napkin", "Place the glass and fold the napkin.",
+             ["Glass is above the knife", "Napkin is neatly folded"], 20),
+        ],
+    ),
+    (
+        "Formal Dinner Table Setting",
+        "Prepare a complete setting for a three-course formal dinner.",
+        [
+            ("Lay the foundation", "Place the tablecloth, placemat, and charger plate.",
+             ["Tablecloth is even", "Charger plate is centered"], 10),
+            ("Set the cutlery", "Arrange cutlery in course order.",
+             ["Forks are on the left", "Knives and spoons are on the right"], 15),
+            ("Set the glasses", "Place the water and beverage glasses.",
+             ["Glasses are above the knife", "Glasses are aligned"], 20),
+        ],
+    ),
+    (
+        "Casual Lunch Table Setting",
+        "Create a clean and practical lunch setting.",
+        [
+            ("Set the placemats", "Lay two placemats facing each other.",
+             ["Placemats are aligned", "Placemats are clean"], 10),
+            ("Add plates and cutlery", "Place a plate and the needed utensils for each seat.",
+             ["A plate is on each mat", "Utensils are placed correctly"], 15),
+            ("Finish the setting", "Add the napkin and drinking glass.",
+             ["Napkins are folded", "Glasses are placed safely"], 20),
+        ],
+    ),
+    (
+        "Breakfast Table Setting",
+        "Arrange a simple breakfast table for one guest.",
+        [
+            ("Prepare the place", "Lay the placemat and center the plate.",
+             ["Placemat is straight", "Plate is centered"], 10),
+            ("Place breakfast utensils", "Add the fork, spoon, and cup.",
+             ["Fork is on the left", "Spoon and cup are correctly placed"], 15),
+            ("Add the finishing touches", "Place the napkin and breakfast item.",
+             ["Napkin is neat", "Food area is clean"], 20),
+        ],
+    ),
+    (
+        "Buffet Table Setting",
+        "Plan a safe and organized buffet table.",
+        [
+            ("Plan the layout", "Arrange the plates, utensils, and serving areas.",
+             ["Flow is easy to follow", "Plates are accessible"], 10),
+            ("Arrange the service items", "Place serving utensils and tableware.",
+             ["Serving utensils are available", "Tableware is grouped"], 15),
+            ("Complete the buffet", "Add labels, napkins, and a centerpiece.",
+             ["Labels are visible", "Centerpiece does not block the food"], 20),
+        ],
+    ),
+)
 
 
 class Command(BaseCommand):
-    help = "Seed a demo class, groups, quests and varied progress for the 4 demo accounts."
+    help = "Seed the Grade 8 Cookery demonstration dataset."
 
     def add_arguments(self, parser):
-        parser.add_argument("--reset", action="store_true", help="Delete the demo class/quests first.")
+        parser.add_argument("--reset", action="store_true", help="Replace the existing demo dataset first.")
 
-    # ------------------------------------------------------------------ helpers
-    def _get_user(self, username, role):
-        try:
-            return User.objects.get(username=username, role=role)
-        except User.DoesNotExist:
-            raise CommandError(
-                f"Account '{username}' ({role}) not found. In the admin web, go to "
-                f"User Management > Bulk Import and upload demo/demo_roster.csv first."
-            )
+    def _get_or_create_user(self, username, role, password, first_name="", last_name=""):
+        user, _ = User.objects.get_or_create(
+            username=username,
+            defaults={"role": role},
+        )
+        if user.role != role:
+            raise CommandError(f"Account '{username}' already exists with role '{user.role}'.")
+        user.is_active = True
+        user.set_password(password)
+        user.save(update_fields=["password", "is_active", "updated_at"])
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        profile.first_name = first_name
+        profile.last_name = last_name
+        profile.school = "TLEQuest Demo School"
+        profile.grade_level = "Grade 8"
+        profile.section = CLASS_SECTION
+        profile.save()
+        return user
+
+    def _reset(self):
+        teacher_usernames = ["T-00045", TEACHER_USERNAME]
+        class_names = [CLASS_NAME, "TLE 9 - Demo Class"]
+        teachers = User.objects.filter(username__in=teacher_usernames, role="teacher")
+        classes = Class.objects.filter(teacher__in=teachers, class_name__in=class_names)
+        Quest.objects.filter(teacher__in=teachers, title__in=[q[0] for q in QUESTS]).delete()
+        classes.delete()
+        Reward.objects.filter(description=DEMO_TAG).delete()
 
     def _build_quest(self, teacher, klass, order, spec):
-        title, desc, qtype, published, steps = spec
-        quest, created = Quest.objects.get_or_create(
-            teacher=teacher, title=title,
-            defaults={"description": desc, "table_setting_type": qtype,
-                      "is_published": published, "order_index": order},
+        title, description, steps = spec
+        quest, _ = Quest.objects.update_or_create(
+            teacher=teacher,
+            title=title,
+            defaults={
+                "description": description,
+                "table_setting_type": "table_setting",
+                "is_published": True,
+                "order_index": order,
+            },
         )
         quest.classes.add(klass)
-        if created:
-            for n, (st, ins, items, pts, badge) in enumerate(steps, start=1):
-                step = QuestStep.objects.create(
-                    quest=quest, step_order=n, title=st, instruction=ins,
-                    is_final_step=(n == len(steps)),
+        demo_rewards = list(
+            Reward.objects.filter(
+                description=DEMO_TAG,
+                quest_step_links__quest_step__quest=quest,
+            ).distinct()
+        )
+        for step in quest.steps.all():
+            step.delete()
+        for reward in demo_rewards:
+            reward.delete()
+        for number, (step_title, instruction, checklist, points) in enumerate(steps, start=1):
+            quest_step = QuestStep.objects.create(
+                quest=quest,
+                step_order=number,
+                title=step_title,
+                instruction=instruction,
+                is_final_step=number == len(steps),
+            )
+            for item_order, text in enumerate(checklist):
+                StepChecklist.objects.create(
+                    quest_step=quest_step,
+                    checklist_text=text,
+                    order_index=item_order,
                 )
-                for i, text in enumerate(items):
-                    StepChecklist.objects.create(quest_step=step, checklist_text=text, order_index=i)
-                QuestStepReward.objects.create(quest_step=step, reward=Reward.objects.create(
-                    reward_name=f"{pts} points", reward_type="points", points_value=pts, description=DEMO_TAG))
-                if badge:
-                    QuestStepReward.objects.create(quest_step=step, reward=Reward.objects.create(
-                        reward_name=badge, reward_type="badge", points_value=0, description=DEMO_TAG))
+            reward = Reward.objects.create(
+                reward_name=f"{points} points",
+                reward_type="points",
+                points_value=points,
+                description=DEMO_TAG,
+            )
+            QuestStepReward.objects.create(
+                quest_step=quest_step,
+                reward=reward,
+                reward_condition="Complete all checklist items",
+            )
         return quest
 
-    def _assign(self, quest, group, due_in_days=None):
-        a, _ = QuestAssignment.objects.get_or_create(
-            quest=quest, group=group,
-            defaults={"quest_mode": "group", "leader_at_assignment": group.leader,
-                      "due_date": timezone.now() + timedelta(days=due_in_days) if due_in_days else None},
+    def _assign(self, quest, group):
+        assignment, _ = QuestAssignment.objects.get_or_create(
+            quest=quest,
+            group=group,
+            defaults={
+                "quest_mode": "group",
+                "leader_at_assignment": group.leader,
+                "due_date": timezone.now() + timedelta(days=14),
+            },
         )
-        return a
+        return assignment
 
-    def _progress(self, assignment, student, days_ago):
-        first = assignment.quest.steps.order_by("step_order").first()
-        p, created = QuestProgress.objects.get_or_create(
-            quest_assignment=assignment, student=student,
-            defaults={"group": assignment.group, "current_step": first,
-                      "started_at": timezone.now() - timedelta(days=days_ago)},
+    def _progress(self, assignment, student):
+        first_step = assignment.quest.steps.order_by("step_order").first()
+        progress, created = QuestProgress.objects.get_or_create(
+            quest_assignment=assignment,
+            student=student,
+            defaults={
+                "group": assignment.group,
+                "current_step": first_step,
+                "started_at": timezone.now() - timedelta(days=3),
+            },
         )
         if created:
-            notify(recipient=student, notification_type=Notification.NotificationType.QUEST_ASSIGNED,
-                   title="New quest assigned",
-                   message=f'"{assignment.quest.title}" has been assigned to your group.',
-                   related_type="quest_assignment", related_id=assignment.id)
-        return p
+            notify(
+                recipient=student,
+                notification_type=Notification.NotificationType.QUEST_ASSIGNED,
+                title="New quest assigned",
+                message=f'"{assignment.quest.title}" has been assigned to your group.',
+                related_type="quest_assignment",
+                related_id=assignment.id,
+            )
+        return progress
 
-    def _advance(self, progress, full_steps, partial_items=0, days_ago=1):
-        """Mirror ChecklistItemToggleView: tick every item of `full_steps` steps
-        (awarding points/badges), then tick `partial_items` items of the next step."""
+    def _complete_progress(self, progress):
         steps = list(progress.quest_assignment.quest.steps.order_by("step_order"))
-        when = timezone.now() - timedelta(days=days_ago)
-        for step in steps[:full_steps]:
-            sc, _ = StepCompletion.objects.get_or_create(
-                quest_progress=progress, quest_step=step, defaults={"completed_by": progress.student})
+        completed_at = timezone.now() - timedelta(days=1)
+        for step in steps:
+            completion, _ = StepCompletion.objects.get_or_create(
+                quest_progress=progress,
+                quest_step=step,
+                defaults={"completed_by": progress.student, "completed_at": completed_at},
+            )
+            completion.completed_at = completed_at
+            completion.save(update_fields=["completed_at"])
             for item in step.checklist_items.all():
                 ChecklistItemCompletion.objects.update_or_create(
-                    step_completion=sc, step_checklist=item,
-                    defaults={"is_checked": True, "checked_at": when})
-            sc.completed_at = when
-            sc.save()
-            for sr in QuestStepReward.objects.filter(quest_step=step).select_related("reward"):
-                sreward, made = StudentReward.objects.get_or_create(
-                    student=progress.student, quest_step_reward=sr,
-                    defaults={"reward": sr.reward, "quest_assignment": progress.quest_assignment})
-                if made:
-                    StudentReward.objects.filter(pk=sreward.pk).update(earned_at=when)
-                    progress.points_earned += sr.effective_points
-                    if sr.reward.reward_type == Reward.RewardType.BADGE:
-                        progress.badge_earned = True
-            if step.is_final_step:
-                progress.completed_at = when
-            else:
-                nxt = [s for s in steps if s.step_order > step.step_order]
-                progress.current_step = nxt[0] if nxt else step
-        if partial_items and full_steps < len(steps):
-            step = steps[full_steps]
-            sc, _ = StepCompletion.objects.get_or_create(
-                quest_progress=progress, quest_step=step, defaults={"completed_by": progress.student})
-            for item in list(step.checklist_items.all())[:partial_items]:
+                    step_completion=completion,
+                    step_checklist=item,
+                    defaults={"is_checked": True, "checked_at": completed_at},
+                )
+            for step_reward in QuestStepReward.objects.filter(quest_step=step).select_related("reward"):
+                earned, created = StudentReward.objects.get_or_create(
+                    student=progress.student,
+                    quest_step_reward=step_reward,
+                    defaults={
+                        "reward": step_reward.reward,
+                        "quest_assignment": progress.quest_assignment,
+                        "points_awarded": step_reward.effective_points,
+                    },
+                )
+                if created:
+                    earned.earned_at = completed_at
+                    earned.save(update_fields=["earned_at"])
+        progress.current_step = steps[-1]
+        progress.completed_at = completed_at
+        progress.points_earned = sum(
+            step_reward.effective_points
+            for step in steps
+            for step_reward in QuestStepReward.objects.filter(quest_step=step)
+        )
+        progress.save(update_fields=["current_step", "completed_at", "points_earned", "updated_at"])
+
+    def _set_partial_progress(self, progress, steps_to_complete):
+        steps = list(progress.quest_assignment.quest.steps.order_by("step_order"))
+        for step in steps[:steps_to_complete]:
+            completion, _ = StepCompletion.objects.get_or_create(
+                quest_progress=progress,
+                quest_step=step,
+                defaults={"completed_by": progress.student},
+            )
+            for item in step.checklist_items.all():
                 ChecklistItemCompletion.objects.update_or_create(
-                    step_completion=sc, step_checklist=item,
-                    defaults={"is_checked": True, "checked_at": when})
-            progress.current_step = step
-        progress.save()
+                    step_completion=completion,
+                    step_checklist=item,
+                    defaults={"is_checked": True, "checked_at": timezone.now()},
+                )
+            completion.completed_at = timezone.now()
+            completion.save(update_fields=["completed_at"])
+        progress.current_step = steps[min(steps_to_complete, len(steps) - 1)]
+        progress.save(update_fields=["current_step", "updated_at"])
 
-    def _submit(self, assignment, leader, label, conf, feedback, review=None):
-        sub, made = Submission.objects.get_or_create(
-            quest_assignment=assignment, group=assignment.group, student=leader,
-            defaults={"image_url": PHOTO, "classifier_result": label,
-                      "confidence_score": conf, "generated_feedback": feedback})
-        if made:
-            notify(recipient=assignment.quest.teacher,
-                   notification_type=Notification.NotificationType.NEW_SUBMISSION,
-                   title="New submission",
-                   message=f'{assignment.group} submitted "{assignment.quest.title}" ({label}).',
-                   related_type="submission", related_id=sub.id)
-            if review:
-                text, rating = review
-                sub.teacher_feedback, sub.teacher_rating = text, rating
-                sub.reviewed_by, sub.reviewed_at = assignment.quest.teacher, timezone.now()
-                sub.save()
-                notify(recipient=leader,
-                       notification_type=Notification.NotificationType.SUBMISSION_FEEDBACK,
-                       title="Your submission was reviewed", message=text,
-                       related_type="submission", related_id=sub.id)
-        return sub
-
-    # ------------------------------------------------------------------- main
     @transaction.atomic
-    def handle(self, *args, **opts):
-        teacher = self._get_user(TEACHER, "teacher")
-        carlo, liza, miguel = (self._get_user(u, "student") for u in (CARLO, LIZA, MIGUEL))
-
-        if opts["reset"]:
-            Quest.objects.filter(teacher=teacher, title__in=[q[0] for q in QUESTS]).delete()
-            Class.objects.filter(teacher=teacher, class_name=CLASS_NAME).delete()
-            Reward.objects.filter(description=DEMO_TAG).delete()
+    def handle(self, *args, **options):
+        if options["reset"]:
+            self._reset()
             self.stdout.write("Old demo data removed.")
 
-        klass, _ = Class.objects.get_or_create(
-            teacher=teacher, class_name=CLASS_NAME,
-            defaults={"subject": "TLE", "section": "Sampaguita", "school_year": "2026-2027"})
-        for s in (carlo, liza, miguel):
-            ClassEnrollment.objects.get_or_create(class_obj=klass, student=s)
+        teacher = self._get_or_create_user(
+            TEACHER_USERNAME,
+            "teacher",
+            TEACHER_PASSWORD,
+            "TLEQuest",
+            "Teacher",
+        )
+        students = [
+            self._get_or_create_user(username, "student", STUDENT_PASSWORD, first_name, last_name)
+            for username, first_name, last_name in STUDENTS
+        ]
 
-        g1, _ = Group.objects.get_or_create(class_obj=klass, group_number=1,
-                                            defaults={"leader": carlo, "group_name": "Group 1 - Table Pros"})
-        g2, _ = Group.objects.get_or_create(class_obj=klass, group_number=2,
-                                            defaults={"leader": miguel, "group_name": "Group 2 - Folders"})
-        for g, members in ((g1, (carlo, liza)), (g2, (miguel,))):
-            for m in members:
-                GroupMember.objects.get_or_create(group=g, student=m)
+        klass, _ = Class.objects.update_or_create(
+            teacher=teacher,
+            class_name=CLASS_NAME,
+            defaults={
+                "subject": CLASS_SUBJECT,
+                "section": CLASS_SECTION,
+                "school_year": CLASS_SCHOOL_YEAR,
+                "is_active": True,
+            },
+        )
+        for student in students:
+            ClassEnrollment.objects.get_or_create(class_obj=klass, student=student)
 
-        q = {spec[0]: self._build_quest(teacher, klass, i, spec) for i, spec in enumerate(QUESTS)}
-        basic, napkin = q["Basic Table Setting"], q["Napkin Folding Basics"]
-        formal, lunch = q["Formal Dinner Table Setting"], q["Casual Lunch Table Setting"]
+        groups = []
+        for group_name, start, _ in GROUPS:
+            leader = students[start]
+            group, _ = Group.objects.update_or_create(
+                class_obj=klass,
+                group_number=len(groups) + 1,
+                defaults={"group_name": group_name, "leader": leader},
+            )
+            for student in students[start:start + 5]:
+                GroupMember.objects.update_or_create(
+                    group=group,
+                    student=student,
+                    defaults={"member_role": "Leader" if student == leader else "Member"},
+                )
+            groups.append(group)
 
-        # ---- Quest 1: Basic Table Setting -> both groups, FINISHED + submitted
-        a = self._assign(basic, g1, due_in_days=7)
-        for stu, d in ((carlo, 6), (liza, 6)):
-            self._advance(self._progress(a, stu, 7), full_steps=3, days_ago=d)
-        self._submit(a, carlo, "ACCEPTED", 0.91, "Great job! Your table setting looks complete.",
-                     review=("Well done! Neat and complete. The napkin placement was very good.", 5))
-        a = self._assign(basic, g2, due_in_days=7)
-        self._advance(self._progress(a, miguel, 6), full_steps=3, days_ago=4)
-        self._submit(a, miguel, "FOR REVIEW", 0.62,
-                     "The model is not sure about this photo. Your teacher will review it.")  # waiting for teacher
+        quests = [
+            self._build_quest(teacher, klass, order, spec)
+            for order, spec in enumerate(QUESTS, start=1)
+        ]
 
-        # ---- Quest 2: Napkin Folding -> mixed progress, leader gate visible
-        a = self._assign(napkin, g1, due_in_days=5)
-        self._advance(self._progress(a, carlo, 4), full_steps=1, partial_items=1, days_ago=2)   # step 2, 1 of 2 items
-        self._advance(self._progress(a, liza, 4), full_steps=3, days_ago=1)                     # finished; leader hasn't
-        a = self._assign(napkin, g2, due_in_days=5)
-        self._progress(a, miguel, 4)                                                            # not started
+        for quest_index, quest in enumerate(quests):
+            for group_index, group in enumerate(groups):
+                assignment = self._assign(quest, group)
+                group_students = students[group_index * 5:(group_index + 1) * 5]
+                if group_index == 0:
+                    incomplete = set()
+                elif group_index == 1:
+                    incomplete = {
+                        group_students[(quest_index + 1) % 5],
+                        group_students[(quest_index + 3) % 5],
+                    }
+                else:
+                    incomplete = {group_students[(quest_index + 2) % 5]}
 
-        # ---- Quest 3: Formal Dinner -> early / mid progress
-        a = self._assign(formal, g1, due_in_days=10)
-        self._advance(self._progress(a, carlo, 3), full_steps=2, partial_items=1, days_ago=1)   # step 3 in progress
-        self._advance(self._progress(a, liza, 3), full_steps=1, days_ago=1)
-        a = self._assign(formal, g2, due_in_days=10)
-        self._advance(self._progress(a, miguel, 3), full_steps=1, partial_items=1, days_ago=1)
-
-        # ---- Quest 4: Casual Lunch -> Group 1 only, brand new (nothing done); due soon
-        a = self._assign(lunch, g1, due_in_days=2)
-        for stu in (carlo, liza):
-            self._progress(a, stu, 0)
+                for student in group_students:
+                    progress = self._progress(assignment, student)
+                    if student not in incomplete:
+                        self._complete_progress(progress)
+                    else:
+                        self._set_partial_progress(progress, quest_index % 2)
 
         self.stdout.write(self.style.SUCCESS("Demo data ready."))
-        self.stdout.write(f"  Teacher {TEACHER} | class '{klass.class_name}' invite code: {klass.invite_code}")
-        self.stdout.write("  Group 1: Carlo (leader), Liza | Group 2: Miguel (leader)")
-        self.stdout.write("  Password for all demo accounts is whatever was in the uploaded CSV (Demopass123!).")
-
+        self.stdout.write(f"  Teacher: {TEACHER_USERNAME} / {TEACHER_PASSWORD}")
+        self.stdout.write(f"  Class: {CLASS_NAME} | Subject: {CLASS_SUBJECT} | Section: {CLASS_SECTION}")
+        self.stdout.write(f"  Invite code: {klass.invite_code}")
+        self.stdout.write("  Groups: 8Veritas_Group 1, 8Veritas_Group 2, 8Veritas_Group 3")
+        self.stdout.write(f"  Student password: {STUDENT_PASSWORD}")
