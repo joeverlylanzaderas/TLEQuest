@@ -38,3 +38,6 @@ web-build/
 .DS_Store
 Thumbs.db
 .idea/
+backend/config/settings_old.py
+tlequest_classifier_OLD.tflite
+tlequest_classifier_old-v1.tflite

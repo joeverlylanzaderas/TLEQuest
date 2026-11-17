@@ -9,7 +9,25 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      }
+      },
+      "env": {
+        "APP_VARIANT": "dev",
+        "EXPO_PUBLIC_API_URL": "https://tlequest.duckdns.org/api",
+        "EXPO_PUBLIC_QUEST_MAP": "1"
+      },
+      "channel": "development"
+    },
+    "test": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "APP_VARIANT": "dev",
+        "EXPO_PUBLIC_API_URL": "https://tlequest.duckdns.org/api",
+        "EXPO_PUBLIC_QUEST_MAP": "1"
+      },
+      "channel": "test"
     },
     "preview": {
       "distribution": "internal",
@@ -17,11 +35,14 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://tlequest.duckdns.org/api"
-      }
+        "EXPO_PUBLIC_API_URL": "https://tlequest.duckdns.org/api",
+        "EXPO_PUBLIC_QUEST_MAP": "1"
+      },
+      "channel": "preview"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "production"
     }
   },
   "submit": {
