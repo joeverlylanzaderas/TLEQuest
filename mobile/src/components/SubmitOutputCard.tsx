@@ -31,13 +31,6 @@ const MAX_PRECHECKS = 3;
 // What the quick check tells the student. It never blocks Submit: the teacher makes the final decision.
 type Pre = { uri: string; status: 'checking' | 'ok' | 'review' | 'unavailable' | 'limit' };
 
-const SETUP_TIPS = [
-  'Plate and napkin are on the table',
-  'Glass is at the upper right of the plate',
-  'Fork and spoon are in place (knife is optional)',
-  'Whole table is in the photo, taken from above',
-];
-
 function feedbackFor(label: string): string {
   return label === 'ACCEPTED'
     ? 'Great work! Our AI found your table setup complete. Your teacher will review it too.'
@@ -392,12 +385,8 @@ export default function SubmitOutputCard({ progress }: Props) {
                       <Ionicons name="alert-circle" size={18} color={ORANGE} />
                       <Text style={[styles.precheckTitle, { color: ORANGE }]}>Not sure about this one</Text>
                     </View>
-                    <Text style={styles.precheckText}>Check these, then retake:</Text>
-                    {SETUP_TIPS.map((tip) => (
-                      <Text key={tip} style={styles.precheckTip}>• {tip}</Text>
-                    ))}
                     <Text style={styles.precheckText}>
-                      Or submit anyway. Your teacher will check it.
+                      You can retake it, or submit and your teacher will check it.
                     </Text>
                   </>
                 ) : (

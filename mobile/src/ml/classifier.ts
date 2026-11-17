@@ -10,7 +10,7 @@ export type ClassificationLabel = typeof CLASS_NAMES[number];
 
 // If the model says ACCEPTED but is less sure than this, send it to the
 // teacher as FOR REVIEW instead. Tune this after real-world testing.
-export const CONFIDENCE_THRESHOLD = 0.75;
+export const CONFIDENCE_THRESHOLD = 0.85;
 
 // Fallback input size. The real size is read from the loaded model, so a
 // retrained model with a different input size (e.g. 384) works by just
