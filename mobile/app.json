@@ -1,9 +1,8 @@
-
 {
   "expo": {
     "name": "TLEQuest",
     "slug": "mobile",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "scheme": "tlequest",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -19,7 +18,10 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.tlequest.app"
+      "package": "com.tlequest.app",
+      "permissions": [
+        "android.permission.CAMERA",
+      ]
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -37,18 +39,25 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 220,
+          "image": "./assets/images/splash-blank.png",
+          "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#F2E4C4"
+          "backgroundColor": "#faf6e8"
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "extra": {
       "router": {},
       "eas": {
         "projectId": "b3b97739-863e-48a3-997e-bf824aca2fd1"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/b3b97739-863e-48a3-997e-bf824aca2fd1"
     }
   }
 }

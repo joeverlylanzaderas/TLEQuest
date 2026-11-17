@@ -100,3 +100,8 @@ export async function uploadSubmissionPhoto(uri: string): Promise<string> {
   const smallUri = await prepareForUpload(uri); // compress once, reuse on retry
   return uploadPhotoAsIs(smallUri);
 }
+
+/** Upload a quest cover photo (teacher). Shrunk first, then sent with the same unsigned preset. */
+export async function uploadCoverPhoto(uri: string): Promise<string> {
+  return uploadSubmissionPhoto(uri);
+}

@@ -46,6 +46,9 @@ class SubmissionSerializer(serializers.ModelSerializer):
     # explicitly (reviewed_by on the model) instead of only being
     # inferable from the quest's owning teacher.
     reviewed_by_username = serializers.CharField(source="reviewed_by.username", read_only=True, default=None)
+    # Real names for display (the app shows these instead of the login username)
+    student_name = serializers.SerializerMethodField()
+    reviewed_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Submission
@@ -54,6 +57,21 @@ class SubmissionSerializer(serializers.ModelSerializer):
             "student", "student_username", "image_url", "classifier_result",
             "confidence_score", "generated_feedback", "teacher_feedback",
             "teacher_rating", "is_reviewed", "reviewed_by", "reviewed_by_username",
+            "student_name", "reviewed_by_name",
             "submitted_at", "reviewed_at",
         ]
         read_only_fields = fields
+
+    @staticmethod
+    def _display_name(user):
+        if user is None:
+            return None
+        prof = getattr(user, "profile", None)
+        full = f"{prof.first_name} {prof.last_name}".strip() if prof else ""
+        return full or user.username
+
+    def get_student_name(self, obj):
+        return self._display_name(obj.student)
+
+    def get_reviewed_by_name(self, obj):
+        return self._display_name(obj.reviewed_by)

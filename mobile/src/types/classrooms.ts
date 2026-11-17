@@ -1,7 +1,7 @@
 // mobile/src/types/classrooms.ts
 export interface ClassSummary {
   id: number;
-  teacher: { id: number; username: string };
+  teacher: { id: number; username: string; name?: string };
   class_name: string;
   subject: string;
   section: string;

@@ -2,7 +2,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, RefreshControl, Modal, Alert, Image, Switch,
+  ActivityIndicator, RefreshControl, Modal, Alert, Switch,
 } from 'react-native';
 import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../../src/theme/theme';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -11,19 +11,29 @@ import { Ionicons } from '@expo/vector-icons';
 
 import {
   getClassDetail, getClassEnrollments, getClassGroups,
-  createGroup, updateGroup, deleteGroup, addGroupMember, removeGroupMember,
+  createGroup, updateGroup, deleteGroup, addGroupMember, removeGroupMember, reorderGroups,
 } from '../../../src/api/classrooms';
 import { getMyQuests, updateQuest } from '../../../src/api/quests';
-import { getMediaUrl } from '../../../src/utils/media';
+import { thumbUrl } from '../../../src/utils/media';
 import {
   ClassSummary, ClassEnrollment, Group, GroupCreatePayload,
 } from '../../../src/types/classrooms';
 import { Quest } from '../../../src/types/quests';
 import KeyboardSafe from '../../../src/components/KeyboardSafe';
+import CachedImage from '../../../src/components/CachedImage';
 import { useToast } from '../../../src/components/Toast';
+import { FadeIn, PressableScale } from '../../../src/components/Motion';
+import { TOP_GAP } from '../../../src/theme/layout';
 
-const CREAM = T('#F2E4C4');
-const CARD_BG = T('#F9C544');
+const CREAM = T('#F5EDD8');
+const CARD_BG = T('#F5B921');
+const AVATAR_TINTS = [
+  { bg: '#F7C9C0', fg: '#7A2E1F' },
+  { bg: '#CFE0F5', fg: '#1F4D7A' },
+  { bg: '#FBE3A6', fg: '#6B4A00' },
+  { bg: '#CDE7D3', fg: '#1F5A35' },
+  { bg: '#E4D3F2', fg: '#4B2A70' },
+];
 const BROWN = T('#3A2B1A');
 const GREEN = '#2FA85B';
 const RED = '#B3261E';
@@ -50,6 +60,11 @@ export default function ClassOverview() {
   const [newGroupName, setNewGroupName] = useState('');
   const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
   const [addMemberTargetGroup, setAddMemberTargetGroup] = useState<Group | null>(null);
+  // ---- Rename group + roster sort ----
+  const [editGroupTarget, setEditGroupTarget] = useState<Group | null>(null);
+  const [editGroupName, setEditGroupName] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [rosterSort, setRosterSort] = useState<'az' | 'za' | 'group'>('az');
 
   async function loadAll() {
     setError('');
@@ -91,6 +106,71 @@ export default function ClassOverview() {
   function memberDisplayName(member: Group['members'][number]): string {
     const full = [member.student.first_name, member.student.last_name].filter(Boolean).join(' ');
     return full || member.student.username;
+  }
+
+  // Groups a student already belongs to (a student can be in more than one group)
+  function groupLabelsFor(studentId: number): string[] {
+    return groups
+      .filter((grp) => grp.members.some((m) => m.student.id === studentId))
+      .map((grp) => grp.group_name || `Group ${grp.group_number}`);
+  }
+
+  function sortedRoster(): ClassEnrollment[] {
+    return [...roster].sort((a, b) => {
+      if (rosterSort === 'group') {
+        const ga = groupNumberFor(a.student.id) ?? 9999;
+        const gb = groupNumberFor(b.student.id) ?? 9999;
+        if (ga !== gb) return ga - gb;
+      }
+      const cmp = studentDisplayName(a).localeCompare(studentDisplayName(b));
+      return rosterSort === 'za' ? -cmp : cmp;
+    });
+  }
+
+  function openRenameGroup(group: Group) {
+    setEditGroupTarget(group);
+    setEditGroupName(group.group_name || '');
+  }
+
+  async function handleRenameGroup() {
+    if (!editGroupTarget) return;
+    setIsRenaming(true);
+    try {
+      const updated = await updateGroup(editGroupTarget.id, { group_name: editGroupName.trim() });
+      const newName = updated?.group_name ?? editGroupName.trim();
+      setGroups((prev) => prev.map((g) => (g.id === editGroupTarget.id ? { ...g, group_name: newName } : g)));
+      setEditGroupTarget(null);
+      toast.success('Group name updated');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || e?.response?.data?.group_name?.[0] || 'Could not rename the group.');
+    } finally {
+      setIsRenaming(false);
+    }
+  }
+
+  // Long-press a group card to move it up or down. The server renumbers the groups, so the
+  // "Group N" labels on the cards and in the roster follow the new order.
+  function openMoveGroup(group: Group) {
+    const ordered = [...groups].sort((a, b) => a.group_number - b.group_number);
+    const idx = ordered.findIndex((g) => g.id === group.id);
+    const buttons: { text: string; style?: 'cancel'; onPress?: () => void }[] = [];
+    if (idx > 0) buttons.push({ text: 'Move up', onPress: () => handleMoveGroup(ordered, idx, idx - 1) });
+    if (idx < ordered.length - 1) buttons.push({ text: 'Move down', onPress: () => handleMoveGroup(ordered, idx, idx + 1) });
+    if (buttons.length === 0) return; // only one group
+    buttons.push({ text: 'Cancel', style: 'cancel' });
+    Alert.alert(group.group_name || `Group ${group.group_number}`, 'Change the order of this group.', buttons);
+  }
+
+  async function handleMoveGroup(ordered: Group[], from: number, to: number) {
+    const next = [...ordered];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    try {
+      const updated = await reorderGroups(classId, next.map((g) => g.id));
+      setGroups(updated);
+    } catch {
+      toast.error('Could not reorder the groups.');
+    }
   }
 
   function groupNumberFor(studentId: number): number | null {
@@ -194,8 +274,21 @@ export default function ClassOverview() {
           <Ionicons name="arrow-back" size={22} color={BROWN} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>{classDetail.class_name}</Text>
-          <Text style={styles.subtitle}>{classDetail.invite_code} • {classDetail.student_count} Students</Text>
+          <Text style={styles.title} numberOfLines={1}>{classDetail.class_name}</Text>
+          <View style={styles.headChips}>
+            <View style={styles.headChip}>
+              <Ionicons name="key" size={11} color="#6B4A00" />
+              <Text style={styles.headChipText}>{classDetail.invite_code}</Text>
+            </View>
+            <View style={styles.headChip}>
+              <Ionicons name="people" size={11} color="#6B4A00" />
+              <Text style={styles.headChipText}>{classDetail.student_count} students</Text>
+            </View>
+            <View style={styles.headChip}>
+              <Ionicons name="albums" size={11} color="#6B4A00" />
+              <Text style={styles.headChipText}>{groups.length} {groups.length === 1 ? 'group' : 'groups'}</Text>
+            </View>
+          </View>
         </View>
       </View>
 
@@ -225,54 +318,85 @@ export default function ClassOverview() {
           roster.length === 0 ? (
             <Text style={styles.emptyText}>No students enrolled yet.</Text>
           ) : (
+            <FadeIn>
+            <View style={styles.sortRow}>
+              <Text style={styles.sortLabel}>Sort</Text>
+              {([['az', 'A–Z'], ['za', 'Z–A'], ['group', 'Group']] as const).map(([key, label]) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[styles.sortChip, rosterSort === key && styles.sortChipActive]}
+                  onPress={() => setRosterSort(key)}
+                >
+                  <Text style={[styles.sortChipText, rosterSort === key && styles.sortChipTextActive]}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
             <View style={styles.card}>
-              {roster.map((enrollment) => {
+              {sortedRoster().map((enrollment) => {
                 const name = studentDisplayName(enrollment);
-                const avatarUrl = getMediaUrl(enrollment.student.profile_picture);
-                const groupNum = groupNumberFor(enrollment.student.id);
+                const avatarUrl = thumbUrl(enrollment.student.profile_picture, 40);
+                const groupLabels = groupLabelsFor(enrollment.student.id);
                 return (
                   <View key={enrollment.id} style={styles.rosterRow}>
                     {avatarUrl ? (
-                      <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                      <CachedImage uri={avatarUrl} size={160} square style={styles.avatarImage} />
                     ) : (
-                      <View style={styles.avatarFallback}>
-                        <Text style={styles.avatarFallbackText}>{name.charAt(0).toUpperCase()}</Text>
+                      <View style={[styles.avatarFallback, { backgroundColor: AVATAR_TINTS[enrollment.student.id % AVATAR_TINTS.length].bg }]}>
+                        <Text style={[styles.avatarFallbackText, { color: AVATAR_TINTS[enrollment.student.id % AVATAR_TINTS.length].fg }]}>
+                          {name.charAt(0).toUpperCase()}
+                        </Text>
                       </View>
                     )}
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.rosterName}>{name}</Text>
-                      <Text style={styles.rosterSub}>
-                        {groupNum !== null ? `Group ${groupNum}` : 'No group yet'}
+                    <Text style={styles.rosterName} numberOfLines={1}>{name}</Text>
+                    <View style={[styles.groupPill, groupLabels.length === 0 && styles.groupPillNone]}>
+                      <Text style={[styles.groupPillText, groupLabels.length === 0 && { color: '#6B7280' }]} numberOfLines={1}>
+                        {groupLabels.length > 0 ? groupLabels.join(', ') : 'No group'}
                       </Text>
                     </View>
                   </View>
                 );
               })}
             </View>
+            </FadeIn>
           )
         )}
 
         {/* ================= GROUPS ================= */}
         {activeTab === 'groups' && (
           <>
-            <TouchableOpacity style={styles.addButton} onPress={() => setShowCreateGroupModal(true)}>
-              <Ionicons name="add" size={18} color="#fff" />
-              <Text style={styles.addButtonText}>Create Group</Text>
-            </TouchableOpacity>
+            <PressableScale containerStyle={styles.addWrap} style={styles.addButton} scaleTo={0.95} onPress={() => setShowCreateGroupModal(true)}>
+              <Ionicons name="add" size={18} color={BROWN} />
+              <Text style={styles.addButtonText}>Create group</Text>
+            </PressableScale>
 
+            {groups.length > 1 ? <Text style={styles.reorderHint}>Tip: press and hold a group to move it up or down.</Text> : null}
             {groups.length === 0 ? (
               <Text style={styles.emptyText}>No groups yet.</Text>
             ) : (
-              groups.map((group) => (
-                <View key={group.id} style={styles.groupCard}>
-                  <View style={styles.groupCardHeader}>
-                    <Text style={styles.groupTitle}>
-                      {group.group_name || `Group ${group.group_number}`}
-                    </Text>
-                    <TouchableOpacity onPress={() => handleDeleteGroup(group)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                      <Ionicons name="trash-outline" size={18} color={RED} />
-                    </TouchableOpacity>
-                  </View>
+              groups.map((group, gi) => (
+                <FadeIn key={group.id} delay={Math.min(gi, 5) * 70}>
+                <View style={styles.groupCard}>
+                  <TouchableOpacity
+                    style={styles.groupCardHeader}
+                    activeOpacity={0.85}
+                    delayLongPress={350}
+                    onLongPress={() => openMoveGroup(group)}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.groupTitle}>
+                        {group.group_name || `Group ${group.group_number}`}
+                      </Text>
+                      <Text style={styles.groupCount}>{group.members.length} {group.members.length === 1 ? 'member' : 'members'}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                      <TouchableOpacity onPress={() => openRenameGroup(group)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Ionicons name="create-outline" size={18} color={BROWN} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleDeleteGroup(group)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Ionicons name="trash-outline" size={18} color={RED} />
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
 
                   {group.members.length === 0 ? (
                     <Text style={styles.groupEmptyText}>No members yet.</Text>
@@ -281,15 +405,22 @@ export default function ClassOverview() {
                       const isLeader = group.leader?.id === member.student.id;
                       return (
                         <View key={member.id} style={styles.memberRow}>
-                          <TouchableOpacity onPress={() => handleSetLeader(group, member.student.id)}>
-                            <Ionicons
-                              name={isLeader ? 'star' : 'star-outline'}
-                              size={16}
-                              color={isLeader ? GREEN : '#B8A671'}
-                            />
+                          <View style={[styles.memberAvatar, { backgroundColor: AVATAR_TINTS[member.student.id % AVATAR_TINTS.length].bg }]}>
+                            <Text style={[styles.memberAvatarText, { color: AVATAR_TINTS[member.student.id % AVATAR_TINTS.length].fg }]}>
+                              {memberDisplayName(member).charAt(0).toUpperCase()}
+                            </Text>
+                          </View>
+                          <Text style={styles.memberName} numberOfLines={1}>{memberDisplayName(member)}</Text>
+                          <TouchableOpacity onPress={() => handleSetLeader(group, member.student.id)} hitSlop={6}>
+                            {isLeader ? (
+                              <View style={styles.leaderPill}>
+                                <Ionicons name="star" size={11} color={GREEN} />
+                                <Text style={styles.leaderTag}>Leader</Text>
+                              </View>
+                            ) : (
+                              <Ionicons name="star-outline" size={18} color="#B8A671" />
+                            )}
                           </TouchableOpacity>
-                          <Text style={styles.memberName}>{memberDisplayName(member)}</Text>
-                          {isLeader && <Text style={styles.leaderTag}>Leader</Text>}
                           <TouchableOpacity onPress={() => handleRemoveMember(group, member.id)}>
                             <Ionicons name="close-circle-outline" size={18} color="#B8A671" />
                           </TouchableOpacity>
@@ -300,9 +431,10 @@ export default function ClassOverview() {
 
                   <TouchableOpacity style={styles.addMemberButton} onPress={() => setAddMemberTargetGroup(group)}>
                     <Ionicons name="person-add-outline" size={14} color={BROWN} />
-                    <Text style={styles.addMemberText}>Add Member</Text>
+                    <Text style={styles.addMemberText}>Add member</Text>
                   </TouchableOpacity>
                 </View>
+                </FadeIn>
               ))
             )}
           </>
@@ -311,19 +443,22 @@ export default function ClassOverview() {
         {/* ================= QUESTS ================= */}
         {activeTab === 'quests' && (
           <>
-            <TouchableOpacity
+            <PressableScale
+              containerStyle={styles.addWrap}
               style={styles.addButton}
+              scaleTo={0.95}
               onPress={() => router.push(`/(teacher)/create-quest?classId=${classId}` as any)}
             >
-              <Ionicons name="add" size={18} color="#fff" />
-              <Text style={styles.addButtonText}>Create Quest</Text>
-            </TouchableOpacity>
+              <Ionicons name="add" size={18} color={BROWN} />
+              <Text style={styles.addButtonText}>Create quest</Text>
+            </PressableScale>
 
             {quests.length === 0 ? (
               <Text style={styles.emptyText}>No quests assigned to this class yet.</Text>
             ) : (
-              quests.map((quest) => (
-                <View key={quest.id} style={styles.questCard}>
+              quests.map((quest, qi) => (
+                <FadeIn key={quest.id} delay={Math.min(qi, 5) * 70}>
+                <View style={styles.questCard}>
                   <View style={styles.questCardTop}>
                     <Text style={styles.questTitle}>{quest.title}</Text>
                     <Switch
@@ -334,10 +469,17 @@ export default function ClassOverview() {
                     />
                   </View>
                   {quest.description ? <Text style={styles.questDesc}>{quest.description}</Text> : null}
-                  <Text style={styles.questMeta}>
-                    {quest.total_steps} step{quest.total_steps === 1 ? '' : 's'} • {quest.is_published ? 'Published' : 'Draft'}
-                  </Text>
+                  <View style={styles.questFoot}>
+                    <View style={styles.stepsPill}>
+                      <Ionicons name="list" size={12} color="#6B4A00" />
+                      <Text style={styles.stepsPillText}>{quest.total_steps} step{quest.total_steps === 1 ? '' : 's'}</Text>
+                    </View>
+                    <Text style={[styles.questMeta, { color: quest.is_published ? '#166534' : '#6B7280' }]}>
+                      {quest.is_published ? '● Published' : '● Draft'}
+                    </Text>
+                  </View>
                 </View>
+                </FadeIn>
               ))
             )}
           </>
@@ -368,26 +510,66 @@ export default function ClassOverview() {
         </KeyboardSafe>
       </Modal>
 
+      {/* ---------------- Rename Group modal ---------------- */}
+      <Modal visible={editGroupTarget !== null} transparent animationType="fade" onRequestClose={() => setEditGroupTarget(null)}>
+        <KeyboardSafe style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Edit Group Name</Text>
+            <Text style={styles.modalLabel}>GROUP NAME</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={editGroupName}
+              onChangeText={setEditGroupName}
+              placeholder={editGroupTarget ? `Group ${editGroupTarget.group_number}` : ''}
+              maxLength={100}
+              autoFocus
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalCancelButton} onPress={() => setEditGroupTarget(null)} disabled={isRenaming}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalConfirmButton} onPress={handleRenameGroup} disabled={isRenaming}>
+                {isRenaming ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.modalConfirmText}>Save</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardSafe>
+      </Modal>
+
       {/* ---------------- Add Member modal ---------------- */}
       <Modal visible={addMemberTargetGroup !== null} transparent animationType="fade" onRequestClose={() => setAddMemberTargetGroup(null)}>
         <KeyboardSafe style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Add Member</Text>
-            <ScrollView style={{ maxHeight: 300 }}>
+            <Text style={styles.modalTitle}>
+              Add to {addMemberTargetGroup ? (addMemberTargetGroup.group_name || `Group ${addMemberTargetGroup.group_number}`) : 'group'}
+            </Text>
+            <ScrollView style={{ maxHeight: 300, marginBottom: 12 }}>
               {roster
                 .filter((e) => !addMemberTargetGroup?.members.some((m) => m.student.id === e.student.id))
-                .map((e) => (
-                  <TouchableOpacity
-                    key={e.id}
-                    style={styles.pickerRow}
-                    onPress={() => addMemberTargetGroup && handleAddMember(addMemberTargetGroup, e.student.id)}
-                  >
-                    <Text style={styles.pickerRowText}>{studentDisplayName(e)}</Text>
-                  </TouchableOpacity>
-                ))}
+                .sort((a, b) => {
+                  // students with no group first, then A-Z
+                  const ga = groupLabelsFor(a.student.id).length > 0 ? 1 : 0;
+                  const gb = groupLabelsFor(b.student.id).length > 0 ? 1 : 0;
+                  return ga - gb || studentDisplayName(a).localeCompare(studentDisplayName(b));
+                })
+                .map((e) => {
+                  const inGroups = groupLabelsFor(e.student.id);
+                  return (
+                    <TouchableOpacity
+                      key={e.id}
+                      style={[styles.pickerRow, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }]}
+                      onPress={() => addMemberTargetGroup && handleAddMember(addMemberTargetGroup, e.student.id)}
+                    >
+                      <Text style={[styles.pickerRowText, { flex: 1 }]}>{studentDisplayName(e)}</Text>
+                      <Text style={[styles.pickerRowTag, inGroups.length === 0 && { color: GREEN }]}>
+                        {inGroups.length === 0 ? 'No group' : `In ${inGroups.join(', ')}`}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
             </ScrollView>
             <TouchableOpacity style={styles.modalCancelButton} onPress={() => setAddMemberTargetGroup(null)}>
-              <Text style={styles.modalCancelText}>Close</Text>
+              <Text style={styles.modalCancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </KeyboardSafe>
@@ -401,52 +583,64 @@ const styles = StyleSheet.create({
   centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scrollContent: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 60 },
 
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingTop: 8 },
-  backButton: { padding: 6, borderRadius: 20, backgroundColor: CARD_BG },
-  title: { fontSize: 18, fontWeight: '800', color: BROWN },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingTop: TOP_GAP },
+  backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 22, fontWeight: '900', color: BROWN },
+  headChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
+  headChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFF1C7', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
+  headChipText: { fontSize: 11, fontWeight: '800', color: '#6B4A00' },
   subtitle: { fontSize: 12, color: T('#8A6A2A'), marginTop: 2 },
 
-  tabRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginTop: 16 },
-  tabButton: { flex: 1, paddingVertical: 10, borderRadius: 14, alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: T('#EADEC9') },
-  tabButtonActive: { backgroundColor: BROWN, borderColor: BROWN },
-  tabText: { fontSize: 13, fontWeight: '700', color: BROWN },
-  tabTextActive: { color: '#fff' },
+  tabRow: { flexDirection: 'row', marginHorizontal: 20, marginTop: 16, backgroundColor: T('#EADEC9'), borderRadius: 14, padding: 4 },
+  tabButton: { flex: 1, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  tabButtonActive: { backgroundColor: '#fff' },
+  tabText: { fontSize: 13, fontWeight: '600', color: T('#8A6A2A') },
+  tabTextActive: { color: BROWN, fontWeight: '800' },
 
   errorText: { color: RED, marginBottom: 12, fontSize: 13 },
   emptyText: { fontSize: 13, color: T('#8A6A2A'), marginTop: 16 },
 
-  card: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: T('#EADEC9'), overflow: 'hidden' },
+  card: { backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden' },
   rosterRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(58,43,26,0.08)',
   },
-  avatarImage: { width: 32, height: 32, borderRadius: 16 },
-  avatarFallback: { width: 32, height: 32, borderRadius: 16, backgroundColor: CARD_BG, alignItems: 'center', justifyContent: 'center' },
-  avatarFallbackText: { fontSize: 12, fontWeight: '800', color: BROWN },
-  rosterName: { fontSize: 14, fontWeight: '700', color: '#C2551A' },
+  avatarImage: { width: 38, height: 38, borderRadius: 19 },
+  avatarFallback: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  avatarFallbackText: { fontSize: 14, fontWeight: '800' },
+  rosterName: { flex: 1, fontSize: 14, fontWeight: '700', color: BROWN },
+  groupPill: { backgroundColor: '#FFF1C7', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, maxWidth: '45%' },
+  groupPillNone: { backgroundColor: '#F3F4F6' },
+  groupPillText: { fontSize: 11, fontWeight: '800', color: '#6B4A00' },
   rosterSub: { fontSize: 11, color: T('#8A6A2A'), marginTop: 1 },
 
-  addButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    backgroundColor: GREEN, borderRadius: 14, paddingVertical: 12, marginBottom: 16,
-  },
-  addButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  addWrap: { alignSelf: 'flex-start', marginBottom: 14 },
+  addButton: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: CARD_BG, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 10 },
+  addButtonText: { color: BROWN, fontSize: 13, fontWeight: '800' },
 
-  groupCard: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: T('#EADEC9'), padding: 14, marginBottom: 12 },
+  groupCard: { backgroundColor: '#fff', borderRadius: 18, padding: 14, marginBottom: 12 },
+  reorderHint: { fontSize: 11, color: T('#8A6A2A'), marginBottom: 10 },
   groupCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  groupTitle: { fontSize: 15, fontWeight: '800', color: BROWN },
+  groupTitle: { fontSize: 16, fontWeight: '900', color: BROWN },
+  groupCount: { fontSize: 11, color: T('#8A6A2A'), marginTop: 1 },
+  memberAvatar: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  memberAvatarText: { fontSize: 12, fontWeight: '800' },
+  leaderPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#E9F7EE', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   groupEmptyText: { fontSize: 12, color: T('#8A6A2A'), marginBottom: 8 },
-  memberRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
+  memberRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   memberName: { flex: 1, fontSize: 13, color: BROWN, fontWeight: '600' },
-  leaderTag: { fontSize: 10, fontWeight: '800', color: GREEN, backgroundColor: '#E9F7EE', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
-  addMemberButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  leaderTag: { fontSize: 10, fontWeight: '800', color: GREEN },
+  addMemberButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, alignSelf: 'flex-start', backgroundColor: '#F6F0E1', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
   addMemberText: { fontSize: 12, fontWeight: '700', color: BROWN },
 
-  questCard: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: T('#EADEC9'), padding: 14, marginBottom: 12 },
+  questCard: { backgroundColor: '#fff', borderRadius: 18, padding: 14, marginBottom: 12 },
+  questFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
+  stepsPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFF1C7', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
+  stepsPillText: { fontSize: 11, fontWeight: '800', color: '#6B4A00' },
   questCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   questTitle: { fontSize: 15, fontWeight: '800', color: BROWN, flex: 1, marginRight: 10 },
   questDesc: { fontSize: 12, color: T('#8A6A2A'), marginTop: 6 },
-  questMeta: { fontSize: 11, color: '#B8A671', marginTop: 8, fontWeight: '600' },
+  questMeta: { fontSize: 11, fontWeight: '800' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 24 },
   modalCard: { backgroundColor: '#fff', borderRadius: 20, padding: 20 },
@@ -460,4 +654,11 @@ const styles = StyleSheet.create({
   modalConfirmText: { color: '#fff', fontWeight: '700' },
   pickerRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(58,43,26,0.08)' },
   pickerRowText: { fontSize: 14, color: BROWN, fontWeight: '600' },
+  pickerRowTag: { fontSize: 11, color: T('#8A6A2A'), fontWeight: '700', maxWidth: '45%', textAlign: 'right' },
+  sortRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  sortLabel: { fontSize: 12, fontWeight: '700', color: T('#8A6A2A') },
+  sortChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: 'rgba(58,43,26,0.08)' },
+  sortChipActive: { backgroundColor: T('#5C3A2E') },
+  sortChipText: { fontSize: 12, fontWeight: '700', color: BROWN },
+  sortChipTextActive: { color: '#fff' },
 });

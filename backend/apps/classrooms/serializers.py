@@ -5,9 +5,17 @@ from .models import Class, ClassEnrollment, Group, GroupMember
 
 
 class TeacherMiniSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ["id", "username"]
+        fields = ["id", "username", "name"]
+
+    def get_name(self, obj):
+        """Real name for display (students should see their teacher's name, not the username)."""
+        prof = getattr(obj, "profile", None)
+        full = f"{prof.first_name} {prof.last_name}".strip() if prof else ""
+        return full or obj.username
 
 
 class StudentMiniSerializer(serializers.ModelSerializer):

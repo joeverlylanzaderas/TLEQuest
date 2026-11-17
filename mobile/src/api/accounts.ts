@@ -71,3 +71,18 @@ export async function resetForgottenPassword(payload: {
   const { data } = await apiClient.post('/accounts/forgot-password/reset/', payload);
   return data;
 }
+export interface ConsentStatus {
+  current_version: string;
+  accepted: boolean;
+  accepted_at: string | null;
+}
+
+export async function getConsent(): Promise<ConsentStatus> {
+  const { data } = await apiClient.get<ConsentStatus>('/accounts/consent/');
+  return data;
+}
+
+export async function acceptConsent(version: string): Promise<ConsentStatus> {
+  const { data } = await apiClient.post<ConsentStatus>('/accounts/consent/', { version });
+  return data;
+}

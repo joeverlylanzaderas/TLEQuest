@@ -124,7 +124,11 @@ apiClient.interceptors.response.use(
       error.message = WEAK_SIGNAL_MESSAGE;
     }
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Login / token-refresh calls: a 401 there just means "wrong username or password" (or an
+    // expired refresh token). Pass the real answer through so the login screen can show it.
+    const isAuthCall = String(originalRequest?.url ?? '').includes('/accounts/login/');
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthCall) {
       originalRequest._retry = true;
       try {
         const refreshToken = await SecureStore.getItemAsync('refresh_token');

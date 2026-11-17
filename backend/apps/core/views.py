@@ -29,6 +29,19 @@ class SystemSettingsView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         return SystemSettings.get_solo()
 
+    def perform_update(self, serializer):
+        from apps.accounts.audit import log_action
+        # Only the settings whose value really changed, with the old and new value.
+        instance = serializer.instance
+        before = {f: getattr(instance, f) for f in serializer.validated_data}
+        serializer.save()
+        changes = {
+            f: {"from": before[f], "to": getattr(instance, f)}
+            for f in before if getattr(instance, f) != before[f]
+        }
+        if changes:
+            log_action(self.request, "settings.update", changes=changes)
+
 class PublicThemeView(generics.RetrieveAPIView):
     """Read-only, no login needed, so the login screen can already use the school theme."""
     permission_classes = [AllowAny]

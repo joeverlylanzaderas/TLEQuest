@@ -178,6 +178,9 @@ export default function QuestDetailScreen() {
     }
   }
 
+  // shows "Saved" on the Save Changes button for 2.5 s so the teacher can see it worked
+  const [headerSaved, setHeaderSaved] = useState(false);
+
   async function handleSaveHeader() {
     if (!titleDraft.trim()) {
       Alert.alert('Missing title', 'Quest title cannot be empty.');
@@ -191,6 +194,8 @@ export default function QuestDetailScreen() {
         cover_image_url: coverDraft,
       });
       setQuest(updated);
+      setHeaderSaved(true);
+      setTimeout(() => setHeaderSaved(false), 2500);
       toast.success('Quest details saved');
     } catch (e: any) {
       toast.error(extractErrorMessage(e, 'Could not save changes.'));
@@ -529,8 +534,21 @@ export default function QuestDetailScreen() {
             multiline
           />
 
-          <TouchableOpacity style={styles.saveHeaderButton} onPress={handleSaveHeader} disabled={isSavingHeader}>
-            {isSavingHeader ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.saveHeaderButtonText}>Save Changes</Text>}
+          <TouchableOpacity
+            style={[styles.saveHeaderButton, headerSaved && { backgroundColor: GREEN }]}
+            onPress={handleSaveHeader}
+            disabled={isSavingHeader}
+          >
+            {isSavingHeader ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : headerSaved ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                <Text style={styles.saveHeaderButtonText}>Changes saved</Text>
+              </View>
+            ) : (
+              <Text style={styles.saveHeaderButtonText}>Save Changes</Text>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.deleteQuestButton} onPress={handleDeleteQuest}>

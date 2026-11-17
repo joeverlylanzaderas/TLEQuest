@@ -3,7 +3,7 @@ from django.contrib.auth.models import update_last_login
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.exceptions import AuthenticationFailed
-from .models import User, UserProfile, SecurityQuestion, UserSecurityAnswer
+from .models import AuditLog, User, UserProfile, SecurityQuestion, UserSecurityAnswer
 
 
 # Security question serializers — defined first, since ChangePasswordSerializer
@@ -155,20 +155,37 @@ class SelfProfileUpdateSerializer(serializers.ModelSerializer):
 # Serializer for Admin User Creation and Update
 class AdminUserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)   # min_length removed — now dynamic
+    # Optional profile details the admin can fill in while creating the account.
+    first_name = serializers.CharField(max_length=30, required=False, allow_blank=True, write_only=True)
+    last_name = serializers.CharField(max_length=30, required=False, allow_blank=True, write_only=True)
+    email = serializers.EmailField(required=False, allow_blank=True, write_only=True)
 
     class Meta:
         model = User
-        fields = ["id", "username", "password", "role"]
+        fields = ["id", "username", "password", "role", "first_name", "last_name", "email"]
 
     def validate_password(self, value):
         return validate_password_length(value)
 
+    def validate_email(self, value):
+        if value and UserProfile.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("Email already in use by another account.")
+        return value
+
     def create(self, validated_data):
         password = validated_data.pop("password")
+        first_name = validated_data.pop("first_name", "")
+        last_name = validated_data.pop("last_name", "")
+        email = validated_data.pop("email", "")
         user = User(**validated_data)
         user.set_password(password)
         user.save()
-        UserProfile.objects.create(user=user)  # empty profile, filled in later
+        UserProfile.objects.create(
+            user=user,
+            first_name=first_name,
+            last_name=last_name,
+            email=email or None,  # avoid "" colliding on the unique constraint
+        )
         return user
 
 
@@ -226,3 +243,11 @@ class BulkUserRowSerializer(serializers.Serializer):
         if value and UserProfile.objects.filter(email=value).exists():
             raise serializers.ValidationError("Email already in use by another account.")
         return value
+
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AuditLog
+        fields = ["id", "action", "actor_username", "target_id", "target_label", "details", "ip_address", "created_at"]
+        read_only_fields = fields
+

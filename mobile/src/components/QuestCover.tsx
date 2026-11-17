@@ -1,7 +1,8 @@
 // mobile/src/components/QuestCover.tsx
 // A quest's cover photo, or the kitchen icon when the teacher didn't add one.
 import React from 'react';
-import { View, Image, StyleProp, ViewStyle } from 'react-native';
+import { View, StyleProp, ViewStyle } from 'react-native';
+import CachedImage from './CachedImage';
 import { T } from '../theme/theme';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -20,7 +21,7 @@ export default function QuestCover({ url, style, iconSize = 26 }: Props) {
       ]}
     >
       {url ? (
-        <Image source={{ uri: url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        <CachedImage uri={url} size={600} style={{ width: '100%', height: '100%' }} />
       ) : (
         <Ionicons name="restaurant" size={iconSize} color="#fff" />
       )}

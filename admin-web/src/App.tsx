@@ -3,9 +3,9 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
+import AdminLayout from './components/AdminLayout';
 
 import Login from './pages/Login';
-import AdminLayout from './components/AdminLayout';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Classes = lazy(() => import('./pages/Classes'));
 const UserManagement = lazy(() => import('./pages/UserManagement'));
@@ -13,6 +13,7 @@ const Profile = lazy(() => import('./pages/Profile'));
 const ChangePassword = lazy(() => import('./pages/ChangePassword'));
 const Reports = lazy(() => import('./pages/Reports'));
 const SystemSettingsPage = lazy(() => import('./pages/SystemSettings'));
+const AuditLogPage = lazy(() => import('./pages/AuditLog'));
 
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
@@ -37,14 +38,9 @@ function AppRoutes() {
     <Suspense fallback={<div>Loading...</div>}>
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
-      {/* Every signed-in page shares the sidebar layout */}
-      <Route
-        element={
-          <ProtectedRoute>
-            <AdminLayout />
-          </ProtectedRoute>
-        }
-      >
+
+      {/* Every signed-in page shares the sidebar (AdminLayout) */}
+      <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/users" element={<UserManagement />} />
         <Route path="/classes" element={<Classes />} />
@@ -52,7 +48,9 @@ function AppRoutes() {
         <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/system-settings" element={<SystemSettingsPage />} />
+        <Route path="/audit-log" element={<AuditLogPage />} />
       </Route>
+
       <Route path="*" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
     </Routes>
     </Suspense>

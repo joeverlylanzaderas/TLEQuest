@@ -9,6 +9,7 @@ class Notification(TimestampedModel):
         NEW_SUBMISSION = "new_submission", "New Submission"           # → teacher
         QUEST_ASSIGNED = "quest_assigned", "Quest Assigned"            # → student
         SUBMISSION_FEEDBACK = "submission_feedback", "Submission Feedback"  # → student
+        STUDENT_ENROLLED = "student_enrolled", "Student Enrolled"            # → teacher
 
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications"

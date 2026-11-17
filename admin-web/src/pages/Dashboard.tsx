@@ -198,7 +198,11 @@ export default function Dashboard() {
         body { margin: 0; background-color: var(--t-f8efe6); color: var(--t-804022); font-family: 'Inter', sans-serif; overflow-x: hidden; }
         h1, h2, h3, .card-title, .logo, .stat-value { font-family: 'Plus Jakarta Sans', sans-serif; }
         a { text-decoration: none; color: inherit; }
-        .main-content { padding: 24px 32px; min-width: 0; }
+
+
+
+        .dash-page { width: 100%; }
+        .main-content { overflow-x: hidden; padding: 24px 32px; min-width: 0; }
 
         .hero-banner { background-image: url('${BANNER_IMAGE_URL}'); background-size: cover; background-position: center; border-radius: 20px; min-height: 200px; position: relative; margin-bottom: 24px; border: 1px solid var(--t-d6bb83); display: flex; flex-direction: column; justify-content: space-between; padding: 24px; overflow: hidden; box-shadow: 0 8px 24px rgba(128,64,34,0.12); }
         .hero-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(30,15,8,0.2) 0%, rgba(30,15,8,0.6) 100%); z-index: 1; }
@@ -310,6 +314,7 @@ export default function Dashboard() {
           .card-header { flex-direction: column; align-items: flex-start; }
         }
       `}</style>
+
 
       {/* --- MAIN CONTENT --- */}
       <main className="main-content">

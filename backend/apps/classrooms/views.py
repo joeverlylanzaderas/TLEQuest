@@ -3,6 +3,7 @@ from enum import member
 
 from enum import member
 
+from django.db import transaction
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -12,6 +13,9 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from apps.accounts.permissions import IsAdmin
 from apps.core.mixins import ReadAfterWriteMixin
 from apps.assignments.services import sync_progress_for_new_group_member
+from .services import purge_student_group_links
+from apps.notifications.models import Notification
+from apps.notifications.utils import notify
 from .models import Class, ClassEnrollment, Group, GroupMember
 from apps.core.permissions import IsTeacherOrAdmin, IsStudent
 from .serializers import (
@@ -112,6 +116,20 @@ class JoinClassView(APIView):
         enrollment = ClassEnrollment.objects.create(
             class_obj=serializer.validated_data["class_obj"],
             student=request.user,
+        )
+        # Let the class's teacher know a student just joined
+        try:
+            profile = request.user.profile
+            student_name = f"{profile.first_name} {profile.last_name}".strip() or request.user.username
+        except Exception:  # no profile row yet
+            student_name = request.user.username
+        notify(
+            recipient=enrollment.class_obj.teacher,
+            notification_type=Notification.NotificationType.STUDENT_ENROLLED,
+            title="New student enrolled",
+            message=f"{student_name} joined {enrollment.class_obj.class_name}.",
+            related_type="class",
+            related_id=enrollment.class_obj_id,
         )
         return Response(ClassEnrollmentSerializer(enrollment).data, status=status.HTTP_201_CREATED)
 
@@ -234,6 +252,31 @@ class GroupMemberDetailView(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated, IsTeacherOrAdmin]
     queryset = GroupMember.objects.select_related("group__class_obj")
 
+    @transaction.atomic
     def perform_destroy(self, instance):
         _assert_owns_class(self.request.user, instance.group.class_obj)
+        purge_student_group_links(instance.group, instance.student_id)
         instance.delete()
+
+
+class GroupReorderView(APIView):
+    """POST {"order": [group_id, ...]} — renumbers the class's groups 1..N in that order,
+    so the label ("Group N") on the cards and in the roster follows the teacher's arrangement."""
+    permission_classes = [IsAuthenticated, IsTeacherOrAdmin]
+
+    @transaction.atomic
+    def post(self, request, class_id):
+        klass = generics.get_object_or_404(Class, pk=class_id)
+        _assert_owns_class(request.user, klass)
+        order = request.data.get("order")
+        groups = {g.id: g for g in Group.objects.filter(class_obj=klass)}
+        if not isinstance(order, list) or sorted(order) != sorted(groups.keys()):
+            raise ValidationError({"order": "Send every group id of this class exactly once."})
+        # two passes so the unique (class, group_number) constraint is never hit mid-way
+        offset = max([g.group_number for g in groups.values()] + [len(order)]) + 1
+        for i, gid in enumerate(order, 1):
+            Group.objects.filter(pk=gid).update(group_number=offset + i)
+        for i, gid in enumerate(order, 1):
+            Group.objects.filter(pk=gid).update(group_number=i)
+        fresh = Group.objects.filter(class_obj=klass).select_related("leader").prefetch_related("members__student__profile")
+        return Response(GroupSerializer(fresh, many=True, context={"request": request}).data)

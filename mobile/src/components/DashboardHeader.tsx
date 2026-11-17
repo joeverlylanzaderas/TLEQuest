@@ -1,6 +1,7 @@
 //mobile/src/components/DashboardHeader.tsx
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import CachedImage from './CachedImage';
 import { T } from '../theme/theme';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -31,7 +32,7 @@ export default function DashboardHeader({
   return (
     <View style={styles.headerRow}>
       {profilePicture ? (
-        <Image source={{ uri: profilePicture }} style={styles.avatar} />
+        <CachedImage uri={profilePicture} size={160} square style={styles.avatar} />
       ) : (
         <View style={styles.avatarPlaceholder}>
           <Text style={styles.avatarInitial}>{displayName.charAt(0).toUpperCase()}</Text>

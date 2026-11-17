@@ -42,6 +42,12 @@ export async function updateGroup(groupId: number, payload: GroupUpdatePayload):
   return data;
 }
 
+/** Renumber the class's groups to match this order of group ids (1..N). */
+export async function reorderGroups(classId: number, order: number[]): Promise<Group[]> {
+  const { data } = await apiClient.post<Group[]>(`/classrooms/classes/${classId}/groups/reorder/`, { order });
+  return data;
+}
+
 export async function deleteGroup(groupId: number): Promise<void> {
   await apiClient.delete(`/classrooms/groups/${groupId}/`);
 }

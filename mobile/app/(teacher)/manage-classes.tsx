@@ -11,22 +11,28 @@ import {
   RefreshControl,
   Modal,
   Alert,
-  Image,
+  Pressable,
 } from 'react-native';
 import { T, HEADER_BG, HEADER_TEXT, activeTheme } from '../../src/theme/theme';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { getMediaUrl } from '../../src/utils/media';
+import { thumbUrl } from '../../src/utils/media';
 
 import { getMyClasses, createClass, updateClass, getClassEnrollments } from '../../src/api/classrooms';
 import { ClassSummary, ClassEnrollment, ClassCreatePayload, ClassUpdatePayload } from '../../src/types/classrooms';
 import KeyboardSafe from '../../src/components/KeyboardSafe';
+import CachedImage from '../../src/components/CachedImage';
 import { useToast } from '../../src/components/Toast';
+import { FadeIn, PressableScale } from '../../src/components/Motion';
+import { TOP_GAP } from '../../src/theme/layout';
+import AppHeader from '../../src/components/AppHeader';
+import { useCoachTarget, useScreenTour } from '../../src/components/CoachTour';
+import { NAV_CLEARANCE } from '../../src/components/FloatingTabBar';
 
-const CREAM = T('#F2E4C4');
-const CARD_BG = T('#F9C544');
+const CREAM = T('#F5EDD8');
+const CARD_BG = T('#F5B921');
 const BROWN = T('#3A2B1A');
 const GREEN = '#2FA85B';
 
@@ -40,9 +46,12 @@ const BACK_BG = IS_SCHOOL ? '#FFFFFF' : CARD_BG;
 const BACK_ICON = IS_SCHOOL ? BLUE : BROWN;
 const CREATE_BG = IS_SCHOOL ? BLUE : GREEN;
 
-export default function ManageClasses() {
+// Used as a stack screen (back button) and as the Classes tab of the teacher bottom nav (asTab).
+export function ManageClassesScreen({ asTab = false }: { asTab?: boolean }) {
   const router = useRouter();
   const toast = useToast();
+  const target = useCoachTarget();
+  useScreenTour(asTab ? 'teacher-classes' : '_none'); // first-visit tip (only on the Classes tab)
 
   const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,6 +70,7 @@ export default function ManageClasses() {
   // ---- Selected class's roster ----
   const [selectedClass, setSelectedClass] = useState<ClassSummary | null>(null);
   const [roster, setRoster] = useState<ClassEnrollment[]>([]);
+  const [rosterSort, setRosterSort] = useState<'az' | 'za'>('az');
   const [isLoadingRoster, setIsLoadingRoster] = useState(false);
 
   // ---- Copy feedback ----
@@ -174,6 +184,12 @@ export default function ManageClasses() {
     }
   }
 
+  // Tapping empty space (outside the class cards and the student list) hides the student list again.
+  function handleClearSelection() {
+    setSelectedClass(null);
+    setRoster([]);
+  }
+
   async function handleCopyCode(classItem: ClassSummary) {
     await Clipboard.setStringAsync(classItem.invite_code);
     setCopiedClassId(classItem.id);
@@ -186,43 +202,53 @@ export default function ManageClasses() {
   }
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: HEADER_AREA_BG }]} edges={['top']}>
+    <SafeAreaView
+      style={[styles.screen, { backgroundColor: asTab ? CREAM : HEADER_AREA_BG }]}
+      edges={asTab ? [] : ['top']}
+    >
+      {/* As a tab: the same gold app header as the other teacher tabs */}
+      {asTab && <AppHeader role="teacher" />}
+
       {/* ---------------- Header ---------------- */}
-      <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={22} color={BACK_ICON} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Class Management</Text>
+      <View style={[styles.headerRow, asTab && { paddingTop: 16 }]}>
+        {!asTab && (
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={22} color={BACK_ICON} />
+          </TouchableOpacity>
+        )}
+        <Text style={styles.title}>My classes</Text>
+        <View {...target('classes-new')}>
+        <PressableScale style={styles.createButton} scaleTo={0.94} onPress={openCreateModal}>
+          <Ionicons name="add" size={18} color={IS_SCHOOL ? '#fff' : BROWN} />
+          <Text style={styles.createButtonText}>New class</Text>
+        </PressableScale>
+        </View>
       </View>
 
       <ScrollView
         style={{ flex: 1, backgroundColor: CREAM }}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }, asTab && { paddingBottom: NAV_CLEARANCE }]}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={BROWN} />}
       >
 
-        {/* ---------------- Create button ---------------- */}
-        <TouchableOpacity style={styles.createButton} onPress={openCreateModal}>
-          <Ionicons name="add" size={18} color="#fff" />
-          <Text style={styles.createButtonText}>Create A New Class</Text>
-        </TouchableOpacity>
-
+      <Pressable style={{ flexGrow: 1 }} onPress={handleClearSelection} accessible={false}>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         {/* ---------------- My Classes ---------------- */}
-        <Text style={styles.sectionLabel}>MY CLASSES</Text>
+        <Text style={styles.sectionLabel}>TAP A CLASS TO SEE ITS STUDENTS</Text>
 
         {isLoading ? (
           <ActivityIndicator size="large" color={BROWN} style={{ marginTop: 20 }} />
         ) : classes.length === 0 ? (
           <Text style={styles.emptyText}>No classes yet — create one above to get started.</Text>
         ) : (
-          classes.map((c) => {
+          classes.map((c, ci) => {
             const isSelected = selectedClass?.id === c.id;
             const justCopied = copiedClassId === c.id;
             return (
+              <FadeIn key={c.id} delay={Math.min(ci, 6) * 70}>
+              <View {...(ci === 0 ? target('classes-first') : {})}>
               <TouchableOpacity
-                key={c.id}
                 style={[styles.classCard, isSelected && styles.classCardSelected]}
                 onPress={() => handleSelectClass(c)}
                 activeOpacity={0.8}
@@ -237,33 +263,40 @@ export default function ManageClasses() {
                   </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity
-                  style={styles.codeRow}
-                  onPress={() => handleCopyCode(c)}
-                  hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-                >
-                  <Text style={styles.classCode}>{c.invite_code}</Text>
-                  <Ionicons
-                    name={justCopied ? 'checkmark' : 'copy-outline'}
-                    size={14}
-                    color={justCopied ? GREEN : T('#8A6A2A')}
-                  />
-                  {justCopied && <Text style={styles.copiedText}>Copied!</Text>}
-                </TouchableOpacity>
-
                 <View style={styles.classStatsRow}>
+                  <TouchableOpacity
+                    style={styles.codeChip}
+                    onPress={() => handleCopyCode(c)}
+                    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                  >
+                    <Ionicons name="key" size={12} color={justCopied ? GREEN : '#6B4A00'} />
+                    <Text style={styles.classCode}>{justCopied ? 'Copied!' : c.invite_code}</Text>
+                    {!justCopied && <Ionicons name="copy-outline" size={12} color="#6B4A00" />}
+                  </TouchableOpacity>
                   <View style={styles.classStatPill}>
-                    <Text style={styles.classStatText}>{c.student_count} Students</Text>
+                    <Ionicons name="people" size={12} color={IS_SCHOOL ? '#fff' : '#1F4D7A'} />
+                    <Text style={styles.classStatText}>{c.student_count} {c.student_count === 1 ? 'student' : 'students'}</Text>
                   </View>
+                  <TouchableOpacity
+                    style={styles.openBtn}
+                    onPress={() => router.push(`/(teacher)/class/${c.id}` as any)}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Text style={styles.openBtnText}>Open</Text>
+                    <Ionicons name="chevron-forward" size={14} color={BROWN} />
+                  </TouchableOpacity>
                 </View>
               </TouchableOpacity>
+              </View>
+              </FadeIn>
             );
           })
         )}
 
         {/* ---------------- Roster for selected class ---------------- */}
         {selectedClass && (
-          <>
+          // Pressable with an empty onPress: taps inside the student list must NOT hide it
+          <Pressable onPress={() => {}} accessible={false}>
             <Text style={styles.sectionLabel}>
               STUDENTS — {selectedClass.class_name.toUpperCase()}
             </Text>
@@ -275,14 +308,32 @@ export default function ManageClasses() {
                 No students enrolled yet. Share the invite code above.
               </Text>
             ) : (
+              <>
+              <View style={styles.sortRow}>
+                <Text style={styles.sortLabel}>Sort</Text>
+                {([['az', 'A–Z'], ['za', 'Z–A']] as const).map(([key, label]) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.sortChip, rosterSort === key && styles.sortChipActive]}
+                    onPress={() => setRosterSort(key)}
+                  >
+                    <Text style={[styles.sortChipText, rosterSort === key && styles.sortChipTextActive]}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
               <View style={styles.rosterCard}>
-                {roster.map((enrollment) => {
+                {[...roster]
+                  .sort((a, b) => {
+                    const cmp = studentDisplayName(a).localeCompare(studentDisplayName(b));
+                    return rosterSort === 'za' ? -cmp : cmp;
+                  })
+                  .map((enrollment) => {
                   const name = studentDisplayName(enrollment);
-                  const avatarUrl = getMediaUrl(enrollment.student.profile_picture);
+                  const avatarUrl = thumbUrl(enrollment.student.profile_picture, 32);
                   return (
                     <View key={enrollment.id} style={styles.rosterRow}>
                       {avatarUrl ? (
-                        <Image source={{ uri: avatarUrl }} style={styles.rosterAvatarImage} />
+                        <CachedImage uri={avatarUrl} size={160} square style={styles.rosterAvatarImage} />
                       ) : (
                         <View style={styles.rosterAvatar}>
                           <Text style={styles.rosterAvatarText}>{name.charAt(0).toUpperCase()}</Text>
@@ -299,9 +350,11 @@ export default function ManageClasses() {
                   );
                 })}
               </View>
+              </>
             )}
-          </>
+          </Pressable>
         )}
+      </Pressable>
       </ScrollView>
 
       {/* ---------------- Create / Edit class modal ---------------- */}
@@ -371,19 +424,20 @@ export default function ManageClasses() {
   );
 }
 
+export default function ManageClasses() {
+  return <ManageClassesScreen />;
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: CREAM },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 60 },
 
-  headerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 14, gap: 10 },
-  backButton: { padding: 6, borderRadius: 20, backgroundColor: BACK_BG },
-  title: { fontSize: 20, fontWeight: '800', color: TITLE_COLOR },
+  headerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: TOP_GAP, paddingBottom: 14, gap: 10 },
+  backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: IS_SCHOOL ? '#fff' : '#fff', alignItems: 'center', justifyContent: 'center' },
+  title: { flex: 1, fontSize: 22, fontWeight: '900', color: TITLE_COLOR },
 
-  createButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    backgroundColor: CREATE_BG, borderRadius: 16, paddingVertical: 14, marginBottom: 24,
-  },
-  createButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  createButton: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: IS_SCHOOL ? BLUE : CARD_BG, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 },
+  createButtonText: { color: IS_SCHOOL ? '#fff' : BROWN, fontSize: 13, fontWeight: '800' },
 
   errorText: { color: '#B3261E', marginBottom: 12, fontSize: 13 },
 
@@ -394,21 +448,23 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 13, color: T('#8A6A2A'), marginBottom: 20 },
 
   classCard: {
-    backgroundColor: IS_SCHOOL ? LIGHT_BLUE : '#fff', borderRadius: 16, borderWidth: 1.5, borderColor: IS_SCHOOL ? '#BCD6F5' : T('#EADEC9'),
-    padding: 16, marginBottom: 12,
+    backgroundColor: IS_SCHOOL ? LIGHT_BLUE : '#fff', borderRadius: 18, borderWidth: 2, borderColor: 'transparent',
+    padding: 16, marginBottom: 12, gap: 12,
   },
-  classCardSelected: { borderColor: IS_SCHOOL ? BLUE : GREEN },
+  classCardSelected: { borderColor: IS_SCHOOL ? BLUE : CARD_BG },
   classCardTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  className: { fontSize: 16, fontWeight: '800', color: BROWN, flex: 1 },
-  codeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2, marginBottom: 10 },
-  classCode: { fontSize: 12, color: T('#8A6A2A') },
+  className: { fontSize: 17, fontWeight: '900', color: BROWN, flex: 1 },
+  codeChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#FFF1C7', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  classCode: { fontSize: 12, fontWeight: '800', color: '#6B4A00' },
+  openBtn: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: CARD_BG, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
+  openBtnText: { fontSize: 12, fontWeight: '800', color: BROWN },
   copiedText: { fontSize: 11, color: GREEN, fontWeight: '700', marginLeft: 2 },
-  classStatsRow: { flexDirection: 'row', gap: 10 },
-  classStatPill: { backgroundColor: IS_SCHOOL ? BLUE : CREAM, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
-  classStatText: { fontSize: 12, fontWeight: '700', color: IS_SCHOOL ? '#FFFFFF' : BROWN },
+  classStatsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  classStatPill: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: IS_SCHOOL ? BLUE : '#D6E6F8', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  classStatText: { fontSize: 12, fontWeight: '800', color: IS_SCHOOL ? '#FFFFFF' : '#1F4D7A' },
 
   rosterCard: {
-    backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: T('#EADEC9'),
+    backgroundColor: '#fff', borderRadius: 18,
     marginBottom: 20, overflow: 'hidden',
   },
   rosterRow: {
@@ -422,7 +478,13 @@ const styles = StyleSheet.create({
   },
   rosterAvatarImage: { width: 30, height: 30, borderRadius: 15 },
   rosterAvatarText: { fontSize: 12, fontWeight: '800', color: IS_SCHOOL ? '#FFFFFF' : BROWN },
-  rosterName: { fontSize: 14, fontWeight: '700', color: IS_SCHOOL ? BLUE : '#C2551A' },
+  sortRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  sortLabel: { fontSize: 12, fontWeight: '700', color: T('#8A6A2A') },
+  sortChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: 'rgba(58,43,26,0.08)' },
+  sortChipActive: { backgroundColor: IS_SCHOOL ? BLUE : T('#5C3A2E') },
+  sortChipText: { fontSize: 12, fontWeight: '700', color: BROWN },
+  sortChipTextActive: { color: '#fff' },
+  rosterName: { fontSize: 14, fontWeight: '700', color: BROWN },
   rosterSub: { fontSize: 11, color: T('#8A6A2A'), marginTop: 1 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 24 },

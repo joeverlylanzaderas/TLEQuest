@@ -95,3 +95,42 @@ class UserSecurityAnswer(models.Model):
 
     def check_answer(self, raw_answer):
         return check_password(raw_answer.strip().lower(), self.answer_hash)
+
+
+# Audit log: who did what (admin actions + admin sign-ins). Rows are never edited or deleted by the app.
+class AuditLog(models.Model):
+    actor          = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="audit_logs")
+    # Copied on purpose, so the log still names the person after the account is removed.
+    actor_username = models.CharField(max_length=150, blank=True)
+    action         = models.CharField(max_length=40, db_index=True)   # e.g. "user.create"
+    target_id      = models.PositiveIntegerField(null=True, blank=True)
+    target_label   = models.CharField(max_length=150, blank=True)    # e.g. the username that was changed
+    details        = models.JSONField(default=dict, blank=True)
+    ip_address     = models.GenericIPAddressField(null=True, blank=True)
+    created_at     = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return f"{self.created_at:%Y-%m-%d %H:%M} {self.actor_username or '?'} {self.action} {self.target_label}".strip()
+
+
+# Terms & Privacy consent (kept as a history, so there is proof of who agreed to which version and when)
+POLICY_VERSION = "2026-11-16"  # bump this (and the same value in mobile/src/legal/legalContent.ts) when the Terms or Privacy Policy change
+
+
+class PolicyConsent(models.Model):
+    user        = models.ForeignKey(User, on_delete=models.CASCADE, related_name="policy_consents")
+    version     = models.CharField(max_length=20)
+    accepted_at = models.DateTimeField(auto_now_add=True)
+    ip_address  = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-accepted_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["user", "version"], name="unique_consent_per_user_version"),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} accepted {self.version}"

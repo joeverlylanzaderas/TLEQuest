@@ -1,5 +1,6 @@
 // mobile/src/ml/classifier.ts
 import { Image } from 'react-native';
+import { Asset } from 'expo-asset';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { decode } from 'jpeg-js';
 
@@ -55,10 +56,10 @@ export async function loadModel() {
         throw new Error('AI model is not available in this app build.');
       }
     })();
-    modelInstance = await tflite.loadTensorflowModel(
-      require('../../assets/model/tlequest_classifier.tflite'),
-      []
-    );
+    const asset = Asset.fromModule(require('../../assets/model/tlequest_classifier.tflite'));
+    if (!asset.localUri) await asset.downloadAsync();
+    const url = asset.localUri || asset.uri;
+    modelInstance = await tflite.loadTensorflowModel({ url }, []);
   }
   return modelInstance;
 }
