@@ -1,5 +1,5 @@
 // mobile/src/components/SubmitOutputCard.tsx
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, Image, ActivityIndicator, StyleSheet,
 } from 'react-native';
@@ -23,6 +23,20 @@ const ORANGE = T('#EA580C');
 // teacher as FOR REVIEW instead of failing. Set to false before the defense so a
 // broken classifier is never hidden.
 const ALLOW_FALLBACK = false;
+
+// Quick AI check right after the photo is taken, so the student can fix the table and retake before submitting.
+// After this many quick checks the student can still take photos and submit; the AI then only runs on Submit.
+const MAX_PRECHECKS = 3;
+
+// What the quick check tells the student. It never blocks Submit: the teacher makes the final decision.
+type Pre = { uri: string; status: 'checking' | 'ok' | 'review' | 'unavailable' | 'limit' };
+
+const SETUP_TIPS = [
+  'Plate and napkin are on the table',
+  'Glass is at the upper right of the plate',
+  'Fork and spoon are in place (knife is optional)',
+  'Whole table is in the photo, taken from above',
+];
 
 function feedbackFor(label: string): string {
   return label === 'ACCEPTED'
@@ -69,6 +83,10 @@ export default function SubmitOutputCard({ progress }: Props) {
   // after it is sent there is no camera and no "submit another" button, only the result.
   const [sub, setSub] = useState<Submission | null>(null);
   const [zoomOpen, setZoomOpen] = useState(false); // full-screen view of the submitted photo
+  // Quick check of the photo that was just taken (before Submit)
+  const [pre, setPre] = useState<Pre | null>(null);
+  const [checksUsed, setChecksUsed] = useState(0);
+  const preRef = useRef<{ uri: string; promise: Promise<ClassificationResult | null> } | null>(null);
 
   const loadSub = useCallback(async () => {
     try {
@@ -105,6 +123,29 @@ export default function SubmitOutputCard({ progress }: Props) {
     setSubmitted(null);
     setError('');
     setCameraOpen(false);
+
+    // Quick AI check so the student sees the result before submitting
+    if (checksUsed >= MAX_PRECHECKS) {
+      preRef.current = null;
+      setPre({ uri, status: 'limit' });
+      return;
+    }
+    setChecksUsed((n) => n + 1);
+    setPre({ uri, status: 'checking' });
+    const promise = classifyImage(uri).catch(() => null);
+    preRef.current = { uri, promise };
+    promise.then((res) => {
+      if (preRef.current?.uri !== uri) return; // a newer photo (or Cancel) replaced this one
+      if (!res) setPre({ uri, status: 'unavailable' });
+      else setPre({ uri, status: res.label === 'ACCEPTED' ? 'ok' : 'review' });
+    });
+  }
+
+  function clearPhoto() {
+    setPhotoUri(null);
+    setPre(null);
+    preRef.current = null;
+    setError('');
   }
 
   async function handleSubmit() {
@@ -112,21 +153,28 @@ export default function SubmitOutputCard({ progress }: Props) {
     setIsSubmitting(true);
     setError('');
     try {
-      // 1. AI check on the phone
+      // 1. AI check on the phone. Reuse the quick check of THIS photo if it already ran (or is still running);
+      // the saved result always belongs to the photo that is actually submitted.
       setStage('Checking your output with AI...');
       let result: ClassificationResult;
       let aiUnavailable = false;
-      try {
-        result = await classifyImage(photoUri);
-      } catch (e: any) {
-        if (!ALLOW_FALLBACK) throw e;
-        aiUnavailable = true;
-        result = {
-          label: 'FOR REVIEW',
-          confidence: 0,
-          probabilities: { ACCEPTED: 0, 'FOR REVIEW': 0 },
-          elapsedMs: 0,
-        };
+      const cached =
+        preRef.current && preRef.current.uri === photoUri ? await preRef.current.promise : null;
+      if (cached) {
+        result = cached;
+      } else {
+        try {
+          result = await classifyImage(photoUri);
+        } catch (e: any) {
+          if (!ALLOW_FALLBACK) throw e;
+          aiUnavailable = true;
+          result = {
+            label: 'FOR REVIEW',
+            confidence: 0,
+            probabilities: { ACCEPTED: 0, 'FOR REVIEW': 0 },
+            elapsedMs: 0,
+          };
+        }
       }
 
       // 2. Save the submission on the phone first, so a weak signal can never lose it
@@ -155,6 +203,8 @@ export default function SubmitOutputCard({ progress }: Props) {
 
       setSubmitted({ result, aiUnavailable, queued: status.state === 'pending' });
       setPhotoUri(null);
+      setPre(null);
+      preRef.current = null;
       if (status.state !== 'pending') loadSub();
     } catch (e: any) {
       setError(errorText(e));
@@ -315,9 +365,57 @@ export default function SubmitOutputCard({ progress }: Props) {
             ) : (
               <Ionicons name="camera-outline" size={40} color={BROWN} />
             )}
-            <Text style={styles.dashedText}>
-              {photoUri ? 'Looks good? Submit it, or retake.' : 'Take a photo of your finished table setup'}
-            </Text>
+            {photoUri && pre && pre.uri === photoUri && pre.status !== 'unavailable' ? (
+              <View
+                style={[
+                  styles.precheckBox,
+                  pre.status === 'ok' && styles.precheckOk,
+                  pre.status === 'review' && styles.precheckReview,
+                ]}
+              >
+                {pre.status === 'checking' ? (
+                  <View style={styles.precheckRow}>
+                    <ActivityIndicator size="small" color={BROWN} />
+                    <Text style={styles.precheckTitle}>Checking your setup...</Text>
+                  </View>
+                ) : pre.status === 'ok' ? (
+                  <>
+                    <View style={styles.precheckRow}>
+                      <Ionicons name="checkmark-circle" size={18} color={GREEN} />
+                      <Text style={[styles.precheckTitle, { color: '#15803D' }]}>Looks good!</Text>
+                    </View>
+                    <Text style={styles.precheckText}>Submit it, or retake if you want a better photo.</Text>
+                  </>
+                ) : pre.status === 'review' ? (
+                  <>
+                    <View style={styles.precheckRow}>
+                      <Ionicons name="alert-circle" size={18} color={ORANGE} />
+                      <Text style={[styles.precheckTitle, { color: ORANGE }]}>Not sure about this one</Text>
+                    </View>
+                    <Text style={styles.precheckText}>Check these, then retake:</Text>
+                    {SETUP_TIPS.map((tip) => (
+                      <Text key={tip} style={styles.precheckTip}>• {tip}</Text>
+                    ))}
+                    <Text style={styles.precheckText}>
+                      Or submit anyway. Your teacher will check it.
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={styles.precheckText}>
+                    Quick checks used up. You can still submit this photo and your teacher will check it.
+                  </Text>
+                )}
+                {pre.status !== 'limit' ? (
+                  <Text style={styles.precheckCount}>
+                    Quick check {Math.min(checksUsed, MAX_PRECHECKS)} of {MAX_PRECHECKS}
+                  </Text>
+                ) : null}
+              </View>
+            ) : (
+              <Text style={styles.dashedText}>
+                {photoUri ? 'Looks good? Submit it, or retake.' : 'Take a photo of your finished table setup'}
+              </Text>
+            )}
             <TouchableOpacity style={styles.orangeButton} onPress={openCamera} disabled={isSubmitting}>
               <Text style={styles.orangeButtonText}>{photoUri ? 'Retake' : 'Take a Photo'}</Text>
             </TouchableOpacity>
@@ -325,7 +423,7 @@ export default function SubmitOutputCard({ progress }: Props) {
             {photoUri ? (
               <TouchableOpacity
                 style={styles.cancelButton}
-                onPress={() => { setPhotoUri(null); setError(''); }}
+                onPress={clearPhoto}
                 disabled={isSubmitting}
                 accessibilityRole="button"
                 accessibilityLabel="Cancel and remove this photo"
@@ -376,6 +474,15 @@ const styles = StyleSheet.create({
   dashedBox: { width: '100%', borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#B8A671', borderRadius: 14, padding: 14, alignItems: 'center', marginBottom: 12 },
   dashedText: { fontSize: 11, color: T('#8A6A2A'), textAlign: 'center', marginVertical: 8 },
   preview: { width: 150, height: 150, borderRadius: 12 },
+
+  precheckBox: { width: '100%', borderRadius: 12, padding: 12, marginVertical: 8, backgroundColor: '#FFF', borderWidth: 1.5, borderColor: '#E7DCC0' },
+  precheckOk: { borderColor: GREEN, backgroundColor: '#F0FDF4' },
+  precheckReview: { borderColor: ORANGE, backgroundColor: '#FFF7ED' },
+  precheckRow: { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center' },
+  precheckTitle: { fontSize: 14, fontWeight: '800', color: BROWN },
+  precheckText: { fontSize: 11, color: '#666', textAlign: 'center', marginTop: 6, lineHeight: 16 },
+  precheckTip: { fontSize: 11, color: '#666', marginTop: 3, lineHeight: 16 },
+  precheckCount: { fontSize: 10, color: T('#8A6A2A'), textAlign: 'center', marginTop: 8, fontStyle: 'italic' },
 
   submitBox: { width: '100%', borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#B8A671', borderRadius: 14, padding: 14, alignItems: 'center', backgroundColor: '#FFF7D6' },
   submitTitle: { fontSize: 14, fontWeight: '800', color: BROWN, marginBottom: 4 },
